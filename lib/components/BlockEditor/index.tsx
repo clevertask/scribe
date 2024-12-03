@@ -44,10 +44,10 @@ export const Scribe: FC<ScribeProps> = ({
         ...editorProps,
       },
       autofocus: false,
-      editable,
+      editable: false,
       content: content,
     },
-    [content, autoFocus, editable]
+    [content]
   );
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export const Scribe: FC<ScribeProps> = ({
 
   return (
     <div className={`block-editor-wrapper ${className}`} id="block-editor-wrapper">
-      <div className={editable ? "m-[40px] rounded-lg border min-h-[300px]" : ""}>
+      <div className={editable ? "rounded-lg border" : ""}>
         {editor && showBarMenu && <BarMenu editor={editor} />}
         <div className={editable ? "h-full w-full p-[16px]" : ""}>
           <EditorContent editor={editor} />

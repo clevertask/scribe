@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Scribe } from "../lib/main";
 
 function App() {
+  const [editable, setEditable] = useState(true);
   const [content, setContent] = useState("");
 
   useEffect(() => {
@@ -92,7 +93,9 @@ print(result) # Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
   return (
     <div>
       <Scribe content={content} showBarMenu={false} editable={false} />
-      <Scribe onContentChange={(c) => console.log(c)} />
+      <Scribe onContentChange={(c) => console.log(c)} editable={editable} showBarMenu={editable} />
+
+      <button onClick={() => setEditable((e) => !e)}>Toggle editable</button>
     </div>
   );
 }
