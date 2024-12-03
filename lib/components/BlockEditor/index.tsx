@@ -1,72 +1,73 @@
-import { EditorContent, Extension, useEditor } from '@tiptap/react';
-import '../../styles/main.css';
-import { extensions as defaultExtensions } from './extension';
-import { EditorProps } from '@tiptap/pm/view';
-import { FC } from 'react';
-import BubbleMenu from '../Menu/BubbleMenu';
-import BarMenu from '../Menu/BarMenu';
+import { Content, EditorContent, Extension, useEditor } from "@tiptap/react";
+import "../../styles/main.css";
+import { extensions as defaultExtensions } from "./extension";
+import { EditorProps } from "@tiptap/pm/view";
+import { FC, useEffect } from "react";
+import BarMenu from "../Menu/BarMenu";
 
-export interface BlockEditorProps {
-  onContentChange?: (content: string) => void;
+export interface ScribeProps {
+  onContentChange?: (content: { jsonContent: Content; htmlContent: Content }) => void;
   content?: string;
   className?: string;
-  readOnly?: boolean;
+  editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
   editorProps?: EditorProps;
-  menuType?: 'bubble' | 'bar';
+  showBarMenu?: boolean;
 }
 
-export const BlockEditor: FC<BlockEditorProps> = ({
-  autoFocus,
+export const Scribe: FC<ScribeProps> = ({
+  autoFocus = false,
   className,
   content,
+  editable = true,
   editorProps,
   extensions,
   onContentChange,
-  readOnly,
-  menuType = 'bubble',
+  showBarMenu = true,
 }) => {
-  const editor = useEditor({
-    extensions: [...defaultExtensions, ...(extensions ?? [])],
-    onUpdate({ editor }) {
-      const htmlContent = editor.getHTML();
+  const editor = useEditor(
+    {
+      extensions: [...defaultExtensions, ...(extensions ?? [])],
+      onUpdate({ editor }) {
+        const htmlContent = editor.getHTML();
+        const jsonContent = editor.getJSON();
 
-      if (onContentChange) {
-        onContentChange(htmlContent);
-      }
-    },
-    editorProps: {
-      attributes: {
-        class: 'block-editor',
-        // this is a workaround to make the editor autofocus
-        ...(autoFocus ? { autofocus: 'true' } : {}),
+        if (onContentChange) {
+          onContentChange({ jsonContent, htmlContent });
+        }
       },
-      ...editorProps,
+      editorProps: {
+        attributes: {
+          class: "block-editor",
+        },
+        ...editorProps,
+      },
+      autofocus: false,
+      editable,
+      content: content,
     },
-    content: content,
-    autofocus: autoFocus,
-    editable: !readOnly,
-  });
+    [content, autoFocus, editable]
+  );
+
+  useEffect(() => {
+    editor?.setEditable(Boolean(editable));
+  }, [editor, editable]);
+
+  useEffect(() => {
+    if (autoFocus) {
+      editor?.commands.focus("end");
+    }
+  }, [editor, autoFocus]);
+
   return (
-    <div
-      className={`block-editor-wrapper ${className}`}
-      id="block-editor-wrapper"
-    >
-      {menuType === 'bar' && (
-        <div className="m-[40px] rounded-lg border min-h-[300px]">
-          {editor && <BarMenu editor={editor} />}
-          <div className="h-full w-full p-[16px]">
-            <EditorContent editor={editor} />
-          </div>
-        </div>
-      )}
-      {menuType === 'bubble' && (
-        <>
+    <div className={`block-editor-wrapper ${className}`} id="block-editor-wrapper">
+      <div className={editable ? "m-[40px] rounded-lg border min-h-[300px]" : ""}>
+        {editor && showBarMenu && <BarMenu editor={editor} />}
+        <div className={editable ? "h-full w-full p-[16px]" : ""}>
           <EditorContent editor={editor} />
-          {editor && <BubbleMenu editor={editor} />}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };
