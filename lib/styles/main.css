@@ -24,16 +24,15 @@
   }
 }
 
-.block-editor-wrapper {
+.scribe-wrapper {
   @apply p-8;
 }
 
-.block-editor {
+.scribe {
   @apply w-full h-full border-0 outline-none;
 }
 
-/* show placeholder when editor is in focused mode */
-.tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
+.tiptap p.is-editor-empty:first-child::before {
   @apply text-[#959595] float-left h-0 pointer-events-none;
   content: attr(data-placeholder);
 }
@@ -67,35 +66,35 @@
 }
 
 /* CSS for formats */
-.block-editor code {
+.scribe code {
   @apply bg-gray-100 p-1 rounded-[4px];
 }
 
-.block-editor pre {
+.scribe pre {
   @apply bg-gray-100 p-4 rounded-[4px];
 }
 
-.block-editor pre code {
+.scribe pre code {
   @apply bg-inherit p-0 rounded-none;
 }
 
-.block-editor blockquote {
+.scribe blockquote {
   @apply border-l-4 border-gray-300 p-2 pl-4;
 }
-.block-editor ul {
+.scribe ul {
   @apply list-disc pl-4;
 }
-.block-editor ol {
+.scribe ol {
   @apply list-decimal pl-4;
 }
 
-.block-editor a {
+.scribe a {
   @apply text-blue-500 underline;
 }
-.block-editor a:hover {
+.scribe a:hover {
   @apply text-blue-700;
 }
 
-.block-editor .block-editor-image-node {
+.scribe .scribe-image-node {
   @apply m-auto w-full h-auto;
 }

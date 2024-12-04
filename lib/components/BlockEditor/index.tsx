@@ -1,72 +1,85 @@
-import { EditorContent, Extension, useEditor } from '@tiptap/react';
-import '../../styles/main.css';
-import { extensions as defaultExtensions } from './extension';
-import { EditorProps } from '@tiptap/pm/view';
-import { FC } from 'react';
-import BubbleMenu from '../Menu/BubbleMenu';
-import BarMenu from '../Menu/BarMenu';
+import { Content, EditorContent, Extension, useEditor } from "@tiptap/react";
+import "../../styles/main.css";
+import { initExtensions } from "./extension";
+import { EditorProps } from "@tiptap/pm/view";
+import { FC, useEffect } from "react";
+import BarMenu from "../Menu/BarMenu";
+import { ClassValue, clsx } from "clsx";
 
-export interface BlockEditorProps {
-  onContentChange?: (content: string) => void;
+export interface ScribeProps {
+  onContentChange?: (content: { jsonContent: Content; htmlContent: Content }) => void;
   content?: string;
-  className?: string;
-  readOnly?: boolean;
+
+  editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
   editorProps?: EditorProps;
-  menuType?: 'bubble' | 'bar';
+  showBarMenu?: boolean;
+  placeholderText?: string;
+  editorContentStyle?: React.CSSProperties;
+  editorContentClassName?: ClassValue;
+  mainContainerStyle?: React.CSSProperties;
+  mainContainerClassName?: ClassValue;
 }
 
-export const BlockEditor: FC<BlockEditorProps> = ({
-  autoFocus,
-  className,
-  content,
-  editorProps,
-  extensions,
-  onContentChange,
-  readOnly,
-  menuType = 'bubble',
-}) => {
-  const editor = useEditor({
-    extensions: [...defaultExtensions, ...(extensions ?? [])],
-    onUpdate({ editor }) {
-      const htmlContent = editor.getHTML();
+export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
+  const {
+    autoFocus = false,
+    content,
+    editable = true,
+    editorProps,
+    extensions,
+    onContentChange,
+    showBarMenu = true,
+    editorContentStyle,
+    editorContentClassName,
+    mainContainerStyle,
+    mainContainerClassName,
+  } = props;
 
-      if (onContentChange) {
-        onContentChange(htmlContent);
-      }
-    },
-    editorProps: {
-      attributes: {
-        class: 'block-editor',
-        // this is a workaround to make the editor autofocus
-        ...(autoFocus ? { autofocus: 'true' } : {}),
+  const editor = useEditor(
+    {
+      extensions: [...initExtensions(props), ...(extensions ?? [])],
+      onUpdate({ editor }) {
+        const htmlContent = editor.getHTML();
+        const jsonContent = editor.getJSON();
+
+        if (onContentChange) {
+          onContentChange({ jsonContent, htmlContent });
+        }
       },
-      ...editorProps,
+      editorProps: {
+        attributes: {
+          class: "scribe",
+        },
+        ...editorProps,
+      },
     },
-    content: content,
-    autofocus: autoFocus,
-    editable: !readOnly,
-  });
+    []
+  );
+
+  useEffect(() => {
+    editor?.commands.setContent(content || "");
+  }, [content]);
+
+  useEffect(() => {
+    editor?.setEditable(Boolean(editable));
+  }, [editable]);
+
+  useEffect(() => {
+    if (autoFocus) {
+      editor?.commands.focus("end");
+    }
+  }, [autoFocus]);
+
   return (
-    <div
-      className={`block-editor-wrapper ${className}`}
-      id="block-editor-wrapper"
-    >
-      {menuType === 'bar' && (
-        <div className="m-[40px] rounded-lg border min-h-[300px]">
-          {editor && <BarMenu editor={editor} />}
-          <div className="h-full w-full p-[16px]">
-            <EditorContent editor={editor} />
-          </div>
-        </div>
-      )}
-      {menuType === 'bubble' && (
-        <>
+    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle} id="scribe-wrapper">
+      <div className={clsx("bg-white", editable && "rounded-lg border")}>
+        {editor && showBarMenu && <BarMenu editor={editor} />}
+        <div className={clsx(editable && "w-full p-[16px]", editorContentClassName)} style={editorContentStyle}>
           <EditorContent editor={editor} />
-          {editor && <BubbleMenu editor={editor} />}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   );
 };
