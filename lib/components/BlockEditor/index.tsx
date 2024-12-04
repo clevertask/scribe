@@ -1,34 +1,45 @@
 import { Content, EditorContent, Extension, useEditor } from "@tiptap/react";
 import "../../styles/main.css";
-import { extensions as defaultExtensions } from "./extension";
+import { initExtensions } from "./extension";
 import { EditorProps } from "@tiptap/pm/view";
 import { FC, useEffect } from "react";
 import BarMenu from "../Menu/BarMenu";
+import { ClassValue, clsx } from "clsx";
 
 export interface ScribeProps {
   onContentChange?: (content: { jsonContent: Content; htmlContent: Content }) => void;
   content?: string;
-  className?: string;
+
   editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
   editorProps?: EditorProps;
   showBarMenu?: boolean;
+  placeholderText?: string;
+  editorContentStyle?: React.CSSProperties;
+  editorContentClassName?: ClassValue;
+  mainContainerStyle?: React.CSSProperties;
+  mainContainerClassName?: ClassValue;
 }
 
-export const Scribe: FC<ScribeProps> = ({
-  autoFocus = false,
-  className,
-  content,
-  editable = true,
-  editorProps,
-  extensions,
-  onContentChange,
-  showBarMenu = true,
-}) => {
+export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
+  const {
+    autoFocus = false,
+    content,
+    editable = true,
+    editorProps,
+    extensions,
+    onContentChange,
+    showBarMenu = true,
+    editorContentStyle,
+    editorContentClassName,
+    mainContainerStyle,
+    mainContainerClassName,
+  } = props;
+
   const editor = useEditor(
     {
-      extensions: [...defaultExtensions, ...(extensions ?? [])],
+      extensions: [...initExtensions(props), ...(extensions ?? [])],
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
         const jsonContent = editor.getJSON();
@@ -39,32 +50,33 @@ export const Scribe: FC<ScribeProps> = ({
       },
       editorProps: {
         attributes: {
-          class: "block-editor",
+          class: "scribe",
         },
         ...editorProps,
       },
-      autofocus: false,
-      editable: false,
-      content: content,
     },
-    [content]
+    []
   );
 
   useEffect(() => {
+    editor?.commands.setContent(content || "");
+  }, [content]);
+
+  useEffect(() => {
     editor?.setEditable(Boolean(editable));
-  }, [editor, editable]);
+  }, [editable]);
 
   useEffect(() => {
     if (autoFocus) {
       editor?.commands.focus("end");
     }
-  }, [editor, autoFocus]);
+  }, [autoFocus]);
 
   return (
-    <div className={`block-editor-wrapper ${className}`} id="block-editor-wrapper">
-      <div className={editable ? "rounded-lg border" : ""}>
+    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle} id="scribe-wrapper">
+      <div className={clsx("bg-white", editable && "rounded-lg border")}>
         {editor && showBarMenu && <BarMenu editor={editor} />}
-        <div className={editable ? "h-full w-full p-[16px]" : ""}>
+        <div className={clsx(editable && "w-full p-[16px]", editorContentClassName)} style={editorContentStyle}>
           <EditorContent editor={editor} />
         </div>
       </div>

@@ -1,39 +1,40 @@
-import Placeholder from '@tiptap/extension-placeholder';
-import StarterKit from '@tiptap/starter-kit';
-import { SlashCommand } from './slashCommand';
-import { getSuggestionItems } from './slashCommand/items';
-import renderItems from './slashCommand/renderItems';
-import Focus from '@tiptap/extension-focus';
-import Highlight from '@tiptap/extension-highlight';
-import SelectedText from './extension-selectedText';
-import Link from './extension-link';
-import Image from '@tiptap/extension-image';
+import Placeholder from "@tiptap/extension-placeholder";
+import StarterKit from "@tiptap/starter-kit";
+import { SlashCommand } from "./slashCommand";
+import { getSuggestionItems } from "./slashCommand/items";
+import renderItems from "./slashCommand/renderItems";
+import Focus from "@tiptap/extension-focus";
+import Highlight from "@tiptap/extension-highlight";
+import SelectedText from "./extension-selectedText";
+import Link from "./extension-link";
+import Image from "@tiptap/extension-image";
+import { ScribeProps } from "..";
 
-export const extensions = [
+export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
     dropcursor: {
       width: 4,
-      color: '#ebf6fe',
+      color: "#ebf6fe",
     },
   }),
   Placeholder.configure({
     showOnlyWhenEditable: true,
     includeChildren: true,
     showOnlyCurrent: false,
-    emptyEditorClass: 'is-editor-empty',
-    emptyNodeClass: 'is-node-empty',
+    emptyEditorClass: "is-editor-empty",
+    emptyNodeClass: "is-node-empty",
     placeholder: ({ editor: coreEditor, node }) => {
       if (coreEditor.isDestroyed) {
-        return '';
+        return "";
       }
-      if (node.type.name === 'heading') {
+      if (node.type.name === "heading") {
         return `Heading ${node.attrs.level}`;
       }
 
-      return 'Type "/" for commands...';
+      return props.placeholderText || 'Type "/" for commands...';
     },
   }),
-  Focus.configure({ mode: 'deepest', className: 'has-focus' }),
+  Focus.configure({ mode: "deepest", className: "has-focus" }),
   SlashCommand.configure({
     slashSuggestion: {
       items: getSuggestionItems,
@@ -46,7 +47,7 @@ export const extensions = [
   Image.configure({
     inline: true,
     HTMLAttributes: {
-      class: 'block-editor-image-node',
+      class: "scribe-image-node",
     },
     allowBase64: true,
   }),
