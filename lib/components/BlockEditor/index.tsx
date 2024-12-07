@@ -1,15 +1,20 @@
 import { Content, EditorContent, Extension, useEditor } from "@tiptap/react";
-import "../../styles/main.css";
 import { initExtensions } from "./extension";
 import { EditorProps } from "@tiptap/pm/view";
-import { FC, useEffect } from "react";
+import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle } from "react";
 import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
+import { html2md } from "../../utils";
+
+export type ScribeOnChangeContents = { jsonContent: Content; htmlContent: Content; markdownContent: string };
+
+export interface ScribeRef {
+  resetContent: () => void;
+}
 
 export interface ScribeProps {
-  onContentChange?: (content: { jsonContent: Content; htmlContent: Content }) => void;
+  onContentChange?: (content: ScribeOnChangeContents) => void;
   content?: string;
-
   editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
@@ -20,9 +25,10 @@ export interface ScribeProps {
   editorContentClassName?: ClassValue;
   mainContainerStyle?: React.CSSProperties;
   mainContainerClassName?: ClassValue;
+  onKeyDown?: KeyboardEventHandler;
 }
 
-export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
+export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   const {
     autoFocus = false,
     content,
@@ -35,6 +41,7 @@ export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
     editorContentClassName,
     mainContainerStyle,
     mainContainerClassName,
+    onKeyDown,
   } = props;
 
   const editor = useEditor(
@@ -45,7 +52,7 @@ export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
         const jsonContent = editor.getJSON();
 
         if (onContentChange) {
-          onContentChange({ jsonContent, htmlContent });
+          onContentChange({ jsonContent, htmlContent, markdownContent: html2md(htmlContent) });
         }
       },
       editorProps: {
@@ -56,6 +63,20 @@ export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
       },
     },
     []
+  );
+
+  const resetContent = useCallback(() => {
+    editor?.commands.setContent("");
+  }, []);
+
+  useImperativeHandle(
+    ref,
+    () => {
+      return {
+        resetContent,
+      };
+    },
+    [resetContent]
   );
 
   useEffect(() => {
@@ -76,10 +97,13 @@ export const Scribe: FC<ScribeProps> = (props: ScribeProps) => {
     <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle} id="scribe-wrapper">
       <div className={clsx("bg-white", editable && "rounded-lg border")}>
         {editor && showBarMenu && <BarMenu editor={editor} />}
-        <div className={clsx(editable && "w-full p-[16px]", editorContentClassName)} style={editorContentStyle}>
-          <EditorContent editor={editor} />
+        <div
+          className={clsx("prose max-w-none", editable && "w-full p-[16px]", editorContentClassName)}
+          style={editorContentStyle}
+        >
+          <EditorContent editor={editor} onKeyDown={onKeyDown} />
         </div>
       </div>
     </div>
   );
-};
+});

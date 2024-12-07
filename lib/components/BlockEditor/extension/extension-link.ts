@@ -1,4 +1,4 @@
-import Link from '@tiptap/extension-link';
+import Link from "@tiptap/extension-link";
 
 export default Link.extend({
   inclusive: false,
@@ -8,13 +8,15 @@ export default Link.extend({
       linkOnPaste: true,
       autolink: true,
       protocols: [],
-      defaultProtocol: 'http',
+      defaultProtocol: "https",
       HTMLAttributes: {
-        target: '_blank',
-        rel: 'noopener noreferrer nofollow',
+        target: "_blank",
+        rel: "noopener noreferrer nofollow",
         class: null,
       },
       validate: (url) => !!url,
+      shouldAutoLink: (url) => !!url,
+      isAllowedUri: () => true,
     };
   },
 });

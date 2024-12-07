@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
-import { Scribe } from "../lib/main";
+import "../lib/styles/main.css";
+import { useState, useEffect, useRef } from "react";
+import { Scribe, ScribeRef } from "../lib/main";
 import { streamedContent } from "./data";
 
 function App() {
+  const editor = useRef<ScribeRef>(null);
   const [editable, setEditable] = useState(true);
   const [content, setContent] = useState("");
 
@@ -23,11 +25,12 @@ function App() {
   }, []);
 
   return (
-    <div>
+    <div style={{ maxWidth: "720px", margin: "auto" }}>
       <Scribe content={content} showBarMenu={false} editable={false} />
 
       <div style={{ position: "fixed", bottom: "5%", left: 0, right: 0 }}>
         <Scribe
+          ref={editor}
           onContentChange={(c) => console.log(c)}
           editable={editable}
           showBarMenu={editable}
@@ -42,6 +45,10 @@ function App() {
 
           <button onClick={() => setContent("Hello world...")} style={{ backgroundColor: "olive" }}>
             Change content
+          </button>
+
+          <button onClick={() => editor.current?.resetContent()} style={{ backgroundColor: "olive" }}>
+            Reset content
           </button>
         </div>
       </div>

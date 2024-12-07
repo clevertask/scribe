@@ -2,32 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  /* h1 to h6 font size */
-  h1 {
-    @apply text-4xl;
-  }
-  h2 {
-    @apply text-3xl;
-  }
-  h3 {
-    @apply text-2xl;
-  }
-  h4 {
-    @apply text-xl;
-  }
-  h5 {
-    @apply text-lg;
-  }
-  h6 {
-    @apply text-base;
-  }
-}
-
-.scribe-wrapper {
-  @apply p-8;
-}
-
 .scribe {
   @apply w-full h-full border-0 outline-none;
 }
@@ -63,36 +37,6 @@
 }
 .slash-menu-icon-with-strokes {
   @apply stroke-black h-[20px] w-[20px];
-}
-
-/* CSS for formats */
-.scribe code {
-  @apply bg-gray-100 p-1 rounded-[4px];
-}
-
-.scribe pre {
-  @apply bg-gray-100 p-4 rounded-[4px];
-}
-
-.scribe pre code {
-  @apply bg-inherit p-0 rounded-none;
-}
-
-.scribe blockquote {
-  @apply border-l-4 border-gray-300 p-2 pl-4;
-}
-.scribe ul {
-  @apply list-disc pl-4;
-}
-.scribe ol {
-  @apply list-decimal pl-4;
-}
-
-.scribe a {
-  @apply text-blue-500 underline;
-}
-.scribe a:hover {
-  @apply text-blue-700;
 }
 
 .scribe .scribe-image-node {
