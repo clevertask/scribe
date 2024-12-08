@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
-import { Scribe } from "../lib/main";
+import "../lib/styles/main.css";
+import { useState, useEffect, useRef } from "react";
+import { Scribe, ScribeRef } from "../lib/main";
 import { streamedContent } from "./data";
 
-function App() {
-  const [editable, setEditable] = useState(true);
+const Messages = function Messages() {
   const [content, setContent] = useState("");
-
   useEffect(() => {
     let currentContent = "";
 
@@ -22,29 +21,28 @@ function App() {
     return () => clearInterval(intervalId);
   }, []);
 
+  return <Scribe content={content} showBarMenu={false} editable={false} />;
+};
+
+const ChatBox = function ChatBox() {
+  const editor = useRef<ScribeRef>(null);
   return (
-    <div>
-      <Scribe content={content} showBarMenu={false} editable={false} />
+    <>
+      <Scribe
+        ref={editor}
+        onContentChange={(c) => console.log(c)}
+        placeholderText="Type your message..."
+        editorContentStyle={{ maxHeight: "200px", overflowY: "scroll" }}
+      />
+    </>
+  );
+};
 
-      <div style={{ position: "fixed", bottom: "5%", left: 0, right: 0 }}>
-        <Scribe
-          onContentChange={(c) => console.log(c)}
-          editable={editable}
-          showBarMenu={editable}
-          placeholderText="Type your message..."
-          editorContentStyle={{ maxHeight: "200px", overflowY: "scroll" }}
-          mainContainerStyle={{ maxWidth: "620px", margin: "auto" }}
-        />
-        <div style={{ display: "flex", flexFlow: "column", gap: "1rem" }}>
-          <button onClick={() => setEditable((e) => !e)} style={{ backgroundColor: "coral" }}>
-            Toggle editable
-          </button>
-
-          <button onClick={() => setContent("Hello world...")} style={{ backgroundColor: "olive" }}>
-            Change content
-          </button>
-        </div>
-      </div>
+function App() {
+  return (
+    <div style={{ maxWidth: "720px", margin: "auto" }}>
+      <Messages />
+      <ChatBox />
     </div>
   );
 }

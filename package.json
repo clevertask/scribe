@@ -43,10 +43,12 @@
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
     "@types/lodash": "^4.14.201",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/turndown": "^5.0.5",
     "@typescript-eslint/eslint-plugin": "^8.16.0",
     "@typescript-eslint/parser": "^8.16.0",
     "@vitejs/plugin-react": "^4.3.4",
@@ -82,6 +84,9 @@
     "@tiptap/react": "^2.10.3",
     "@tiptap/starter-kit": "^2.10.3",
     "@tiptap/suggestion": "^2.10.3",
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "dompurify": "^3.2.2",
+    "marked": "^15.0.3",
+    "turndown": "^7.2.0"
   }
 }
