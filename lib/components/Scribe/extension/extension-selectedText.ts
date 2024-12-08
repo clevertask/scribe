@@ -1,6 +1,6 @@
-import { Editor, Extension } from '@tiptap/core';
+import { Editor, Extension } from "@tiptap/core";
 
-declare module '@tiptap/core' {
+declare module "@tiptap/core" {
   interface Commands {
     selectedText: {
       getSelectedText: () => ({ editor }: { editor: Editor }) => string | null;
@@ -9,7 +9,7 @@ declare module '@tiptap/core' {
 }
 
 export default Extension.create({
-  name: 'SelectedText',
+  name: "SelectedText",
   addCommands: () => {
     return {
       getSelectedText:
@@ -21,7 +21,7 @@ export default Extension.create({
             return null;
           }
 
-          return editor.state.doc.textBetween(from, to, ' ');
+          return editor.state.doc.textBetween(from, to, " ");
         },
     };
   },

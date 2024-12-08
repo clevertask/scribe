@@ -9,7 +9,10 @@ const Messages = function Messages() {
     let currentContent = "";
 
     const intervalId = setInterval(() => {
-      const nextChunk = streamedContent.substring(currentContent.length, currentContent.length + 10);
+      const nextChunk = streamedContent.substring(
+        currentContent.length,
+        currentContent.length + 10,
+      );
       if (nextChunk) {
         currentContent += nextChunk;
         setContent(currentContent);
