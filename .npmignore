@@ -1,0 +1,14 @@
+src
+lib
+node_modules
+.gitignore
+.nvmrc
+.eslintrc.cjs
+tailwind.config.js
+index.html
+tsconfig.app.json
+tsconfig.app.tsbuildinfo
+tsconfig.node.json
+tsconfig.node.tsbuildinfo
+tsconfig.json
+vite.config.ts
