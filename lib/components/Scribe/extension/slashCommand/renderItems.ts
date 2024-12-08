@@ -1,8 +1,8 @@
-import { ReactRenderer } from '@tiptap/react';
-import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { isEmpty } from 'lodash';
-import tippy, { Instance, Props } from 'tippy.js';
-import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
+import { ReactRenderer } from "@tiptap/react";
+import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
+import { isEmpty } from "lodash";
+import tippy, { Instance, Props } from "tippy.js";
+import { SlashCommandList, SlashCommandRef } from "./SlashCommandList";
 
 const renderItems = () => {
   let component: ReactRenderer;
@@ -22,15 +22,15 @@ const renderItems = () => {
         return;
       }
 
-      popup = tippy('body', {
+      popup = tippy("body", {
         getReferenceClientRect:
-          props.clientRect as Props['getReferenceClientRect'],
+          props.clientRect as Props["getReferenceClientRect"],
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
         interactive: true,
-        trigger: 'manual',
-        placement: 'bottom-start',
+        trigger: "manual",
+        placement: "bottom-start",
       });
       hasPopup = !isEmpty(popup);
     },
@@ -44,13 +44,13 @@ const renderItems = () => {
       if (hasPopup) {
         popup[0].setProps({
           getReferenceClientRect:
-            props.clientRect as Props['getReferenceClientRect'],
+            props.clientRect as Props["getReferenceClientRect"],
         });
       }
     },
     onKeyDown(props: SuggestionKeyDownProps) {
       if (
-        props.event.key === 'Escape' &&
+        props.event.key === "Escape" &&
         hasPopup &&
         !popup[0].state.isDestroyed
       ) {
@@ -59,12 +59,12 @@ const renderItems = () => {
         return true;
       }
 
-      if (props.event.key === 'Enter') {
+      if (props.event.key === "Enter") {
         if (
           suggestionProps.items.filter((item) =>
             item.title
               .toLowerCase()
-              .startsWith(suggestionProps.query.toLowerCase())
+              .startsWith(suggestionProps.query.toLowerCase()),
           ).length === 0
         ) {
           this.onExit();

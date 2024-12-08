@@ -1,12 +1,22 @@
 import { Content, EditorContent, Extension, useEditor } from "@tiptap/react";
 import { initExtensions } from "./extension";
 import { EditorProps } from "@tiptap/pm/view";
-import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle } from "react";
+import {
+  forwardRef,
+  KeyboardEventHandler,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from "react";
 import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 
-export type ScribeOnChangeContents = { jsonContent: Content; htmlContent: Content; markdownContent: string };
+export type ScribeOnChangeContents = {
+  jsonContent: Content;
+  htmlContent: Content;
+  markdownContent: string;
+};
 
 export interface ScribeRef {
   resetContent: () => void;
@@ -52,7 +62,11 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
         const jsonContent = editor.getJSON();
 
         if (onContentChange) {
-          onContentChange({ jsonContent, htmlContent, markdownContent: html2md(htmlContent) });
+          onContentChange({
+            jsonContent,
+            htmlContent,
+            markdownContent: html2md(htmlContent),
+          });
         }
       },
       editorProps: {
@@ -62,22 +76,18 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
         ...editorProps,
       },
     },
-    []
+    [],
   );
 
   const resetContent = useCallback(() => {
     editor?.commands.setContent("");
   }, []);
 
-  useImperativeHandle(
-    ref,
-    () => {
-      return {
-        resetContent,
-      };
-    },
-    [resetContent]
-  );
+  useImperativeHandle(ref, () => {
+    return {
+      resetContent,
+    };
+  }, [resetContent]);
 
   useEffect(() => {
     editor?.commands.setContent(content || "");
@@ -94,11 +104,19 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [autoFocus]);
 
   return (
-    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle} id="scribe-wrapper">
+    <div
+      className={clsx("scribe-wrapper", mainContainerClassName)}
+      style={mainContainerStyle}
+      id="scribe-wrapper"
+    >
       <div className={clsx("bg-white", editable && "rounded-lg border")}>
         {editor && showBarMenu && <BarMenu editor={editor} />}
         <div
-          className={clsx("prose max-w-none", editable && "w-full p-[16px]", editorContentClassName)}
+          className={clsx(
+            "prose max-w-none",
+            editable && "w-full p-[16px]",
+            editorContentClassName,
+          )}
           style={editorContentStyle}
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />

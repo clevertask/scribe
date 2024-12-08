@@ -1,5 +1,5 @@
-import { BubbleMenu as CoreBubbleMenu, Editor } from '@tiptap/react';
-import { FC } from 'react';
+import { BubbleMenu as CoreBubbleMenu, Editor } from "@tiptap/react";
+import { FC } from "react";
 
 export interface BubbleMenuProps {
   editor: Editor;
@@ -8,9 +8,9 @@ export interface BubbleMenuProps {
 const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
   const menuItems = [
     {
-      ariaLabel: 'Heading 1',
+      ariaLabel: "Heading 1",
       command: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      isActive: () => editor.isActive('heading', { level: 1 }),
+      isActive: () => editor.isActive("heading", { level: 1 }),
       icon: (
         <svg
           className="menu-icon"
@@ -28,9 +28,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Heading 2',
+      ariaLabel: "Heading 2",
       command: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      isActive: () => editor.isActive('heading', { level: 2 }),
+      isActive: () => editor.isActive("heading", { level: 2 }),
       icon: (
         <svg
           fill="none"
@@ -48,9 +48,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Heading 3',
+      ariaLabel: "Heading 3",
       command: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      isActive: () => editor.isActive('heading', { level: 3 }),
+      isActive: () => editor.isActive("heading", { level: 3 }),
       icon: (
         <svg
           className="menu-icon"
@@ -68,9 +68,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Bold',
+      ariaLabel: "Bold",
       command: () => editor.chain().focus().toggleBold().run(),
-      isActive: () => editor.isActive('bold'),
+      isActive: () => editor.isActive("bold"),
       icon: (
         <svg
           className="menu-icon"
@@ -88,9 +88,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Italic',
+      ariaLabel: "Italic",
       command: () => editor.chain().focus().toggleItalic().run(),
-      isActive: () => editor.isActive('italic'),
+      isActive: () => editor.isActive("italic"),
       icon: (
         <svg
           className="menu-icon"
@@ -108,9 +108,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Strike',
+      ariaLabel: "Strike",
       command: () => editor.chain().focus().toggleStrike().run(),
-      isActive: () => editor.isActive('strike'),
+      isActive: () => editor.isActive("strike"),
       icon: (
         <svg
           className="menu-icon"
@@ -128,9 +128,9 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
       ),
     },
     {
-      ariaLabel: 'Inline code',
+      ariaLabel: "Inline code",
       command: () => editor.chain().focus().toggleCode().run(),
-      isActive: () => editor.isActive('code'),
+      isActive: () => editor.isActive("code"),
       icon: (
         <svg
           className="menu-icon"
@@ -155,7 +155,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
         {menuItems.map((item) => (
           <button
             key={item.ariaLabel}
-            className={`${item.isActive() ? 'active' : ''}`}
+            className={`${item.isActive() ? "active" : ""}`}
             onClick={item.command}
           >
             {item.icon}

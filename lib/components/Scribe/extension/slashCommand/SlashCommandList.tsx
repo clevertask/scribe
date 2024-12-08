@@ -1,7 +1,7 @@
-import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { isEmpty, noop } from 'lodash';
-import { forwardRef, useImperativeHandle, useState } from 'react';
-import { isInViewport } from '../../../../utils';
+import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
+import { isEmpty, noop } from "lodash";
+import { forwardRef, useImperativeHandle, useState } from "react";
+import { isInViewport } from "../../../../utils";
 
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
@@ -24,9 +24,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + items.length - 1) % items.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `editor-command-${items[newIndex].title}`,
         );
-        const commandList = document.getElementById('editor-commands-viewport');
+        const commandList = document.getElementById("editor-commands-viewport");
         if (
           commandList &&
           commandListing &&
@@ -43,9 +43,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
       setSelectedIndex((prev) => {
         const newIndex = (prev + 1) % items.length;
         const commandListing = document.getElementById(
-          `editor-command-${items[newIndex].title}`
+          `editor-command-${items[newIndex].title}`,
         );
-        const commandList = document.getElementById('editor-commands-viewport');
+        const commandList = document.getElementById("editor-commands-viewport");
         if (
           commandList &&
           commandListing &&
@@ -64,19 +64,19 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
 
     useImperativeHandle(ref, () => ({
       onKeyDown: ({ event }) => {
-        if (event.key === 'ArrowUp') {
+        if (event.key === "ArrowUp") {
           upHandler();
 
           return true;
         }
 
-        if (event.key === 'ArrowDown') {
+        if (event.key === "ArrowDown") {
           downHandler();
 
           return true;
         }
 
-        if (event.key === 'Enter') {
+        if (event.key === "Enter") {
           enterHandler();
 
           return true;
@@ -98,7 +98,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
         {items.map((item, index) => (
           <div
             className={`w-full cursor-pointer p-[12px] flex items-center gap-x-4 ${
-              index === selectedIndex ? 'bg-gray-200' : ''
+              index === selectedIndex ? "bg-gray-200" : ""
             }`}
             id={`editor-command-${item.title}`}
             key={item.title}
@@ -114,5 +114,5 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
         ))}
       </div>
     );
-  }
+  },
 );

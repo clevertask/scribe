@@ -1,17 +1,17 @@
-import { Editor } from '@tiptap/react';
-import { FC, Fragment, useCallback } from 'react';
-import BoldIcon from '../../icons/bold.svg';
-import ItalicIcon from '../../icons/italic.svg';
-import StrikeIcon from '../../icons/text-strike.svg';
-import InlineCodeIcon from '../../icons/inline-code.svg';
-import HighlightIcon from '../../icons/highlight.svg';
-import UnorderedListIcon from '../../icons/unordered-list.svg';
-import OrderedListIcon from '../../icons/ordered-list.svg';
-import LinkIcon from '../../icons/link.svg';
-import ImageIcon from '../../icons/image.svg';
-import CodeBlockIcon from '../../icons/code-block.svg';
-import BlockQuoteIcon from '../../icons/block-quote.svg';
-import HorizontalLineIcon from '../../icons/horizontal-line.svg';
+import { Editor } from "@tiptap/react";
+import { FC, Fragment, useCallback } from "react";
+import BoldIcon from "../../icons/bold.svg";
+import ItalicIcon from "../../icons/italic.svg";
+import StrikeIcon from "../../icons/text-strike.svg";
+import InlineCodeIcon from "../../icons/inline-code.svg";
+import HighlightIcon from "../../icons/highlight.svg";
+import UnorderedListIcon from "../../icons/unordered-list.svg";
+import OrderedListIcon from "../../icons/ordered-list.svg";
+import LinkIcon from "../../icons/link.svg";
+import ImageIcon from "../../icons/image.svg";
+import CodeBlockIcon from "../../icons/code-block.svg";
+import BlockQuoteIcon from "../../icons/block-quote.svg";
+import HorizontalLineIcon from "../../icons/horizontal-line.svg";
 
 export interface BarMenuProps {
   editor: Editor;
@@ -19,11 +19,11 @@ export interface BarMenuProps {
 
 const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const handleSetLink = useCallback(() => {
-    const previousUrl = editor.getAttributes('link').href;
+    const previousUrl = editor.getAttributes("link").href;
     // const selectedText = editor.commands.getSelectedText() as unknown as
     //   | string
     //   | null;
-    const url = window.prompt('Link', previousUrl);
+    const url = window.prompt("Link", previousUrl);
     // const text = window.prompt('Text', selectedText || '');
 
     // cancelled
@@ -32,11 +32,11 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     }
 
     // empty
-    if (url === '') {
+    if (url === "") {
       editor
         .chain()
         .focus()
-        .extendMarkRange('link')
+        .extendMarkRange("link")
         .unsetLink()
         // .command(({ tr }) => {
         //   tr.insertText(text || url);
@@ -51,7 +51,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     editor
       .chain()
       .focus()
-      .extendMarkRange('link')
+      .extendMarkRange("link")
       .setLink({ href: url })
       // .command(({ tr }) => {
       //   tr.insertText(text || url);
@@ -62,11 +62,11 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   }, [editor]);
 
   const handleSetImage = useCallback(() => {
-    const existingImage = editor.getAttributes('image').src;
+    const existingImage = editor.getAttributes("image").src;
 
     const url = window.prompt(
-      existingImage ? 'Update Image URL' : 'Image URL',
-      existingImage
+      existingImage ? "Update Image URL" : "Image URL",
+      existingImage,
     );
     if (!url) {
       return;
@@ -78,80 +78,80 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const Formats = [
     [
       {
-        name: 'bold',
+        name: "bold",
         icon: BoldIcon,
         command: () => editor.chain().focus().toggleBold().run(),
-        isActive: () => editor.isActive('bold'),
+        isActive: () => editor.isActive("bold"),
       },
       {
-        name: 'italic',
+        name: "italic",
         icon: ItalicIcon,
         command: () => editor.chain().focus().toggleItalic().run(),
-        isActive: () => editor.isActive('italic'),
+        isActive: () => editor.isActive("italic"),
       },
       {
-        name: 'strike',
+        name: "strike",
         icon: StrikeIcon,
         command: () => editor.chain().focus().toggleStrike().run(),
-        isActive: () => editor.isActive('strike'),
+        isActive: () => editor.isActive("strike"),
       },
     ],
     [
       {
-        name: 'inline-code',
+        name: "inline-code",
         icon: InlineCodeIcon,
         command: () => editor.chain().focus().toggleCode().run(),
-        isActive: () => editor.isActive('code'),
+        isActive: () => editor.isActive("code"),
       },
       {
-        name: 'highlight',
+        name: "highlight",
         icon: HighlightIcon,
         command: () => editor.chain().focus().toggleHighlight().run(),
-        isActive: () => editor.isActive('highlight'),
+        isActive: () => editor.isActive("highlight"),
       },
     ],
     [
       {
-        name: 'unordered-list',
+        name: "unordered-list",
         icon: UnorderedListIcon,
         command: () => editor.chain().focus().toggleBulletList().run(),
-        isActive: () => editor.isActive('bulletList'),
+        isActive: () => editor.isActive("bulletList"),
       },
       {
-        name: 'ordered-list',
+        name: "ordered-list",
         icon: OrderedListIcon,
         command: () => editor.chain().focus().toggleOrderedList().run(),
-        isActive: () => editor.isActive('orderedList'),
+        isActive: () => editor.isActive("orderedList"),
       },
     ],
     [
       {
-        name: 'link',
+        name: "link",
         icon: LinkIcon,
         command: () => handleSetLink(),
-        isActive: () => editor.isActive('link'),
+        isActive: () => editor.isActive("link"),
       },
       {
-        name: 'image',
+        name: "image",
         icon: ImageIcon,
         command: () => handleSetImage(),
-        isActive: () => editor.isActive('image'),
+        isActive: () => editor.isActive("image"),
         disabled: false,
       },
       {
-        name: 'code-block',
+        name: "code-block",
         icon: CodeBlockIcon,
         command: () => editor.chain().focus().toggleCodeBlock().run(),
-        isActive: () => editor.isActive('codeBlock'),
+        isActive: () => editor.isActive("codeBlock"),
       },
       {
-        name: 'block-quote',
+        name: "block-quote",
         icon: BlockQuoteIcon,
         command: () => editor.chain().focus().toggleBlockquote().run(),
-        isActive: () => editor.isActive('blockquote'),
+        isActive: () => editor.isActive("blockquote"),
       },
       {
-        name: 'horizontal-line',
+        name: "horizontal-line",
         icon: HorizontalLineIcon,
         command: () => editor.chain().focus().setHorizontalRule().run(),
         isActive: () => false,
@@ -172,9 +172,9 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                     disabled={item?.disabled}
                     key={item.name}
                     className={`rounded-md ${
-                      item.isActive() ? 'bg-gray-100' : ''
+                      item.isActive() ? "bg-gray-100" : ""
                     } ${
-                      item?.disabled ? 'cursor-not-allowed bg-opacity-50' : ''
+                      item?.disabled ? "cursor-not-allowed bg-opacity-50" : ""
                     }`}
                     onClick={item.command}
                   >
