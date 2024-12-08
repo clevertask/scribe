@@ -1,2 +1,2 @@
-export * from "./components/BlockEditor";
+export * from "./components/Scribe";
 export * from "./utils";
