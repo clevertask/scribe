@@ -3,7 +3,7 @@
   "description": "A Tiptap-based rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
   "author": "CleverTask",
   "private": false,
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
@@ -88,7 +88,7 @@
     "@tiptap/starter-kit": "^2.10.3",
     "@tiptap/suggestion": "^2.10.3",
     "clsx": "^2.1.1",
-    "dompurify": "^3.2.2",
+    "isomorphic-dompurify": "^2.18.0",
     "marked": "^15.0.3",
     "turndown": "^7.2.0"
   }
