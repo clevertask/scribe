@@ -1,4 +1,7 @@
 import { marked } from "marked";
-import DOMPurify from "isomorphic-dompurify";
+import DOMPurify from "dompurify";
 
-export const md2html = (md: string) => DOMPurify.sanitize(marked.parse(md, { async: false }));
+const escapeBackslashes = (str: string) => str.replace(/\\/g, "\\\\");
+
+export const md2html = (md: string) =>
+  DOMPurify.sanitize(marked.parse(escapeBackslashes(String.raw`${md}`), { async: false }));

@@ -1,3 +1,4 @@
+import "katex/dist/katex.min.css";
 import Placeholder from "@tiptap/extension-placeholder";
 import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
@@ -9,6 +10,11 @@ import SelectedText from "./extension-selectedText";
 import Link from "./extension-link";
 import Image from "@tiptap/extension-image";
 import { ScribeProps } from "..";
+import Table from "@tiptap/extension-table";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
+import TableRow from "@tiptap/extension-table-row";
+import MathExtension from "@clevertask/tiptap-math-extension";
 
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
@@ -17,6 +23,13 @@ export const initExtensions = (props: ScribeProps) => [
       color: "#ebf6fe",
     },
   }),
+  MathExtension.configure({ evaluation: true, delimiters: "bracket" }),
+  Table.configure({
+    resizable: true,
+  }),
+  TableRow,
+  TableHeader,
+  TableCell,
   Placeholder.configure({
     showOnlyWhenEditable: true,
     includeChildren: true,
