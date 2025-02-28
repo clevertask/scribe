@@ -42,3 +42,12 @@
 .scribe .scribe-image-node {
   @apply m-auto w-full h-auto;
 }
+
+.scribe-task-list li {
+  display: flex;
+}
+
+.scribe-task-list li p {
+  margin: 0;
+  margin-left: .5rem;
+}

@@ -1,14 +1,20 @@
-import Placeholder from "@tiptap/extension-placeholder";
+import { ScribeProps } from "..";
+import Link from "./extension-link";
+import Focus from "@tiptap/extension-focus";
+import Image from "@tiptap/extension-image";
+import Table from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
-import { getSuggestionItems } from "./slashCommand/items";
-import renderItems from "./slashCommand/renderItems";
-import Focus from "@tiptap/extension-focus";
+import TaskItem from "@tiptap/extension-task-item";
+import TaskList from "@tiptap/extension-task-list";
+import TableRow from "@tiptap/extension-table-row";
 import Highlight from "@tiptap/extension-highlight";
 import SelectedText from "./extension-selectedText";
-import Link from "./extension-link";
-import Image from "@tiptap/extension-image";
-import { ScribeProps } from "..";
+import TableCell from "@tiptap/extension-table-cell";
+import renderItems from "./slashCommand/renderItems";
+import Placeholder from "@tiptap/extension-placeholder";
+import TableHeader from "@tiptap/extension-table-header";
+import { getSuggestionItems } from "./slashCommand/items";
 
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
@@ -17,6 +23,20 @@ export const initExtensions = (props: ScribeProps) => [
       color: "#ebf6fe",
     },
   }),
+  TaskList.configure({
+    HTMLAttributes: {
+      class: "scribe-task-list",
+    },
+  }),
+  TaskItem.configure({
+    nested: true,
+  }),
+  Table.configure({
+    resizable: true,
+  }),
+  TableRow,
+  TableHeader,
+  TableCell,
   Placeholder.configure({
     showOnlyWhenEditable: true,
     includeChildren: true,
