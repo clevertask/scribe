@@ -23,7 +23,11 @@ export const initExtensions = (props: ScribeProps) => [
       color: "#ebf6fe",
     },
   }),
-  TaskList,
+  TaskList.configure({
+    HTMLAttributes: {
+      class: "scribe-task-list",
+    },
+  }),
   TaskItem.configure({
     nested: true,
   }),
