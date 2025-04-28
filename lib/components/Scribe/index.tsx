@@ -4,6 +4,7 @@ import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperative
 import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
+import "katex/dist/katex.css";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
