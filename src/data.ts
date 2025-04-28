@@ -1,4 +1,4 @@
-export const streamedContent = `
+export const streamedContent = String.raw`
 <h1>Streamed Title</h1>
 <p>This is the first paragraph of a longer streamed HTML text.  It demonstrates how to include various HTML elements and format code examples.</p>
 <h2>Code Examples</h2>
@@ -56,4 +56,8 @@ print(result) # Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
 &lt;/body&gt;
 &lt;/html&gt;
 </code></pre>
+
+<h1>Math expressions</h1>
+<p>\frac{a}{b}\pm\sqrt{x^2+y^2}</p>
+<p>[ \frac{2}{3} \div \frac{4}{5} = \frac{2}{3} \times \frac{5}{4} ] </p>
 `;

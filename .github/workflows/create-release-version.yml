@@ -1,0 +1,52 @@
+name: Create Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g. 1.2.3)"
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "github-actions@clevertask.ai"
+
+      - name: Bump version in package.json
+        run: |
+          npm version ${{ inputs.version }} --no-git-tag-version
+          git add package.json package-lock.json
+          git commit -m "chore(release): bump version to v${{ inputs.version }}"
+
+      - name: Setup SSH for deploy key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CLEVERTASK_DEPLOYMENT_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Set Git remote to SSH
+        run: |
+          git remote set-url origin git@github.com:${{ github.repository }}.git
+
+      - name: Create Git tag and push
+        run: |
+          git tag v${{ inputs.version }}
+          git push origin HEAD
+          git push origin v${{ inputs.version }}
+
+      - name: Create GitHub Release with notes
+        env:
+          GH_TOKEN: ${{ secrets.CLEVERTASK_PAT }}
+        run: |
+          gh release create v${{ inputs.version }} \
+            --title "v${{ inputs.version }}" \
+            --generate-notes

@@ -15,6 +15,7 @@ import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
 import TableHeader from "@tiptap/extension-table-header";
 import { getSuggestionItems } from "./slashCommand/items";
+import { LatexExtension } from "./math-extension";
 
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
@@ -71,4 +72,5 @@ export const initExtensions = (props: ScribeProps) => [
     },
     allowBase64: true,
   }),
+  LatexExtension,
 ];
