@@ -58,6 +58,63 @@ print(result) # Output: [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
 </code></pre>
 
 <h1>Math expressions</h1>
-<p>\frac{a}{b}\pm\sqrt{x^2+y^2}</p>
-<p>[ \frac{2}{3} \div \frac{4}{5} = \frac{2}{3} \times \frac{5}{4} ] </p>
+<h6>Inline</h6>
+$\alpha$
+$\beta$
+$\pi$
+$x^2 + y^2 = z^2$
+$E = mc^2$
+$\frac{1}{2}$
+$\sqrt{2}$
+$\sum_{i=1}^{n} i$
+$\int_0^1 x^2 dx$
+<h6>Block</h6>
+$$
+\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}
+$$
+
+$$
+\int_{a}^{b} f(x) \, dx = F(b) - F(a)
+$$
+
+$$
+\lim_{x \to 0} \frac{\sin x}{x} = 1
+$$
+
+$$
+\left( \frac{a+b}{c+d} \right)^2
+$$
+
+$$
+\begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix}
+$$
+<h6>Custom block delimiting</h6>
+[ \frac{2}{3} \div \frac{4}{5} = \frac{2}{3} \times \frac{5}{4} ]
+[ \left( \frac{a}{b} \right) ]
+[ \begin{bmatrix} 1 & 2 \\ 3 & 4 \end{bmatrix} ]
+
+<h6>Complex inline math</h6>
+$\left( \frac{a}{b} \right)$
+$\left| x \right|$
+$\left\{ x \in \mathbb{R} \mid x > 0 \right\}$
+$\binom{n}{k}$
+$\vec{v} = (v_x, v_y, v_z)$
+
+<h6>Misc math</h6>
+$A \cup B$
+$A \cap B$
+$A \subseteq B$
+$\forall x \in \mathbb{R},\ x^2 \geq 0$
+$\exists x \in \mathbb{Z},\ x^2 = 2$
+$\theta$
+$\lambda$
+$\mu$
+$\sigma$
+$\omega$
+$\infty$
+$\approx$
+$\neq$
+$\leq$
+$\geq$
+$\Rightarrow$
 `;
