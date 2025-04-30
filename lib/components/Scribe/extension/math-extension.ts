@@ -61,15 +61,15 @@ export const LatexExtension = Node.create({
   },
 
   addProseMirrorPlugins() {
+    const isEditable = this.editor.isEditable;
+
     return [
       new Plugin({
         key: new PluginKey("latexAutoDetect"),
         appendTransaction: (transactions, oldState, newState) => {
-          if (!transactions.some((tr) => tr.docChanged)) {
-            return null;
-          }
-
-          const regex = /\$\$([\s\S]+?)\$\$|\$([^\$]+?)\$|\[([^\]]+?)\]|(\\[a-zA-Z]+(?:\{[^}]*\})*)/g;
+          const regex = isEditable
+            ? /\$(\\[^\$]+?)\$|\[(\\[^\]]+?)\]/g // strict: only $...$ for inline expressions and [\...] for block ones
+            : /\$\$([\s\S]+?)\$\$|\$([^\$]+?)\$|\[([^\]]+?)\]|(\\[a-zA-Z]+(?:\{[^}]*\})*)/g; // relaxed: matches $...$, $$...$$, [\...], and raw \commands
 
           let tr = newState.tr;
           let matches: { start: number; end: number; content: string; isBlock: boolean }[] = [];
@@ -92,20 +92,30 @@ export const LatexExtension = Node.create({
             if (text.includes("$") || text.includes("[") || text.includes("\\")) {
               let match;
               while ((match = regex.exec(text)) !== null) {
-                const [fullMatch, blockDollar, inlineDollar, squareBlock, inlineCommand] = match;
+                const [fullMatch] = match;
                 const start = pos + match.index;
                 const end = start + fullMatch.length;
+
+                let blockDollar, inlineDollar, squareBlock, inlineCommand;
+
+                if (isEditable) {
+                  [, inlineDollar, squareBlock] = match;
+                } else {
+                  [, blockDollar, inlineDollar, squareBlock, inlineCommand] = match;
+                }
 
                 let content = blockDollar || inlineDollar || squareBlock || inlineCommand;
                 const isBlock = !!blockDollar || !!squareBlock;
                 const hasInlineDelimiter = !!inlineDollar;
 
-                // Skip risky commands unless wrapped
-                if (!isBlock && !hasInlineDelimiter && /\\(begin|end|left|right)/.test(content)) {
-                  continue;
-                }
+                if (content) {
+                  // Skip risky commands unless wrapped
+                  if (!isBlock && !hasInlineDelimiter && /\\(begin|end|left|right)/.test(content)) {
+                    continue;
+                  }
 
-                matches.push({ start, end, content: content.trim(), isBlock });
+                  matches.push({ start, end, content: content.trim(), isBlock });
+                }
               }
             }
           });

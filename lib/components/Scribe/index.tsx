@@ -53,6 +53,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   const editor = useEditor(
     {
       ...editorProps,
+      editable,
       extensions: [...initExtensions(props), ...(extensions ?? [])],
       onUpdate({ editor }) {
         const htmlContent = editor.getHTML();
