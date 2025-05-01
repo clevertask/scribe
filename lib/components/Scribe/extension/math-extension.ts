@@ -61,12 +61,11 @@ export const LatexExtension = Node.create({
   },
 
   addProseMirrorPlugins() {
-    const isEditable = this.editor.isEditable;
-
     return [
       new Plugin({
         key: new PluginKey("latexAutoDetect"),
-        appendTransaction: (transactions, oldState, newState) => {
+        appendTransaction: (_, __, newState) => {
+          const isEditable = this.editor.isEditable;
           const regex = isEditable
             ? /\$(\\[^\$]+?)\$|\[(\\[^\]]+?)\]/g // strict: only $...$ for inline expressions and [\...] for block ones
             : /\$\$([\s\S]+?)\$\$|\$([^\$]+?)\$|\[([^\]]+?)\]|(\\[a-zA-Z]+(?:\{[^}]*\})*)/g; // relaxed: matches $...$, $$...$$, [\...], and raw \commands
