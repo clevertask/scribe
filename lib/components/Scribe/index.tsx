@@ -1,10 +1,10 @@
-import { Content, EditorContent, Extension, JSONContent, useEditor, UseEditorOptions } from "@tiptap/react";
-import { initExtensions } from "./extension";
-import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle } from "react";
+import "katex/dist/katex.css";
 import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
-import "katex/dist/katex.css";
+import { initExtensions } from "./extension";
+import { Content, Editor, EditorContent, Extension, JSONContent, UseEditorOptions } from "@tiptap/react";
+import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
@@ -16,6 +16,7 @@ export interface ScribeRef {
   resetContent: () => void;
   getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
   setContent: (content: Content) => void;
+  editor: Editor;
 }
 
 export interface ScribeProps {
@@ -24,6 +25,7 @@ export interface ScribeProps {
   editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
+  externalEditor?: Editor;
   editorProps?: UseEditorOptions;
   showBarMenu?: boolean;
   placeholderText?: string;
@@ -48,10 +50,13 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mainContainerStyle,
     mainContainerClassName,
     onKeyDown,
+    externalEditor,
   } = props;
 
-  const editor = useEditor(
-    {
+  const editorRef = useRef<Editor | null>(externalEditor || null);
+
+  if (!editorRef.current) {
+    editorRef.current = new Editor({
       ...editorProps,
       editable,
       extensions: [...initExtensions(props), ...(extensions ?? [])],
@@ -73,9 +78,10 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
         },
         ...editorProps?.editorProps,
       },
-    },
-    []
-  );
+    });
+  }
+
+  const editor = editorRef.current!;
 
   const resetContent = useCallback(() => {
     editor?.commands.setContent("");
@@ -99,6 +105,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       resetContent,
       setContent,
       getContent,
+      editor,
     };
   }, [resetContent]);
 
