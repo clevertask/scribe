@@ -1,18 +1,16 @@
 import "../lib/styles/main.css";
 import { useState, useEffect, useRef } from "react";
-import { Scribe, ScribeRef } from "../lib/main";
+import { createScribeEditor, Scribe, ScribeRef } from "../lib/main";
 import { streamedContent } from "./data";
 
 const Messages = function Messages() {
   const [content, setContent] = useState("");
+  const editor = createScribeEditor({});
   useEffect(() => {
     let currentContent = "";
 
     const intervalId = setInterval(() => {
-      const nextChunk = streamedContent.substring(
-        currentContent.length,
-        currentContent.length + 10,
-      );
+      const nextChunk = streamedContent.substring(currentContent.length, currentContent.length + 10);
       if (nextChunk) {
         currentContent += nextChunk;
         setContent(currentContent);
@@ -24,7 +22,7 @@ const Messages = function Messages() {
     return () => clearInterval(intervalId);
   }, []);
 
-  return <Scribe content={content} showBarMenu={false} editable={false} />;
+  return <Scribe content={content} showBarMenu={false} editable={false} externalEditor={editor} />;
 };
 
 const ChatBox = function ChatBox() {
@@ -36,6 +34,7 @@ const ChatBox = function ChatBox() {
         onContentChange={(c) => console.log(c)}
         placeholderText="Type your message..."
         editorContentStyle={{ maxHeight: "200px", overflowY: "scroll" }}
+        externalEditor={editor.current?.editor}
       />
     </>
   );
