@@ -3,13 +3,14 @@ import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
-import { Content, Editor, EditorContent, Extension, JSONContent, UseEditorOptions } from "@tiptap/react";
+import { Content, Editor, EditorContent, EditorEvents, Extension, JSONContent, UseEditorOptions } from "@tiptap/react";
 import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle, useRef } from "react";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
   htmlContent: Content;
   markdownContent: string;
+  source: "user" | "programmatic";
 };
 
 export interface ScribeRef {
@@ -54,24 +55,29 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   } = props;
 
   const editorRef = useRef<Editor | null>(externalEditor || null);
+  const onUpdate = useCallback(
+    ({ editor }: EditorEvents["update"]) => {
+      const htmlContent = editor.getHTML();
+      const jsonContent = editor.getJSON();
+      const isProgrammatic = !editable;
+
+      if (onContentChange) {
+        onContentChange({
+          jsonContent: editor.isEmpty ? "" : jsonContent,
+          htmlContent: editor.isEmpty ? "" : htmlContent,
+          markdownContent: editor.isEmpty ? "" : html2md(htmlContent),
+          source: isProgrammatic ? "programmatic" : "user",
+        });
+      }
+    },
+    [editable, onContentChange]
+  );
 
   if (!editorRef.current) {
     editorRef.current = new Editor({
       ...editorProps,
       editable,
       extensions: [...initExtensions(props), ...(extensions ?? [])],
-      onUpdate({ editor }) {
-        const htmlContent = editor.getHTML();
-        const jsonContent = editor.getJSON();
-
-        if (onContentChange) {
-          onContentChange({
-            jsonContent,
-            htmlContent,
-            markdownContent: html2md(htmlContent),
-          });
-        }
-      },
       editorProps: {
         attributes: {
           class: "scribe",
@@ -116,6 +122,14 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   useEffect(() => {
     editor?.setEditable(Boolean(editable));
   }, [editable]);
+
+  useEffect(() => {
+    editor.off("update");
+    editor.on("update", onUpdate);
+    return () => {
+      editor.off("update", onUpdate);
+    };
+  }, [onUpdate]);
 
   useEffect(() => {
     if (autoFocus) {
