@@ -141,7 +141,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
 
   return (
     <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle}>
-      <div className={clsx(editable && "rounded-lg border")}>
+      <div className={clsx(editable && "rounded-lg border", darkMode ? "border-zinc-700" : "border-zinc-200")}>
         {editor && showBarMenu && <BarMenu editor={editor} darkMode={!!darkMode} />}
         <div
           className={clsx(
