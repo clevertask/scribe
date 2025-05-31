@@ -68,6 +68,28 @@ function App() {
 }
 ```
 
+### With Dark Mode
+
+```tsx
+import "@clevertask/scribe/dist/main.css";
+import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
+
+function App() {
+  const editor = useRef<ScribeRef>(null);
+
+  const resetContent = useCallback(() => {
+    editor.current.resetContent();
+  }, []);
+
+  return (
+    <>
+      <Scribe darkMode />
+      <button onClick={resetContent}>Reset content</button>
+    </>
+  );
+}
+```
+
 ## Props
 
 | Prop                     | Type                                         | Default                    | Description                                                                                                                                                                                                                                        |
@@ -85,6 +107,7 @@ function App() {
 | `mainContainerStyle`     | `React.CSSProperties`                        | `undefined`                | You can send a CSS object to style the main editor container                                                                                                                                                                                       |
 | `mainContainerClassName` | `string`                                     | `undefined`                | The same idea of `mainContainerStyle` but with classes.                                                                                                                                                                                            |
 | `onKeyDown`              | `KeyboardEventHandler`                       | `undefined`                | A callback function that is triggered when a key is pressed within the editor. This allows you to handle custom keyboard shortcuts. For example, you can use this prop to implement a "send message" functionality when `Ctrl + Enter` is pressed. |
+| `darkMode`               | `boolean`                                    | `false`                    | You can switch the darkMode value to change the text editor's theme                                                                                                                                                                                |
 
 ## Helper Functions
 
