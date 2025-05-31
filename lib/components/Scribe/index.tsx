@@ -35,6 +35,7 @@ export interface ScribeProps {
   mainContainerStyle?: React.CSSProperties;
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
+  darkMode?: boolean;
 }
 
 export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
@@ -52,6 +53,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mainContainerClassName,
     onKeyDown,
     externalEditor,
+    darkMode,
   } = props;
 
   const editorRef = useRef<Editor | null>(externalEditor || null);
@@ -138,11 +140,16 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [autoFocus]);
 
   return (
-    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle} id="scribe-wrapper">
-      <div className={clsx("bg-white", editable && "rounded-lg border")}>
-        {editor && showBarMenu && <BarMenu editor={editor} />}
+    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle}>
+      <div className={clsx(editable && "rounded-lg border")}>
+        {editor && showBarMenu && <BarMenu editor={editor} darkMode={!!darkMode} />}
         <div
-          className={clsx("prose max-w-none", editable && "w-full p-[16px]", editorContentClassName)}
+          className={clsx(
+            "prose max-w-none",
+            editable && "w-full p-[16px]",
+            darkMode && "prose-invert",
+            editorContentClassName
+          )}
           style={editorContentStyle}
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />

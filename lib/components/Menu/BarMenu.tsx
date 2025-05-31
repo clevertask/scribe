@@ -15,9 +15,10 @@ import HorizontalLineIcon from "../../icons/horizontal-line.svg";
 
 export interface BarMenuProps {
   editor: Editor;
+  darkMode: boolean;
 }
 
-const BarMenu: FC<BarMenuProps> = ({ editor }) => {
+const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
   const handleSetLink = useCallback(() => {
     const previousUrl = editor.getAttributes("link").href;
     // const selectedText = editor.commands.getSelectedText() as unknown as
@@ -64,10 +65,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const handleSetImage = useCallback(() => {
     const existingImage = editor.getAttributes("image").src;
 
-    const url = window.prompt(
-      existingImage ? "Update Image URL" : "Image URL",
-      existingImage,
-    );
+    const url = window.prompt(existingImage ? "Update Image URL" : "Image URL", existingImage);
     if (!url) {
       return;
     }
@@ -171,14 +169,12 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                     title={item.name}
                     disabled={item?.disabled}
                     key={item.name}
-                    className={`rounded-md ${
-                      item.isActive() ? "bg-gray-100" : ""
-                    } ${
+                    className={`rounded-md ${item.isActive() ? (darkMode ? "bg-gray-800" : "bg-gray-100") : ""} ${
                       item?.disabled ? "cursor-not-allowed bg-opacity-50" : ""
                     }`}
                     onClick={item.command}
                   >
-                    <img src={item.icon} alt={item.name} />
+                    <img src={item.icon} alt={item.name} style={{ filter: `invert(${darkMode ? 1 : 0})` }} />
                   </button>
                 );
               })}
