@@ -17,6 +17,8 @@ import TableHeader from "@tiptap/extension-table-header";
 import { getSuggestionItems } from "./slashCommand/items";
 import { LatexExtension } from "./math-extension";
 import Typography from "@tiptap/extension-typography";
+import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
+import suggestion from "./emoji/suggest";
 
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
@@ -60,7 +62,7 @@ export const initExtensions = (props: ScribeProps) => [
   SlashCommand.configure({
     slashSuggestion: {
       items: getSuggestionItems,
-      render: renderItems,
+      render: renderItems(props),
     },
   }),
   Highlight,
@@ -72,6 +74,11 @@ export const initExtensions = (props: ScribeProps) => [
       class: "scribe-image-node",
     },
     allowBase64: true,
+  }),
+  Emoji.configure({
+    emojis: gitHubEmojis,
+    enableEmoticons: true,
+    suggestion: suggestion(props),
   }),
   LatexExtension,
   Typography,

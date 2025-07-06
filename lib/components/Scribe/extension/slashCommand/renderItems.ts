@@ -4,7 +4,7 @@ import { isEmpty } from "lodash";
 import tippy, { Instance, Props } from "tippy.js";
 import { SlashCommandList, SlashCommandRef } from "./SlashCommandList";
 
-const renderItems = () => {
+const renderItems = (_props) => () => {
   let component: ReactRenderer;
   let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
@@ -12,9 +12,9 @@ const renderItems = () => {
 
   return {
     onStart: (props: SuggestionProps) => {
-      suggestionProps = props;
+      suggestionProps = { ...props, ..._props };
       component = new ReactRenderer(SlashCommandList, {
-        props,
+        props: suggestionProps,
         editor: props.editor,
       });
 
@@ -23,8 +23,7 @@ const renderItems = () => {
       }
 
       popup = tippy("body", {
-        getReferenceClientRect:
-          props.clientRect as Props["getReferenceClientRect"],
+        getReferenceClientRect: props.clientRect as Props["getReferenceClientRect"],
         appendTo: () => document.body,
         content: component.element,
         showOnCreate: true,
@@ -43,17 +42,12 @@ const renderItems = () => {
       }
       if (hasPopup) {
         popup[0].setProps({
-          getReferenceClientRect:
-            props.clientRect as Props["getReferenceClientRect"],
+          getReferenceClientRect: props.clientRect as Props["getReferenceClientRect"],
         });
       }
     },
     onKeyDown(props: SuggestionKeyDownProps) {
-      if (
-        props.event.key === "Escape" &&
-        hasPopup &&
-        !popup[0].state.isDestroyed
-      ) {
+      if (props.event.key === "Escape" && hasPopup && !popup[0].state.isDestroyed) {
         popup[0].hide();
 
         return true;
@@ -62,9 +56,7 @@ const renderItems = () => {
       if (props.event.key === "Enter") {
         if (
           suggestionProps.items.filter((item) =>
-            item.title
-              .toLowerCase()
-              .startsWith(suggestionProps.query.toLowerCase()),
+            item.title.toLowerCase().startsWith(suggestionProps.query.toLowerCase())
           ).length === 0
         ) {
           this.onExit();
