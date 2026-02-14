@@ -12,8 +12,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
 
       - name: Setup Git
         run: |
@@ -22,8 +27,8 @@ jobs:
 
       - name: Bump version in package.json
         run: |
-          npm version ${{ inputs.version }} --no-git-tag-version
-          git add package.json package-lock.json
+          pnpm version ${{ inputs.version }} --no-git-tag-version
+          git add package.json pnpm-lock.yaml
           git commit -m "chore(release): bump version to v${{ inputs.version }}"
 
       - name: Setup SSH for deploy key
