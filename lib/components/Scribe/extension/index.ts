@@ -15,7 +15,7 @@ import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
 import TableHeader from "@tiptap/extension-table-header";
 import { getSuggestionItems } from "./slashCommand/items";
-import { LatexExtension } from "./math-extension";
+import { Mathematics } from '@tiptap/extension-mathematics'
 import Typography from "@tiptap/extension-typography";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
@@ -80,6 +80,6 @@ export const initExtensions = (props: ScribeProps) => [
     enableEmoticons: true,
     suggestion: suggestion(props),
   }),
-  LatexExtension,
+  Mathematics,
   Typography,
 ];

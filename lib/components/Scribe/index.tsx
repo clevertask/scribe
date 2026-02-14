@@ -3,8 +3,24 @@ import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
-import { Content, Editor, EditorContent, EditorEvents, Extension, JSONContent, UseEditorOptions } from "@tiptap/react";
-import { forwardRef, KeyboardEventHandler, useCallback, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  Content,
+  Editor,
+  EditorContent,
+  EditorEvents,
+  Extension,
+  JSONContent,
+  UseEditorOptions,
+} from "@tiptap/react";
+import {
+  forwardRef,
+  KeyboardEventHandler,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from "react";
+import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
@@ -15,7 +31,9 @@ export type ScribeOnChangeContents = {
 
 export interface ScribeRef {
   resetContent: () => void;
-  getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
+  getContent: (
+    contentType: "html" | "json" | "markdown",
+  ) => string | JSONContent | undefined;
   setContent: (content: Content) => void;
   editor: Editor;
 }
@@ -36,6 +54,7 @@ export interface ScribeProps {
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
   darkMode?: boolean;
+  mobile?: boolean;
 }
 
 export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
@@ -54,6 +73,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     onKeyDown,
     externalEditor,
     darkMode,
+    mobile,
   } = props;
 
   const editorRef = useRef<Editor | null>(externalEditor || null);
@@ -72,7 +92,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
         });
       }
     },
-    [editable, onContentChange]
+    [editable, onContentChange],
   );
 
   if (!editorRef.current) {
@@ -95,14 +115,17 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     editor?.commands.setContent("");
   }, []);
 
-  const getContent = useCallback((contentType: "html" | "json" | "markdown") => {
-    const options = {
-      html: () => editor?.getHTML(),
-      json: () => editor?.getJSON(),
-      markdown: () => html2md(editor?.getHTML() || ""),
-    };
-    return editor?.isEmpty ? "" : options[contentType]?.();
-  }, []);
+  const getContent = useCallback(
+    (contentType: "html" | "json" | "markdown") => {
+      const options = {
+        html: () => editor?.getHTML(),
+        json: () => editor?.getJSON(),
+        markdown: () => html2md(editor?.getHTML() || ""),
+      };
+      return editor?.isEmpty ? "" : options[contentType]?.();
+    },
+    [],
+  );
 
   const setContent = useCallback((content: Content) => {
     editor?.commands.setContent(content);
@@ -140,20 +163,32 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [autoFocus]);
 
   return (
-    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle}>
-      <div className={clsx(editable && "rounded-lg border", darkMode ? "border-zinc-700" : "border-zinc-200")}>
-        {editor && showBarMenu && <BarMenu editor={editor} darkMode={!!darkMode} />}
+    <div
+      className={clsx("scribe-wrapper", mainContainerClassName)}
+      style={mainContainerStyle}
+    >
+      <div
+        className={clsx(
+          editable && "rounded-lg border",
+          darkMode ? "border-zinc-700" : "border-zinc-200",
+        )}
+      >
+        {editor && showBarMenu && (
+          <BarMenu editor={editor} darkMode={!!darkMode} />
+        )}
         <div
           className={clsx(
             "prose max-w-none",
             editable && "w-full p-[16px]",
             darkMode && "prose-invert",
-            editorContentClassName
+            editorContentClassName,
           )}
           style={editorContentStyle}
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />
         </div>
+
+        {mobile && <ListOptionBar editor={editor} />}
       </div>
     </div>
   );
