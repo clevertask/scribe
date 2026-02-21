@@ -14,10 +14,12 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - [@clevertask/scribe](#clevertaskscribe)
   - [Installation](#installation)
   - [Usage](#usage)
+  - [Math Expressions](#math-expressions)
   - [Props](#props)
   - [Helper Functions](#helper-functions)
     - [md2html](#md2html)
     - [html2md](#html2md)
+    - [convertLegacyMathDelimiters](#convertlegacymathdelimiters)
   - [Roadmap](#roadmap)
   - [Release Process](#release-process)
   - [License](#license)
@@ -38,9 +40,12 @@ import "@clevertask/scribe/dist/main.css";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
 function App() {
-  const onContentChange = useCallback(({ markdownContent, htmlContent, jsonContent }: ScribeOnChangeContents) => {
-    console.log(markdownContent, htmlContent, jsonContent);
-  }, []);
+  const onContentChange = useCallback(
+    ({ markdownContent, htmlContent, jsonContent }: ScribeOnChangeContents) => {
+      console.log(markdownContent, htmlContent, jsonContent);
+    },
+    [],
+  );
 
   return <Scribe onContentChange={onContentChange} />;
 }
@@ -90,6 +95,35 @@ function App() {
 }
 ```
 
+## Math Expressions
+
+Scribe ships with `@tiptap/extension-mathematics`. The extension renders math when it receives math nodes in the HTML:
+
+```html
+<span data-type="inline-math" data-latex="\alpha"></span>
+<div data-type="block-math" data-latex="\sum_{i=1}^{n} x_i"></div>
+```
+
+### Typing Delimiters (Input Rules)
+
+When typing directly in the editor, the built-in input rules use:
+
+```
+Inline: $$\alpha$$
+Block: $$$\sum_{i=1}^{n} x_i$$$
+```
+
+### Markdown Delimiters
+
+If you are parsing markdown with the Tiptap Markdown extension (not `md2html`), the tokenizer expects:
+
+```
+Inline: $\alpha$
+Block: $$\sum_{i=1}^{n} x_i$$
+```
+
+If your content arrives as HTML (for example from a server), use the helper below to convert legacy delimiters into the HTML nodes that the math extension understands.
+
 ## Props
 
 | Prop                     | Type                                         | Default                    | Description                                                                                                                                                                                                                                        |
@@ -134,7 +168,11 @@ const ChatMessages = () => {
   return messages.map((message) => (
     <Flex key={message.id} direction="column" mb="4">
       <Heading size="4">{`${message.role}: `}</Heading>
-      <Scribe editable={false} showBarMenu={false} content={md2html(message.content)} />
+      <Scribe
+        editable={false}
+        showBarMenu={false}
+        content={md2html(message.content)}
+      />
     </Flex>
   ));
 };
@@ -159,6 +197,44 @@ const md = html2md("<h1>Hello world</h1>"); // Output: # Hello world
 ```
 
 > **Note**: The Scribe component already exposes a property called `markdownContent` when the `onContentChange` is used. In fact, the `markdownContent` is the output of the usage of the `html2md` function.
+
+---
+
+### `convertLegacyMathDelimiters`
+
+```typescript
+export declare function convertLegacyMathDelimiters(input: string): string;
+```
+
+Convert legacy math delimiters into the HTML nodes required by the mathematics extension. This is useful when you receive HTML from a server that contains legacy math like `\(...\)` or `\[...\]`.
+
+This helper is primarily for consumers upgrading from older Scribe versions who stored math expressions using the legacy formats. It aims to be accurate, but the previous format was ambiguous (no explicit `$$` delimiters), so conversion is best-effort and not guaranteed in every case.
+
+**Supported legacy delimiters**:
+
+- `\(...\)` for inline math
+- `\[...\]` for block math
+- `(...)` and `[...]` when the content looks like LaTeX (contains `\`, `^`, or `_`)
+
+**Usage Example**:
+
+```tsx
+import {
+  convertLegacyMathDelimiters,
+  md2html,
+  Scribe,
+} from "@clevertask/scribe";
+
+const html = md2html(convertLegacyMathDelimiters(rawMarkdown));
+
+// OR
+
+const html = convertLegacyMathDelimiters(htmlContent);
+
+<Scribe editable={false} showBarMenu={false} content={html} />;
+```
+
+If you already receive HTML from the server, call `convertLegacyMathDelimiters` directly on that HTML before rendering.
 
 ## Roadmap
 
