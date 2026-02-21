@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import { resolve, extname, relative } from "path";
 import react from "@vitejs/plugin-react";
-import dts from "vite-plugin-dts";
+import dts from "unplugin-dts/vite";
 import { fileURLToPath } from "node:url";
 import { libInjectCss } from "vite-plugin-lib-inject-css";
 import { glob } from "glob";
