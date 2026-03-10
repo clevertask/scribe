@@ -11,8 +11,7 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
     selector: ({ editor }) => {
       if (!editor) return null;
       return {
-        isInsideList:
-          editor.isActive("bulletList") || editor.isActive("orderedList"),
+        isInsideList: editor.isActive("bulletList") || editor.isActive("orderedList"),
       };
     },
   });
@@ -30,14 +29,10 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
         paddingTop: "0rem",
       }}
     >
-      <button
-        onClick={() => editor.chain().focus().liftListItem("listItem").run()}
-      >
+      <button onClick={() => editor.chain().focus().liftListItem("listItem").run()}>
         ← Outdent
       </button>
-      <button
-        onClick={() => editor.chain().focus().sinkListItem("listItem").run()}
-      >
+      <button onClick={() => editor.chain().focus().sinkListItem("listItem").run()}>
         Indent →
       </button>
     </div>

@@ -159,7 +159,12 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
   ];
 
   return (
-    <div className={clsx("flex flex-row gap-4 border-b p-[8px]", darkMode ? "border-zinc-700" : "border-zinc-200")}>
+    <div
+      className={clsx(
+        "flex flex-row gap-4 border-b p-[8px]",
+        darkMode ? "border-zinc-700" : "border-zinc-200",
+      )}
+    >
       {Formats.map((format, index) => {
         return (
           <Fragment key={`format-group-${index}`}>
@@ -173,17 +178,23 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
                     className={clsx(
                       "rounded-md",
                       item.isActive() ? (darkMode ? "bg-zinc-700" : "bg-zinc-200") : "",
-                      item?.disabled ? "cursor-not-allowed bg-opacity-50" : ""
+                      item?.disabled ? "cursor-not-allowed bg-opacity-50" : "",
                     )}
                     onClick={item.command}
                   >
-                    <img src={item.icon} alt={item.name} style={{ filter: `invert(${darkMode ? 1 : 0})` }} />
+                    <img
+                      src={item.icon}
+                      alt={item.name}
+                      style={{ filter: `invert(${darkMode ? 1 : 0})` }}
+                    />
                   </button>
                 );
               })}
             </div>
             {index !== Formats.length - 1 && (
-              <div className={clsx("border-l", darkMode ? "border-zinc-700" : "border-zinc-200")}></div>
+              <div
+                className={clsx("border-l", darkMode ? "border-zinc-700" : "border-zinc-200")}
+              ></div>
             )}
           </Fragment>
         );

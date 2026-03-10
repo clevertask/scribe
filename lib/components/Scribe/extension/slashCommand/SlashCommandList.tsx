@@ -92,7 +92,9 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>((pr
           onClick={() => selectItem(index)}
           onKeyDown={noop}
         >
-          <div className={clsx("border rounded-[4px] p-2", props.darkMode && "invert")}>{item?.icon}</div>
+          <div className={clsx("border rounded-[4px] p-2", props.darkMode && "invert")}>
+            {item?.icon}
+          </div>
           <div className="flex flex-col">
             <span className="font-bold">{item.title}</span>
             <span>{item.description}</span>

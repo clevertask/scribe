@@ -1,35 +1,39 @@
 {
   "name": "@clevertask/scribe",
-  "description": "A Tiptap-based rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
-  "author": "CleverTask",
-  "private": false,
   "version": "0.0.14",
-  "type": "module",
-  "main": "dist/main.js",
-  "types": "dist/main.d.ts",
-  "files": [
-    "dist"
-  ],
+  "private": false,
+  "description": "A Tiptap-based rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
   "keywords": [
-    "react",
-    "javascript",
-    "editor",
-    "typescript",
-    "prosemirror",
-    "wysiwyg",
-    "rich-text-editor",
-    "notion",
     "block-based",
-    "tiptap"
+    "editor",
+    "javascript",
+    "notion",
+    "prosemirror",
+    "react",
+    "rich-text-editor",
+    "tiptap",
+    "typescript",
+    "wysiwyg"
   ],
-  "license": "MIT",
   "homepage": "https://github.com/clevertask/scribe#readme",
   "bugs": {
     "url": "https://github.com/clevertask/scribe/issues"
   },
+  "license": "MIT",
+  "author": "CleverTask",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/clevertask/scribe.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "vite",
@@ -37,42 +41,8 @@
     "build:style": "postcss ./lib/styles/main.css -o ./dist/main.css",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "prettier:lint": "npx prettier . --check",
-    "prettier:format": "npx prettier . --write"
-  },
-  "peerDependencies": {
-    "react": ">=18.3.1 <20.0.0",
-    "react-dom": ">=18.3.1 <20.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.39.4",
-    "@tailwindcss/typography": "^0.5.19",
-    "@types/lodash": "^4.17.24",
-    "@types/node": "^24.12.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@types/turndown": "^5.0.6",
-    "@vitejs/plugin-react": "^5.1.4",
-    "autoprefixer": "^10.4.27",
-    "eslint": "^9.39.4",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "glob": "^13.0.6",
-    "globals": "^17.4.0",
-    "lodash": "^4.17.23",
-    "postcss": "^8.5.8",
-    "postcss-cli": "^11.0.1",
-    "prettier": "3.4.2",
-    "tailwindcss": "^3.4.19",
-    "typescript": "~5.9.3",
-    "typescript-eslint": "^8.57.0",
-    "vite": "^7.3.1",
-    "vite-plugin-lib-inject-css": "^2.2.2"
-  },
-  "prepublishOnly": "npm run build",
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
   },
   "dependencies": {
     "@tiptap/core": "^2.27.2",
@@ -100,5 +70,35 @@
     "marked": "^15.0.12",
     "tippy.js": "^6.3.7",
     "turndown": "^7.2.2"
-  }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/lodash": "^4.17.24",
+    "@types/node": "^24.12.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/turndown": "^5.0.6",
+    "@vitejs/plugin-react": "^5.1.4",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "glob": "^13.0.6",
+    "globals": "^17.4.0",
+    "lodash": "^4.17.23",
+    "oxfmt": "^0.37.0",
+    "postcss": "^8.5.8",
+    "postcss-cli": "^11.0.1",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.57.0",
+    "vite": "^7.3.1",
+    "vite-plugin-lib-inject-css": "^2.2.2"
+  },
+  "peerDependencies": {
+    "react": ">=18.3.1 <20.0.0",
+    "react-dom": ">=18.3.1 <20.0.0"
+  },
+  "prepublishOnly": "npm run build"
 }

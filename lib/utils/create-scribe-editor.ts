@@ -5,10 +5,18 @@ import { html2md } from "../utils";
 export type CreateEditorOptions = {
   content?: string;
   editable?: boolean;
-  onContentChange?: (content: { htmlContent: string; jsonContent: any; markdownContent: string }) => void;
+  onContentChange?: (content: {
+    htmlContent: string;
+    jsonContent: any;
+    markdownContent: string;
+  }) => void;
 };
 
-export function createScribeEditor({ content = "", editable = false, onContentChange }: CreateEditorOptions): Editor {
+export function createScribeEditor({
+  content = "",
+  editable = false,
+  onContentChange,
+}: CreateEditorOptions): Editor {
   return new Editor({
     content,
     editable,
