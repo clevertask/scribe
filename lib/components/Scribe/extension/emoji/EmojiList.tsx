@@ -50,17 +50,30 @@ export const EmojiList = forwardRef((props, ref) => {
   }, [upHandler, downHandler, enterHandler]);
 
   return (
-    <div className={clsx(props.darkMode ? "dark:bg-gray-800" : "bg-white", "p-3", "rounded-md", "shadow-md")}>
+    <div
+      className={clsx(
+        props.darkMode ? "dark:bg-gray-800" : "bg-white",
+        "p-3",
+        "rounded-md",
+        "shadow-md",
+      )}
+    >
       {props.items.map((item, index) => (
         <button
           className={
-            index === selectedIndex ? clsx(props.darkMode ? "dark:bg-gray-700" : "bg-gray-200", "w-full", "p-1") : ""
+            index === selectedIndex
+              ? clsx(props.darkMode ? "dark:bg-gray-700" : "bg-gray-200", "w-full", "p-1")
+              : ""
           }
           key={index}
           style={{ display: "flex", alignItems: "center", gap: ".5rem" }}
           onClick={() => selectItem(index)}
         >
-          {item.fallbackImage ? <img style={{ width: "1rem", height: "1rem" }} src={item.fallbackImage} /> : item.emoji}
+          {item.fallbackImage ? (
+            <img style={{ width: "1rem", height: "1rem" }} src={item.fallbackImage} />
+          ) : (
+            item.emoji
+          )}
           :{item.name}:
         </button>
       ))}

@@ -168,11 +168,7 @@ const ChatMessages = () => {
   return messages.map((message) => (
     <Flex key={message.id} direction="column" mb="4">
       <Heading size="4">{`${message.role}: `}</Heading>
-      <Scribe
-        editable={false}
-        showBarMenu={false}
-        content={md2html(message.content)}
-      />
+      <Scribe editable={false} showBarMenu={false} content={md2html(message.content)} />
     </Flex>
   ));
 };
@@ -219,11 +215,7 @@ This helper is primarily for consumers upgrading from older Scribe versions who 
 **Usage Example**:
 
 ```tsx
-import {
-  convertLegacyMathDelimiters,
-  md2html,
-  Scribe,
-} from "@clevertask/scribe";
+import { convertLegacyMathDelimiters, md2html, Scribe } from "@clevertask/scribe";
 
 const html = md2html(convertLegacyMathDelimiters(rawMarkdown));
 

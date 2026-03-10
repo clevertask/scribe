@@ -20,10 +20,7 @@ export interface SuggestionItem {
   command: (props: CommandProps) => void;
 }
 
-export const getSuggestionItems = (props: {
-  query: string;
-  editor: Editor;
-}) => {
+export const getSuggestionItems = (props: { query: string; editor: Editor }) => {
   const { query } = props;
   const suggestionItems: SuggestionItem[] = [
     {
@@ -31,12 +28,7 @@ export const getSuggestionItems = (props: {
       description: "Start writing with plain text",
       type: SuggestionItemType.BASIC_BLOCKS,
       command: ({ editor, range }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .toggleNode("paragraph", "paragraph")
-          .run(),
+        editor.chain().focus().deleteRange(range).toggleNode("paragraph", "paragraph").run(),
 
       searchTerms: ["p", "paragraph"],
       icon: (
@@ -50,12 +42,7 @@ export const getSuggestionItems = (props: {
       description: "Big heading",
       type: SuggestionItemType.BASIC_BLOCKS,
       command: ({ editor, range }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 1 })
-          .run(),
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 1 }).run(),
 
       searchTerms: ["title", "big", "large"],
       icon: (
@@ -79,12 +66,7 @@ export const getSuggestionItems = (props: {
       description: "Medium heading",
       type: SuggestionItemType.BASIC_BLOCKS,
       command: ({ editor, range }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 2 })
-          .run(),
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 2 }).run(),
 
       searchTerms: ["subtitle", "medium"],
       icon: (
@@ -108,12 +90,7 @@ export const getSuggestionItems = (props: {
       description: "Small heading",
       type: SuggestionItemType.BASIC_BLOCKS,
       command: ({ editor, range }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .setNode("heading", { level: 3 })
-          .run(),
+        editor.chain().focus().deleteRange(range).setNode("heading", { level: 3 }).run(),
 
       searchTerms: ["subtitle", "small"],
       icon: (

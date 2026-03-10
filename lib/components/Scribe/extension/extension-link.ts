@@ -22,9 +22,7 @@ export default Link.configure({
         return false;
       }
 
-      const allowedProtocols = ctx.protocols.map((p) =>
-        typeof p === "string" ? p : p.scheme,
-      );
+      const allowedProtocols = ctx.protocols.map((p) => (typeof p === "string" ? p : p.scheme));
 
       if (!allowedProtocols.includes(protocol)) {
         return false;
@@ -37,9 +35,7 @@ export default Link.configure({
   },
   shouldAutoLink: (url) => {
     try {
-      const parsedUrl = url.includes(":")
-        ? new URL(url)
-        : new URL(`https://${url}`);
+      const parsedUrl = url.includes(":") ? new URL(url) : new URL(`https://${url}`);
       return !!parsedUrl;
     } catch (error) {
       return false;

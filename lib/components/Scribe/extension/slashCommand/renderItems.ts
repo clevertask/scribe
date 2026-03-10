@@ -56,7 +56,7 @@ const renderItems = (_props) => () => {
       if (props.event.key === "Enter") {
         if (
           suggestionProps.items.filter((item) =>
-            item.title.toLowerCase().startsWith(suggestionProps.query.toLowerCase())
+            item.title.toLowerCase().startsWith(suggestionProps.query.toLowerCase()),
           ).length === 0
         ) {
           this.onExit();

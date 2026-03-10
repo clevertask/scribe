@@ -31,9 +31,7 @@ export type ScribeOnChangeContents = {
 
 export interface ScribeRef {
   resetContent: () => void;
-  getContent: (
-    contentType: "html" | "json" | "markdown",
-  ) => string | JSONContent | undefined;
+  getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
   setContent: (content: Content) => void;
   editor: Editor;
 }
@@ -115,17 +113,14 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     editor?.commands.setContent("");
   }, []);
 
-  const getContent = useCallback(
-    (contentType: "html" | "json" | "markdown") => {
-      const options = {
-        html: () => editor?.getHTML(),
-        json: () => editor?.getJSON(),
-        markdown: () => html2md(editor?.getHTML() || ""),
-      };
-      return editor?.isEmpty ? "" : options[contentType]?.();
-    },
-    [],
-  );
+  const getContent = useCallback((contentType: "html" | "json" | "markdown") => {
+    const options = {
+      html: () => editor?.getHTML(),
+      json: () => editor?.getJSON(),
+      markdown: () => html2md(editor?.getHTML() || ""),
+    };
+    return editor?.isEmpty ? "" : options[contentType]?.();
+  }, []);
 
   const setContent = useCallback((content: Content) => {
     editor?.commands.setContent(content);
@@ -163,19 +158,14 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [autoFocus]);
 
   return (
-    <div
-      className={clsx("scribe-wrapper", mainContainerClassName)}
-      style={mainContainerStyle}
-    >
+    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle}>
       <div
         className={clsx(
           editable && "rounded-lg border",
           darkMode ? "border-zinc-700" : "border-zinc-200",
         )}
       >
-        {editor && showBarMenu && (
-          <BarMenu editor={editor} darkMode={!!darkMode} />
-        )}
+        {editor && showBarMenu && <BarMenu editor={editor} darkMode={!!darkMode} />}
         <div
           className={clsx(
             "prose max-w-none",
