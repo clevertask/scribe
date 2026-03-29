@@ -1,5 +1,6 @@
 import { ScribeProps } from "..";
 import Link from "./extension-link";
+import MarkdownPaste from "./extension-markdown-paste";
 import Focus from "@tiptap/extension-focus";
 import Image from "@tiptap/extension-image";
 import Table from "@tiptap/extension-table";
@@ -59,6 +60,7 @@ export const initExtensions = (props: ScribeProps) => [
     },
   }),
   Focus.configure({ mode: "deepest", className: "has-focus" }),
+  MarkdownPaste,
   SlashCommand.configure({
     slashSuggestion: {
       items: getSuggestionItems,
