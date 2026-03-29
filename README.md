@@ -6,6 +6,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 
 - **Block-based Editing:** Enjoy a familiar and intuitive Notion-style editing experience.
 - **Markdown Support:** Parse and render Markdown content effortlessly.
+- **Markdown Paste:** Paste plain-text markdown into the editor and have it converted into rich content automatically.
 - **Versatile Integration:** Easily integrate `@clevertask/scribe` into any project requiring rich text editing.
 - **View and Edit:** Seamlessly switch between viewing and editing modes.
 
@@ -152,6 +153,8 @@ export declare function md2html(md: string): string;
 ```
 
 Convert markdown to html. Useful if you're rendering an AI-based response, or if you were storing content on markdown in your database and want to show it on the text editor. This function sanitizes the content to prevent XSS attacks.
+
+Editable Scribe instances also use this conversion internally when you paste plain-text markdown into the editor.
 
 **Usage Example**:
 
