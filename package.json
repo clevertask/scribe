@@ -1,6 +1,6 @@
 {
   "name": "@clevertask/scribe",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "private": false,
   "description": "A Tiptap-based rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
   "keywords": [
