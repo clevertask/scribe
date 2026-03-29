@@ -37,6 +37,7 @@ npm install @clevertask/scribe
 ### Basic usage
 
 ```tsx
+import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
@@ -55,6 +56,7 @@ function App() {
 ### With ref
 
 ```tsx
+import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
@@ -77,6 +79,7 @@ function App() {
 ### With Dark Mode
 
 ```tsx
+import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
@@ -97,6 +100,8 @@ function App() {
 ```
 
 ## Math Expressions
+
+Scribe's default UI is styled with Radix Themes components. Load `@radix-ui/themes/styles.css` once in your app alongside `@clevertask/scribe/dist/main.css`.
 
 Scribe ships with `@tiptap/extension-mathematics`. The extension renders math when it receives math nodes in the HTML:
 

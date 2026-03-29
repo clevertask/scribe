@@ -1,7 +1,7 @@
 import tippy from "tippy.js";
 import { ReactRenderer } from "@tiptap/react";
 
-import { EmojiList } from "./EmojiList";
+import { EmojiList, EmojiListRef } from "./EmojiList";
 
 export default ({ darkMode }) => ({
   items: ({ editor, query }) => {
@@ -18,11 +18,15 @@ export default ({ darkMode }) => ({
   allowSpaces: false,
 
   render: () => {
-    let component;
-    let popup;
+    let component: ReactRenderer<EmojiListRef>;
+    let popup: ReturnType<typeof tippy> = [];
 
     return {
       onStart: (props) => {
+        if (!props.clientRect) {
+          return;
+        }
+
         component = new ReactRenderer(EmojiList, {
           props: { ...props, darkMode },
           editor: props.editor,
@@ -40,7 +44,11 @@ export default ({ darkMode }) => ({
       },
 
       onUpdate(props) {
-        component.updateProps(props);
+        if (!component || !popup[0] || !props.clientRect) {
+          return;
+        }
+
+        component.updateProps({ ...props, darkMode });
 
         popup[0].setProps({
           getReferenceClientRect: props.clientRect,
@@ -48,19 +56,18 @@ export default ({ darkMode }) => ({
       },
 
       onKeyDown(props) {
-        if (props.event.key === "Escape") {
+        if (props.event.key === "Escape" && popup[0]) {
           popup[0].hide();
-          component.destroy();
 
           return true;
         }
 
-        return component.ref?.onKeyDown(props);
+        return component?.ref?.onKeyDown(props) ?? false;
       },
 
       onExit() {
-        popup[0].destroy();
-        component.destroy();
+        popup[0]?.destroy();
+        component?.destroy();
       },
     };
   },

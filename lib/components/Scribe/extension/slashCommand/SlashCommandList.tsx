@@ -1,106 +1,132 @@
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
+import { Box, ScrollArea, Text, Theme } from "@radix-ui/themes";
 import { isEmpty, noop } from "lodash";
-import { forwardRef, useImperativeHandle, useState } from "react";
-import { isInViewport } from "../../../../utils";
-import clsx from "clsx";
+import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { SuggestionItem } from "./items";
 
 export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
 }
 
-export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>((props, ref) => {
+type SlashCommandListProps = SuggestionProps & {
+  darkMode?: boolean;
+  items: SuggestionItem[];
+};
+
+export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProps>((props, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const { items, command } = props;
+  const resolvedSelectedIndex = items.length === 0 ? 0 : Math.min(selectedIndex, items.length - 1);
 
-  const selectItem = (index: number) => {
-    const item = items[index];
+  const selectItem = useCallback(
+    (index: number) => {
+      const item = items[index];
 
-    if (item) {
-      command(item);
-    }
-  };
-
-  const upHandler = () => {
-    setSelectedIndex((prev) => {
-      const newIndex = (prev + items.length - 1) % items.length;
-      const commandListing = document.getElementById(`editor-command-${items[newIndex].title}`);
-      const commandList = document.getElementById("editor-commands-viewport");
-      if (commandList && commandListing && !isInViewport(commandListing, commandList)) {
-        commandListing.scrollIntoView();
+      if (item) {
+        command(item);
       }
-
-      return newIndex;
-    });
-  };
-
-  const downHandler = () => {
-    setSelectedIndex((prev) => {
-      const newIndex = (prev + 1) % items.length;
-      const commandListing = document.getElementById(`editor-command-${items[newIndex].title}`);
-      const commandList = document.getElementById("editor-commands-viewport");
-      if (commandList && commandListing && !isInViewport(commandListing, commandList)) {
-        commandListing.scrollIntoView();
-      }
-
-      return newIndex;
-    });
-  };
-
-  const enterHandler = () => {
-    selectItem(selectedIndex);
-  };
-
-  useImperativeHandle(ref, () => ({
-    onKeyDown: ({ event }) => {
-      if (event.key === "ArrowUp") {
-        upHandler();
-
-        return true;
-      }
-
-      if (event.key === "ArrowDown") {
-        downHandler();
-
-        return true;
-      }
-
-      if (event.key === "Enter") {
-        enterHandler();
-
-        return true;
-      }
-
-      return false;
     },
-  }));
+    [command, items],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      onKeyDown: ({ event }) => {
+        if (event.key === "ArrowUp") {
+          if (items.length === 0) {
+            return false;
+          }
+
+          setSelectedIndex((previousIndex) => {
+            const newIndex = (previousIndex + items.length - 1) % items.length;
+            const commandListing = document.getElementById(`editor-command-${newIndex}`);
+            if (commandListing) {
+              commandListing.scrollIntoView({ block: "nearest" });
+            }
+
+            return newIndex;
+          });
+
+          return true;
+        }
+
+        if (event.key === "ArrowDown") {
+          if (items.length === 0) {
+            return false;
+          }
+
+          setSelectedIndex((previousIndex) => {
+            const newIndex = (previousIndex + 1) % items.length;
+            const commandListing = document.getElementById(`editor-command-${newIndex}`);
+            if (commandListing) {
+              commandListing.scrollIntoView({ block: "nearest" });
+            }
+
+            return newIndex;
+          });
+
+          return true;
+        }
+
+        if (event.key === "Enter") {
+          selectItem(resolvedSelectedIndex);
+
+          return true;
+        }
+
+        return false;
+      },
+    }),
+    [items, resolvedSelectedIndex, selectItem],
+  );
 
   if (isEmpty(items)) {
     return null;
   }
 
   return (
-    <div className="flex flex-col slash-menu-wrapper" id="editor-commands-viewport">
-      {items.map((item, index) => (
-        <div
-          className={`w-full cursor-pointer p-[12px] flex items-center gap-x-4 ${
-            index === selectedIndex
-              ? clsx(props.darkMode ? "bg-gray-800" : "bg-gray-300")
-              : clsx(props.darkMode ? "bg-gray-900 text-white" : "bg-white text-black")
-          }`}
-          id={`editor-command-${item.title}`}
-          key={item.title}
-          onClick={() => selectItem(index)}
-          onKeyDown={noop}
-        >
-          <div className={clsx("border rounded-[4px] p-2", props.darkMode && "invert")}>
-            {item?.icon}
+    <Theme appearance={props.darkMode ? "dark" : "light"} panelBackground="solid">
+      <Box className="scribe-popup" style={{ width: 320 }}>
+        <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 300 }}>
+          <div className="scribe-popup-list">
+            {items.map((item, index) => {
+              const previousItem = items[index - 1];
+              const showGroupLabel = index === 0 || previousItem?.type !== item.type;
+
+              return (
+                <div key={`${item.title}-${index}`}>
+                  {showGroupLabel ? (
+                    <Text as="div" size="1" className="scribe-popup-group-label">
+                      {item.type}
+                    </Text>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="scribe-popup-item scribe-popup-item--command"
+                    data-selected={index === resolvedSelectedIndex}
+                    id={`editor-command-${index}`}
+                    onClick={() => selectItem(index)}
+                    onKeyDown={noop}
+                  >
+                    <span className="scribe-popup-item-icon" aria-hidden="true">
+                      {item.icon}
+                    </span>
+                    <span className="scribe-popup-item-copy">
+                      <Text as="span" size="2" className="scribe-popup-item-title">
+                        {item.title}
+                      </Text>
+                      <Text as="span" size="1" color="gray">
+                        {item.description}
+                      </Text>
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
-          <div className="flex flex-col">
-            <span className="font-bold">{item.title}</span>
-            <span>{item.description}</span>
-          </div>
-        </div>
-      ))}
-    </div>
+        </ScrollArea>
+      </Box>
+    </Theme>
   );
 });

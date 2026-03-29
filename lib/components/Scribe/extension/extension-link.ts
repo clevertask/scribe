@@ -29,7 +29,7 @@ export default Link.configure({
       }
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   },
@@ -37,7 +37,7 @@ export default Link.configure({
     try {
       const parsedUrl = url.includes(":") ? new URL(url) : new URL(`https://${url}`);
       return !!parsedUrl;
-    } catch (error) {
+    } catch {
       return false;
     }
   },

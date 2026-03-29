@@ -1,19 +1,48 @@
-import { BubbleMenu as CoreBubbleMenu, Editor } from "@tiptap/react";
-import { FC } from "react";
+import { IconButton, Flex, Theme, Tooltip } from "@radix-ui/themes";
+import { useEditorState } from "@tiptap/react";
+import { BubbleMenu as CoreBubbleMenu } from "@tiptap/react/menus";
+import { Editor } from "@tiptap/react";
+import { FC, MouseEvent, useCallback } from "react";
 
 export interface BubbleMenuProps {
   editor: Editor;
+  darkMode?: boolean;
 }
 
-const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
+const BubbleMenu: FC<BubbleMenuProps> = ({ editor, darkMode = false }) => {
+  const editorState = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      if (!editor) {
+        return null;
+      }
+
+      return {
+        isHeading1: editor.isActive("heading", { level: 1 }),
+        isHeading2: editor.isActive("heading", { level: 2 }),
+        isHeading3: editor.isActive("heading", { level: 3 }),
+        isBold: editor.isActive("bold"),
+        isItalic: editor.isActive("italic"),
+        isStrike: editor.isActive("strike"),
+        isCode: editor.isActive("code"),
+      };
+    },
+  });
+  const handleBubbleAction = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, command: () => void) => {
+      event.preventDefault();
+      command();
+    },
+    [],
+  );
   const menuItems = [
     {
       ariaLabel: "Heading 1",
       command: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
-      isActive: () => editor.isActive("heading", { level: 1 }),
+      isActive: () => Boolean(editorState?.isHeading1),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -30,12 +59,12 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Heading 2",
       command: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
-      isActive: () => editor.isActive("heading", { level: 2 }),
+      isActive: () => Boolean(editorState?.isHeading2),
       icon: (
         <svg
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
         >
           <path
@@ -50,10 +79,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Heading 3",
       command: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
-      isActive: () => editor.isActive("heading", { level: 3 }),
+      isActive: () => Boolean(editorState?.isHeading3),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -70,10 +99,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Bold",
       command: () => editor.chain().focus().toggleBold().run(),
-      isActive: () => editor.isActive("bold"),
+      isActive: () => Boolean(editorState?.isBold),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -90,10 +119,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Italic",
       command: () => editor.chain().focus().toggleItalic().run(),
-      isActive: () => editor.isActive("italic"),
+      isActive: () => Boolean(editorState?.isItalic),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -110,10 +139,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Strike",
       command: () => editor.chain().focus().toggleStrike().run(),
-      isActive: () => editor.isActive("strike"),
+      isActive: () => Boolean(editorState?.isStrike),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -130,10 +159,10 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
     {
       ariaLabel: "Inline code",
       command: () => editor.chain().focus().toggleCode().run(),
-      isActive: () => editor.isActive("code"),
+      isActive: () => Boolean(editorState?.isCode),
       icon: (
         <svg
-          className="menu-icon"
+          className="scribe-inline-menu-icon"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
@@ -150,18 +179,27 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
   ];
 
   return (
-    <CoreBubbleMenu className="bubble-menu-wrapper" editor={editor}>
-      <div className="menu-item-wrapper">
-        {menuItems.map((item) => (
-          <button
-            key={item.ariaLabel}
-            className={`${item.isActive() ? "active" : ""}`}
-            onClick={item.command}
-          >
-            {item.icon}
-          </button>
-        ))}
-      </div>
+    <CoreBubbleMenu editor={editor}>
+      <Theme appearance={darkMode ? "dark" : "light"} panelBackground="solid">
+        <div className="scribe-bubble-menu">
+          <Flex align="center" gap="2">
+            {menuItems.map((item) => (
+              <Tooltip key={item.ariaLabel} content={item.ariaLabel}>
+                <IconButton
+                  type="button"
+                  size="1"
+                  radius="medium"
+                  color="gray"
+                  variant={item.isActive() ? "soft" : "ghost"}
+                  onMouseDown={(event) => handleBubbleAction(event, item.command)}
+                >
+                  {item.icon}
+                </IconButton>
+              </Tooltip>
+            ))}
+          </Flex>
+        </div>
+      </Theme>
     </CoreBubbleMenu>
   );
 };

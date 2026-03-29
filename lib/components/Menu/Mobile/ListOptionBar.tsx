@@ -1,5 +1,7 @@
+import { Button, Flex } from "@radix-ui/themes";
 import { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
+import { MouseEvent, useCallback } from "react";
 
 type ListOptionBarProps = {
   editor: Editor;
@@ -15,26 +17,42 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
       };
     },
   });
+  const handleListAction = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, command: () => void) => {
+      event.preventDefault();
+      command();
+    },
+    [],
+  );
 
   if (!editorState?.isInsideList) {
     return null;
   }
 
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "1rem",
-        paddingTop: "0rem",
-      }}
-    >
-      <button onClick={() => editor.chain().focus().liftListItem("listItem").run()}>
+    <Flex align="center" justify="between" className="scribe-list-toolbar" gap="3">
+      <Button
+        type="button"
+        size="1"
+        variant="soft"
+        color="gray"
+        onMouseDown={(event) =>
+          handleListAction(event, () => editor.chain().focus().liftListItem("listItem").run())
+        }
+      >
         ← Outdent
-      </button>
-      <button onClick={() => editor.chain().focus().sinkListItem("listItem").run()}>
+      </Button>
+      <Button
+        type="button"
+        size="1"
+        variant="soft"
+        color="gray"
+        onMouseDown={(event) =>
+          handleListAction(event, () => editor.chain().focus().sinkListItem("listItem").run())
+        }
+      >
         Indent →
-      </button>
-    </div>
+      </Button>
+    </Flex>
   );
 };

@@ -1,4 +1,4 @@
-import { Editor } from "@tiptap/core";
+import { Editor, JSONContent } from "@tiptap/core";
 import { initExtensions } from "../components/Scribe/extension";
 import { html2md } from "../utils";
 
@@ -7,7 +7,7 @@ export type CreateEditorOptions = {
   editable?: boolean;
   onContentChange?: (content: {
     htmlContent: string;
-    jsonContent: any;
+    jsonContent: JSONContent;
     markdownContent: string;
   }) => void;
 };

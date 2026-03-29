@@ -1,82 +1,102 @@
-import clsx from "clsx";
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { Box, ScrollArea, Text, Theme } from "@radix-ui/themes";
+import { SuggestionKeyDownProps } from "@tiptap/suggestion";
+import { forwardRef, useImperativeHandle, useState } from "react";
 
-export const EmojiList = forwardRef((props, ref) => {
+interface EmojiSuggestionItem {
+  emoji?: string;
+  fallbackImage?: string;
+  name: string;
+}
+
+interface EmojiListProps {
+  command: (payload: { name: string }) => void;
+  darkMode?: boolean;
+  items: EmojiSuggestionItem[];
+}
+
+export interface EmojiListRef {
+  onKeyDown: (props: SuggestionKeyDownProps) => boolean;
+}
+
+export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) => {
+  const { command, darkMode, items } = props;
   const [selectedIndex, setSelectedIndex] = useState(0);
-
-  const selectItem = (index) => {
-    const item = props.items[index];
-
-    if (item) {
-      props.command({ name: item.name });
-    }
-  };
-
-  const upHandler = () => {
-    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
-  };
-
-  const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length);
-  };
-
-  const enterHandler = () => {
-    selectItem(selectedIndex);
-  };
-
-  useEffect(() => setSelectedIndex(0), [props.items]);
+  const resolvedSelectedIndex = items.length === 0 ? 0 : Math.min(selectedIndex, items.length - 1);
 
   useImperativeHandle(ref, () => {
     return {
       onKeyDown: (x) => {
         if (x.event.key === "ArrowUp") {
-          upHandler();
+          if (items.length === 0) {
+            return false;
+          }
+
+          setSelectedIndex((previousIndex) => {
+            return (previousIndex + items.length - 1) % items.length;
+          });
           return true;
         }
 
         if (x.event.key === "ArrowDown") {
-          downHandler();
+          if (items.length === 0) {
+            return false;
+          }
+
+          setSelectedIndex((previousIndex) => {
+            return (previousIndex + 1) % items.length;
+          });
           return true;
         }
 
         if (x.event.key === "Enter") {
-          enterHandler();
+          const item = items[resolvedSelectedIndex];
+
+          if (item) {
+            command({ name: item.name });
+          }
+
           return true;
         }
 
         return false;
       },
     };
-  }, [upHandler, downHandler, enterHandler]);
+  }, [command, items, resolvedSelectedIndex]);
+
+  if (items.length === 0) {
+    return null;
+  }
 
   return (
-    <div
-      className={clsx(
-        props.darkMode ? "dark:bg-gray-800" : "bg-white",
-        "p-3",
-        "rounded-md",
-        "shadow-md",
-      )}
-    >
-      {props.items.map((item, index) => (
-        <button
-          className={
-            index === selectedIndex
-              ? clsx(props.darkMode ? "dark:bg-gray-700" : "bg-gray-200", "w-full", "p-1")
-              : ""
-          }
-          key={index}
-          style={{ display: "flex", alignItems: "center", gap: ".5rem" }}
-          onClick={() => selectItem(index)}
-        >
-          {item.fallbackImage ? (
-            <img style={{ width: "1rem", height: "1rem" }} src={item.fallbackImage} />
-          ) : (
-            item.emoji
-          )}
-          :{item.name}:
-        </button>
-      ))}
-    </div>
+    <Theme appearance={darkMode ? "dark" : "light"} panelBackground="solid">
+      <Box className="scribe-popup" style={{ width: 240 }}>
+        <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 240 }}>
+          <div className="scribe-popup-list">
+            {items.map((item, index) => (
+              <button
+                key={item.name}
+                type="button"
+                className="scribe-popup-item"
+                data-selected={index === resolvedSelectedIndex}
+                onClick={() => command({ name: item.name })}
+              >
+                <span className="scribe-emoji-preview" aria-hidden="true">
+                  {item.fallbackImage ? (
+                    <img
+                      alt=""
+                      src={item.fallbackImage}
+                      style={{ display: "block", height: 18, width: 18 }}
+                    />
+                  ) : (
+                    item.emoji
+                  )}
+                </span>
+                <Text size="2">:{item.name}:</Text>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </Box>
+    </Theme>
   );
 });

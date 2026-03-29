@@ -1,3 +1,4 @@
+import "@radix-ui/themes/styles.css";
 import "../lib/styles/main.css";
 import { useState, useEffect, useRef } from "react";
 import { createScribeEditor, Scribe, ScribeRef } from "../lib/main";
@@ -5,7 +6,7 @@ import { streamedContent } from "./data";
 
 const Messages = function Messages() {
   const [content, setContent] = useState("");
-  const editor = createScribeEditor({});
+  const [editor] = useState(() => createScribeEditor({}));
   useEffect(() => {
     let currentContent = "";
 
@@ -37,7 +38,6 @@ const ChatBox = function ChatBox() {
         onContentChange={(c) => console.log(c)}
         placeholderText="Type your message..."
         editorContentStyle={{ maxHeight: "200px", overflowY: "scroll" }}
-        externalEditor={editor.current?.editor}
       />
     </>
   );

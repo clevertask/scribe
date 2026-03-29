@@ -1,14 +1,12 @@
 import { ReactRenderer } from "@tiptap/react";
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
-import { isEmpty } from "lodash";
 import tippy, { Instance, Props } from "tippy.js";
 import { SlashCommandList, SlashCommandRef } from "./SlashCommandList";
 
 const renderItems = (_props) => () => {
-  let component: ReactRenderer;
+  let component: ReactRenderer<SlashCommandRef>;
   let popup: Instance<Props>[] = [];
-  let suggestionProps: SuggestionProps;
-  let hasPopup = !isEmpty(popup);
+  let suggestionProps: SuggestionProps & { darkMode?: boolean };
 
   return {
     onStart: (props: SuggestionProps) => {
@@ -31,23 +29,22 @@ const renderItems = (_props) => () => {
         trigger: "manual",
         placement: "bottom-start",
       });
-      hasPopup = !isEmpty(popup);
     },
     onUpdate: (props: SuggestionProps) => {
-      suggestionProps = props;
-      component.updateProps(props);
+      suggestionProps = { ...props, ..._props };
+      component?.updateProps(suggestionProps);
 
       if (!props.clientRect) {
         return;
       }
-      if (hasPopup) {
+      if (popup[0] && !popup[0].state.isDestroyed) {
         popup[0].setProps({
           getReferenceClientRect: props.clientRect as Props["getReferenceClientRect"],
         });
       }
     },
     onKeyDown(props: SuggestionKeyDownProps) {
-      if (props.event.key === "Escape" && hasPopup && !popup[0].state.isDestroyed) {
+      if (props.event.key === "Escape" && popup[0] && !popup[0].state.isDestroyed) {
         popup[0].hide();
 
         return true;
@@ -63,12 +60,13 @@ const renderItems = (_props) => () => {
         }
       }
 
-      return (component?.ref as SlashCommandRef)?.onKeyDown(props) || false;
+      return (component?.ref as SlashCommandRef | undefined)?.onKeyDown(props) || false;
     },
     onExit() {
-      if (hasPopup && !popup[0].state.isDestroyed) {
+      if (popup[0] && !popup[0].state.isDestroyed) {
         popup[0].destroy();
       }
+      component?.destroy();
     },
   };
 };

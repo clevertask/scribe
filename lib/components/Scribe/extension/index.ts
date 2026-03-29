@@ -37,7 +37,7 @@ export const initExtensions = (props: ScribeProps) => [
     nested: true,
   }),
   TableKit.configure({
-    table: {resizable: true}
+    table: { resizable: true },
   }),
   TableRow,
   TableHeader,
