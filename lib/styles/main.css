@@ -38,6 +38,12 @@
   cursor: not-allowed;
 }
 
+.scribe-toolbar-icon {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 .scribe-content {
   color: var(--gray-12);
   min-width: 0;

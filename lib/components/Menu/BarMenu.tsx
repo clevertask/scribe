@@ -7,30 +7,46 @@ import {
   Separator,
   Text,
   TextField,
-  Tooltip,
 } from "@radix-ui/themes";
 import clsx from "clsx";
 import { Editor, useEditorState } from "@tiptap/react";
-import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
-import BoldIcon from "../../icons/bold.svg";
-import ItalicIcon from "../../icons/italic.svg";
-import StrikeIcon from "../../icons/text-strike.svg";
-import InlineCodeIcon from "../../icons/inline-code.svg";
-import HighlightIcon from "../../icons/highlight.svg";
-import UnorderedListIcon from "../../icons/unordered-list.svg";
-import OrderedListIcon from "../../icons/ordered-list.svg";
-import LinkIcon from "../../icons/link.svg";
-import ImageIcon from "../../icons/image.svg";
-import CodeBlockIcon from "../../icons/code-block.svg";
-import BlockQuoteIcon from "../../icons/block-quote.svg";
-import HorizontalLineIcon from "../../icons/horizontal-line.svg";
+import {
+  ChangeEvent,
+  ComponentPropsWithoutRef,
+  FC,
+  Fragment,
+  MouseEvent,
+  useCallback,
+  useState,
+} from "react";
+import {
+  BlockQuoteIcon,
+  BoldIcon,
+  CodeBlockIcon,
+  HighlightIcon,
+  HorizontalLineIcon,
+  ImageIcon,
+  InlineCodeIcon,
+  ItalicIcon,
+  LinkIcon,
+  OrderedListIcon,
+  StrikeIcon,
+  UnorderedListIcon,
+} from "../../icons/ToolbarIcons";
 
 export interface BarMenuProps {
   editor: Editor;
-  darkMode: boolean;
 }
 
-const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
+interface FormatItem {
+  command: () => void;
+  disabled?: boolean;
+  icon: FC<ComponentPropsWithoutRef<"svg">>;
+  isActive: () => boolean;
+  name: string;
+}
+
+const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [imageDialogOpen, setImageDialogOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
@@ -127,7 +143,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
     [],
   );
 
-  const Formats = [
+  const Formats: FormatItem[][] = [
     [
       {
         name: "bold",
@@ -221,31 +237,18 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
                 <Flex align="center" gap="2" wrap="wrap">
                   {format.map((item) => {
                     return (
-                      <Tooltip key={item.name} content={item.name}>
-                        <IconButton
-                          type="button"
-                          size="2"
-                          radius="medium"
-                          color="gray"
-                          variant={item.isActive() ? "soft" : "ghost"}
-                          disabled={item.disabled || !editor.isEditable}
-                          title={item.name}
-                          onMouseDown={(event) => handleToolbarMouseDown(event, item.command)}
-                          className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
-                        >
-                          <img
-                            src={item.icon}
-                            alt=""
-                            aria-hidden="true"
-                            style={{
-                              display: "block",
-                              filter: `invert(${darkMode ? 1 : 0})`,
-                              height: 16,
-                              width: 16,
-                            }}
-                          />
-                        </IconButton>
-                      </Tooltip>
+                      <IconButton
+                        type="button"
+                        radius="medium"
+                        color="gray"
+                        variant={item.isActive() ? "soft" : "ghost"}
+                        disabled={item.disabled || !editor.isEditable}
+                        title={item.name}
+                        onMouseDown={(event) => handleToolbarMouseDown(event, item.command)}
+                        className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                      >
+                        <item.icon className="scribe-toolbar-icon" />
+                      </IconButton>
                     );
                   })}
                 </Flex>

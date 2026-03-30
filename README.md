@@ -39,6 +39,7 @@ npm install @clevertask/scribe
 ```tsx
 import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
+import { Theme } from "@radix-ui/themes";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
 function App() {
@@ -49,7 +50,11 @@ function App() {
     [],
   );
 
-  return <Scribe onContentChange={onContentChange} />;
+  return (
+    <Theme>
+      <Scribe onContentChange={onContentChange} />
+    </Theme>
+  );
 }
 ```
 
@@ -58,6 +63,7 @@ function App() {
 ```tsx
 import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
+import { Theme } from "@radix-ui/themes";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
 function App() {
@@ -69,39 +75,35 @@ function App() {
 
   return (
     <>
-      <Scribe ref={editor} />
+      <Theme>
+        <Scribe ref={editor} />
+      </Theme>
       <button onClick={resetContent}>Reset content</button>
     </>
   );
 }
 ```
 
-### With Dark Mode
+### Using Your App Theme
 
 ```tsx
 import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/dist/main.css";
-import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
+import { Theme } from "@radix-ui/themes";
+import { Scribe } from "@clevertask/scribe";
 
 function App() {
-  const editor = useRef<ScribeRef>(null);
-
-  const resetContent = useCallback(() => {
-    editor.current.resetContent();
-  }, []);
-
   return (
-    <>
-      <Scribe darkMode />
-      <button onClick={resetContent}>Reset content</button>
-    </>
+    <Theme appearance="dark">
+      <Scribe />
+    </Theme>
   );
 }
 ```
 
 ## Math Expressions
 
-Scribe's default UI is styled with Radix Themes components. Load `@radix-ui/themes/styles.css` once in your app alongside `@clevertask/scribe/dist/main.css`.
+Scribe's default UI is styled with Radix Themes components. Load `@radix-ui/themes/styles.css` once in your app alongside `@clevertask/scribe/dist/main.css`, and render Scribe somewhere inside a Radix `<Theme>`.
 
 Scribe ships with `@tiptap/extension-mathematics`. The extension renders math when it receives math nodes in the HTML:
 
@@ -147,7 +149,6 @@ If your content arrives as HTML (for example from a server), use the helper belo
 | `mainContainerStyle`     | `React.CSSProperties`                        | `undefined`                | You can send a CSS object to style the main editor container                                                                                                                                                                                       |
 | `mainContainerClassName` | `string`                                     | `undefined`                | The same idea of `mainContainerStyle` but with classes.                                                                                                                                                                                            |
 | `onKeyDown`              | `KeyboardEventHandler`                       | `undefined`                | A callback function that is triggered when a key is pressed within the editor. This allows you to handle custom keyboard shortcuts. For example, you can use this prop to implement a "send message" functionality when `Ctrl + Enter` is pressed. |
-| `darkMode`               | `boolean`                                    | `false`                    | You can switch the darkMode value to change the text editor's theme                                                                                                                                                                                |
 
 ## Helper Functions
 

@@ -1,5 +1,4 @@
 import "katex/dist/katex.css";
-import { Theme } from "@radix-ui/themes";
 import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
@@ -52,7 +51,6 @@ export interface ScribeProps {
   mainContainerStyle?: React.CSSProperties;
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
-  darkMode?: boolean;
   mobile?: boolean;
 }
 
@@ -71,7 +69,6 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mainContainerClassName,
     onKeyDown,
     externalEditor,
-    darkMode,
     mobile,
   } = props;
 
@@ -164,27 +161,25 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [autoFocus, editor]);
 
   return (
-    <Theme appearance={darkMode ? "dark" : "light"} panelBackground="solid" style={{ minWidth: 0 }}>
-      <div
-        className={clsx("scribe-wrapper", "scribe-root", mainContainerClassName)}
-        style={mainContainerStyle}
-      >
-        <div className={clsx("scribe-frame", editable && "scribe-frame--editable")}>
-          {editor && showBarMenu ? <BarMenu editor={editor} darkMode={!!darkMode} /> : null}
-          <div
-            className={clsx(
-              "scribe-content",
-              editable && "scribe-content--editable",
-              editorContentClassName,
-            )}
-            style={editorContentStyle}
-          >
-            <EditorContent editor={editor} onKeyDown={onKeyDown} />
-          </div>
-
-          {mobile ? <ListOptionBar editor={editor} /> : null}
+    <div
+      className={clsx("scribe-wrapper", "scribe-root", mainContainerClassName)}
+      style={mainContainerStyle}
+    >
+      <div className={clsx("scribe-frame", editable && "scribe-frame--editable")}>
+        {editor && showBarMenu ? <BarMenu editor={editor} /> : null}
+        <div
+          className={clsx(
+            "scribe-content",
+            editable && "scribe-content--editable",
+            editorContentClassName,
+          )}
+          style={editorContentStyle}
+        >
+          <EditorContent editor={editor} onKeyDown={onKeyDown} />
         </div>
+
+        {mobile ? <ListOptionBar editor={editor} /> : null}
       </div>
-    </Theme>
+    </div>
   );
 });

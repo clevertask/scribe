@@ -1,5 +1,5 @@
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
-import { Box, ScrollArea, Text, Theme } from "@radix-ui/themes";
+import { Box, ScrollArea, Text } from "@radix-ui/themes";
 import { isEmpty, noop } from "lodash";
 import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 import { SuggestionItem } from "./items";
@@ -8,10 +8,7 @@ export interface SlashCommandRef {
   onKeyDown: (props: SuggestionKeyDownProps) => boolean;
 }
 
-type SlashCommandListProps = SuggestionProps & {
-  darkMode?: boolean;
-  items: SuggestionItem[];
-};
+type SlashCommandListProps = SuggestionProps & { items: SuggestionItem[] };
 
 export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProps>((props, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -86,47 +83,45 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
   }
 
   return (
-    <Theme appearance={props.darkMode ? "dark" : "light"} panelBackground="solid">
-      <Box className="scribe-popup" style={{ width: 320 }}>
-        <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 300 }}>
-          <div className="scribe-popup-list">
-            {items.map((item, index) => {
-              const previousItem = items[index - 1];
-              const showGroupLabel = index === 0 || previousItem?.type !== item.type;
+    <Box className="scribe-popup" style={{ width: 320 }}>
+      <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 300 }}>
+        <div className="scribe-popup-list">
+          {items.map((item, index) => {
+            const previousItem = items[index - 1];
+            const showGroupLabel = index === 0 || previousItem?.type !== item.type;
 
-              return (
-                <div key={`${item.title}-${index}`}>
-                  {showGroupLabel ? (
-                    <Text as="div" size="1" className="scribe-popup-group-label">
-                      {item.type}
+            return (
+              <div key={`${item.title}-${index}`}>
+                {showGroupLabel ? (
+                  <Text as="div" size="1" className="scribe-popup-group-label">
+                    {item.type}
+                  </Text>
+                ) : null}
+                <button
+                  type="button"
+                  className="scribe-popup-item scribe-popup-item--command"
+                  data-selected={index === resolvedSelectedIndex}
+                  id={`editor-command-${index}`}
+                  onClick={() => selectItem(index)}
+                  onKeyDown={noop}
+                >
+                  <span className="scribe-popup-item-icon" aria-hidden="true">
+                    {item.icon}
+                  </span>
+                  <span className="scribe-popup-item-copy">
+                    <Text as="span" size="2" className="scribe-popup-item-title">
+                      {item.title}
                     </Text>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="scribe-popup-item scribe-popup-item--command"
-                    data-selected={index === resolvedSelectedIndex}
-                    id={`editor-command-${index}`}
-                    onClick={() => selectItem(index)}
-                    onKeyDown={noop}
-                  >
-                    <span className="scribe-popup-item-icon" aria-hidden="true">
-                      {item.icon}
-                    </span>
-                    <span className="scribe-popup-item-copy">
-                      <Text as="span" size="2" className="scribe-popup-item-title">
-                        {item.title}
-                      </Text>
-                      <Text as="span" size="1" color="gray">
-                        {item.description}
-                      </Text>
-                    </span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </Box>
-    </Theme>
+                    <Text as="span" size="1" color="gray">
+                      {item.description}
+                    </Text>
+                  </span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </ScrollArea>
+    </Box>
   );
 });

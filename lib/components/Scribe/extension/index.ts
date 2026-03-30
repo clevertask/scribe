@@ -64,7 +64,7 @@ export const initExtensions = (props: ScribeProps) => [
   SlashCommand.configure({
     slashSuggestion: {
       items: getSuggestionItems,
-      render: renderItems(props),
+      render: renderItems,
     },
   }),
   Highlight,
@@ -80,7 +80,7 @@ export const initExtensions = (props: ScribeProps) => [
   Emoji.configure({
     emojis: gitHubEmojis,
     enableEmoticons: true,
-    suggestion: suggestion(props),
+    suggestion: suggestion(),
   }),
   Mathematics,
   Typography,

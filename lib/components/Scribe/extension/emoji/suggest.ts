@@ -1,9 +1,10 @@
-import tippy from "tippy.js";
+import tippy, { Instance, Props } from "tippy.js";
 import { ReactRenderer } from "@tiptap/react";
 
+import { getPopupMountTarget } from "../getPopupMountTarget";
 import { EmojiList, EmojiListRef } from "./EmojiList";
 
-export default ({ darkMode }) => ({
+export default () => ({
   items: ({ editor, query }) => {
     return editor.storage.emoji.emojis
       .filter(({ shortcodes, tags }) => {
@@ -19,7 +20,7 @@ export default ({ darkMode }) => ({
 
   render: () => {
     let component: ReactRenderer<EmojiListRef>;
-    let popup: ReturnType<typeof tippy> = [];
+    let popup: Instance<Props> | null = null;
 
     return {
       onStart: (props) => {
@@ -28,14 +29,17 @@ export default ({ darkMode }) => ({
         }
 
         component = new ReactRenderer(EmojiList, {
-          props: { ...props, darkMode },
+          props,
           editor: props.editor,
         });
 
-        popup = tippy("body", {
+        popup = tippy(props.editor.view.dom, {
           getReferenceClientRect: props.clientRect,
-          appendTo: () => document.body,
+          appendTo: getPopupMountTarget(props.editor),
           content: component.element,
+          popperOptions: {
+            strategy: "fixed",
+          },
           showOnCreate: true,
           interactive: true,
           trigger: "manual",
@@ -44,20 +48,20 @@ export default ({ darkMode }) => ({
       },
 
       onUpdate(props) {
-        if (!component || !popup[0] || !props.clientRect) {
+        if (!component || !popup || !props.clientRect) {
           return;
         }
 
-        component.updateProps({ ...props, darkMode });
+        component.updateProps(props);
 
-        popup[0].setProps({
+        popup.setProps({
           getReferenceClientRect: props.clientRect,
         });
       },
 
       onKeyDown(props) {
-        if (props.event.key === "Escape" && popup[0]) {
-          popup[0].hide();
+        if (props.event.key === "Escape" && popup) {
+          popup.hide();
 
           return true;
         }
@@ -66,7 +70,7 @@ export default ({ darkMode }) => ({
       },
 
       onExit() {
-        popup[0]?.destroy();
+        popup?.destroy();
         component?.destroy();
       },
     };

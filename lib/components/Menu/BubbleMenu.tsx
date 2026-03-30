@@ -1,15 +1,15 @@
-import { IconButton, Flex, Theme, Tooltip } from "@radix-ui/themes";
+import { Flex, IconButton } from "@radix-ui/themes";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu as CoreBubbleMenu } from "@tiptap/react/menus";
 import { Editor } from "@tiptap/react";
 import { FC, MouseEvent, useCallback } from "react";
+import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 
 export interface BubbleMenuProps {
   editor: Editor;
-  darkMode?: boolean;
 }
 
-const BubbleMenu: FC<BubbleMenuProps> = ({ editor, darkMode = false }) => {
+const BubbleMenu: FC<BubbleMenuProps> = ({ editor }) => {
   const editorState = useEditorState({
     editor,
     selector: ({ editor }) => {
@@ -179,27 +179,28 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, darkMode = false }) => {
   ];
 
   return (
-    <CoreBubbleMenu editor={editor}>
-      <Theme appearance={darkMode ? "dark" : "light"} panelBackground="solid">
-        <div className="scribe-bubble-menu">
-          <Flex align="center" gap="2">
-            {menuItems.map((item) => (
-              <Tooltip key={item.ariaLabel} content={item.ariaLabel}>
-                <IconButton
-                  type="button"
-                  size="1"
-                  radius="medium"
-                  color="gray"
-                  variant={item.isActive() ? "soft" : "ghost"}
-                  onMouseDown={(event) => handleBubbleAction(event, item.command)}
-                >
-                  {item.icon}
-                </IconButton>
-              </Tooltip>
-            ))}
-          </Flex>
-        </div>
-      </Theme>
+    <CoreBubbleMenu
+      editor={editor}
+      appendTo={getPopupMountTarget(editor)}
+      options={{ strategy: "fixed" }}
+    >
+      <div className="scribe-bubble-menu">
+        <Flex align="center" gap="2">
+          {menuItems.map((item) => (
+            <IconButton
+              key={item.ariaLabel}
+              type="button"
+              size="1"
+              radius="medium"
+              color="gray"
+              variant={item.isActive() ? "soft" : "ghost"}
+              onMouseDown={(event) => handleBubbleAction(event, item.command)}
+            >
+              {item.icon}
+            </IconButton>
+          ))}
+        </Flex>
+      </div>
     </CoreBubbleMenu>
   );
 };

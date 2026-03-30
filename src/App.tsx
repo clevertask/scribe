@@ -1,33 +1,8 @@
 import "@radix-ui/themes/styles.css";
 import "../lib/styles/main.css";
-import { useState, useEffect, useRef } from "react";
-import { createScribeEditor, Scribe, ScribeRef } from "../lib/main";
-import { streamedContent } from "./data";
-
-const Messages = function Messages() {
-  const [content, setContent] = useState("");
-  const [editor] = useState(() => createScribeEditor({}));
-  useEffect(() => {
-    let currentContent = "";
-
-    const intervalId = setInterval(() => {
-      const nextChunk = streamedContent.substring(
-        currentContent.length,
-        currentContent.length + 10,
-      );
-      if (nextChunk) {
-        currentContent += nextChunk;
-        setContent(currentContent);
-      } else {
-        clearInterval(intervalId);
-      }
-    }, 100);
-
-    return () => clearInterval(intervalId);
-  }, []);
-
-  return <Scribe content={content} showBarMenu={false} editable={false} externalEditor={editor} />;
-};
+import { Theme } from "@radix-ui/themes";
+import { useRef } from "react";
+import { Scribe, ScribeRef } from "../lib/main";
 
 const ChatBox = function ChatBox() {
   const editor = useRef<ScribeRef>(null);
@@ -45,10 +20,11 @@ const ChatBox = function ChatBox() {
 
 function App() {
   return (
-    <div style={{ maxWidth: "720px", margin: "auto" }}>
-      <Messages />
-      <ChatBox />
-    </div>
+    <Theme appearance="light" panelBackground="solid">
+      <div style={{ margin: "auto", maxWidth: "720px" }}>
+        <ChatBox />
+      </div>
+    </Theme>
   );
 }
 
