@@ -14,6 +14,7 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
       if (!editor) return null;
       return {
         isInsideList: editor.isActive("bulletList") || editor.isActive("orderedList"),
+        isEditable: editor.isEditable,
       };
     },
   });
@@ -25,7 +26,7 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
     [],
   );
 
-  if (!editorState?.isInsideList) {
+  if (!editorState?.isInsideList || !editorState.isEditable) {
     return null;
   }
 
