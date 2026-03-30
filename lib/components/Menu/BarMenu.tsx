@@ -1,98 +1,181 @@
+import {
+  Box,
+  Button,
+  Flex,
+  IconButton,
+  Popover,
+  Separator,
+  Text,
+  TextField,
+} from "@radix-ui/themes";
 import clsx from "clsx";
-import { Editor } from "@tiptap/react";
-import { FC, Fragment, useCallback } from "react";
-import BoldIcon from "../../icons/bold.svg";
-import ItalicIcon from "../../icons/italic.svg";
-import StrikeIcon from "../../icons/text-strike.svg";
-import InlineCodeIcon from "../../icons/inline-code.svg";
-import HighlightIcon from "../../icons/highlight.svg";
-import UnorderedListIcon from "../../icons/unordered-list.svg";
-import OrderedListIcon from "../../icons/ordered-list.svg";
-import LinkIcon from "../../icons/link.svg";
-import ImageIcon from "../../icons/image.svg";
-import CodeBlockIcon from "../../icons/code-block.svg";
-import BlockQuoteIcon from "../../icons/block-quote.svg";
-import HorizontalLineIcon from "../../icons/horizontal-line.svg";
+import { Editor, useEditorState } from "@tiptap/react";
+import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
+import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
+import {
+  BlockQuoteIcon,
+  BoldIcon,
+  CodeBlockIcon,
+  HighlightIcon,
+  HorizontalLineIcon,
+  ImageIcon,
+  InlineCodeIcon,
+  ItalicIcon,
+  LinkIcon,
+  OrderedListIcon,
+  StrikeIcon,
+  type ToolbarIconComponent,
+  UnorderedListIcon,
+} from "../../icons/ToolbarIcons";
 
 export interface BarMenuProps {
   editor: Editor;
-  darkMode: boolean;
 }
 
-const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
-  const handleSetLink = useCallback(() => {
-    const previousUrl = editor.getAttributes("link").href;
-    // const selectedText = editor.commands.getSelectedText() as unknown as
-    //   | string
-    //   | null;
-    const url = window.prompt("Link", previousUrl);
-    // const text = window.prompt('Text', selectedText || '');
+interface FormatItem {
+  command?: () => void;
+  disabled?: boolean;
+  icon: ToolbarIconComponent;
+  isActive: () => boolean;
+  name: string;
+  popover?: "image" | "link";
+}
 
-    // cancelled
-    if (url === null) {
+const BarMenu: FC<BarMenuProps> = ({ editor }) => {
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const [imageValue, setImageValue] = useState("");
+  const popupContainer = getPopupMountTarget(editor);
+  const editorState = useEditorState({
+    editor,
+    selector: ({ editor }) => {
+      if (!editor) {
+        return null;
+      }
+
+      return {
+        isBold: editor.isActive("bold"),
+        isItalic: editor.isActive("italic"),
+        isStrike: editor.isActive("strike"),
+        isCode: editor.isActive("code"),
+        isHighlight: editor.isActive("highlight"),
+        isBulletList: editor.isActive("bulletList"),
+        isOrderedList: editor.isActive("orderedList"),
+        isLink: editor.isActive("link"),
+        isImage: editor.isActive("image"),
+        isCodeBlock: editor.isActive("codeBlock"),
+        isBlockquote: editor.isActive("blockquote"),
+      };
+    },
+  });
+
+  const handleLinkPopoverOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        const previousUrl = (editor.getAttributes("link").href as string | undefined) ?? "";
+        setLinkValue(previousUrl);
+        setImagePopoverOpen(false);
+      }
+
+      setLinkPopoverOpen(open);
+    },
+    [editor],
+  );
+
+  const handleImagePopoverOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        const previousUrl = (editor.getAttributes("image").src as string | undefined) ?? "";
+        setImageValue(previousUrl);
+        setLinkPopoverOpen(false);
+      }
+
+      setImagePopoverOpen(open);
+    },
+    [editor],
+  );
+
+  const handleApplyLink = useCallback(() => {
+    const url = linkValue.trim();
+
+    if (url.length === 0) {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      setLinkPopoverOpen(false);
       return;
     }
 
-    // empty
-    if (url === "") {
-      editor
-        .chain()
-        .focus()
-        .extendMarkRange("link")
-        .unsetLink()
-        // .command(({ tr }) => {
-        //   tr.insertText(text || url);
-        //   return true;
-        // })
-        .run();
-
-      return;
-    }
-
-    // update link
     editor
       .chain()
       .focus()
       .extendMarkRange("link")
       .setLink({ href: url })
-      // .command(({ tr }) => {
-      //   tr.insertText(text || url);
-      //   return true;
-      // })
       .selectTextblockEnd()
       .run();
+    setLinkPopoverOpen(false);
+  }, [editor, linkValue]);
+
+  const handleRemoveLink = useCallback(() => {
+    editor.chain().focus().extendMarkRange("link").unsetLink().run();
+    setLinkPopoverOpen(false);
   }, [editor]);
 
-  const handleSetImage = useCallback(() => {
-    const existingImage = editor.getAttributes("image").src;
+  const handleApplyImage = useCallback(() => {
+    const url = imageValue.trim();
 
-    const url = window.prompt(existingImage ? "Update Image URL" : "Image URL", existingImage);
     if (!url) {
       return;
     }
 
     editor.chain().focus().setImage({ src: url }).run();
-  }, [editor]);
+    setImagePopoverOpen(false);
+  }, [editor, imageValue]);
 
-  const Formats = [
+  const handleToolbarMouseDown = useCallback(
+    (event: MouseEvent<HTMLButtonElement>, command: () => void) => {
+      event.preventDefault();
+      command();
+    },
+    [],
+  );
+
+  const handlePopoverTriggerMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  }, []);
+
+  const handleLinkValueChange = useCallback(
+    ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
+      setLinkValue(value);
+    },
+    [],
+  );
+
+  const handleImageValueChange = useCallback(
+    ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
+      setImageValue(value);
+    },
+    [],
+  );
+
+  const Formats: FormatItem[][] = [
     [
       {
         name: "bold",
         icon: BoldIcon,
         command: () => editor.chain().focus().toggleBold().run(),
-        isActive: () => editor.isActive("bold"),
+        isActive: () => Boolean(editorState?.isBold),
       },
       {
         name: "italic",
         icon: ItalicIcon,
         command: () => editor.chain().focus().toggleItalic().run(),
-        isActive: () => editor.isActive("italic"),
+        isActive: () => Boolean(editorState?.isItalic),
       },
       {
         name: "strike",
         icon: StrikeIcon,
         command: () => editor.chain().focus().toggleStrike().run(),
-        isActive: () => editor.isActive("strike"),
+        isActive: () => Boolean(editorState?.isStrike),
       },
     ],
     [
@@ -100,13 +183,13 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
         name: "inline-code",
         icon: InlineCodeIcon,
         command: () => editor.chain().focus().toggleCode().run(),
-        isActive: () => editor.isActive("code"),
+        isActive: () => Boolean(editorState?.isCode),
       },
       {
         name: "highlight",
         icon: HighlightIcon,
         command: () => editor.chain().focus().toggleHighlight().run(),
-        isActive: () => editor.isActive("highlight"),
+        isActive: () => Boolean(editorState?.isHighlight),
       },
     ],
     [
@@ -114,40 +197,40 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
         name: "unordered-list",
         icon: UnorderedListIcon,
         command: () => editor.chain().focus().toggleBulletList().run(),
-        isActive: () => editor.isActive("bulletList"),
+        isActive: () => Boolean(editorState?.isBulletList),
       },
       {
         name: "ordered-list",
         icon: OrderedListIcon,
         command: () => editor.chain().focus().toggleOrderedList().run(),
-        isActive: () => editor.isActive("orderedList"),
+        isActive: () => Boolean(editorState?.isOrderedList),
       },
     ],
     [
       {
         name: "link",
         icon: LinkIcon,
-        command: () => handleSetLink(),
-        isActive: () => editor.isActive("link"),
+        isActive: () => Boolean(editorState?.isLink),
+        popover: "link",
       },
       {
         name: "image",
         icon: ImageIcon,
-        command: () => handleSetImage(),
-        isActive: () => editor.isActive("image"),
+        isActive: () => Boolean(editorState?.isImage),
         disabled: false,
+        popover: "image",
       },
       {
         name: "code-block",
         icon: CodeBlockIcon,
         command: () => editor.chain().focus().toggleCodeBlock().run(),
-        isActive: () => editor.isActive("codeBlock"),
+        isActive: () => Boolean(editorState?.isCodeBlock),
       },
       {
         name: "block-quote",
         icon: BlockQuoteIcon,
         command: () => editor.chain().focus().toggleBlockquote().run(),
-        isActive: () => editor.isActive("blockquote"),
+        isActive: () => Boolean(editorState?.isBlockquote),
       },
       {
         name: "horizontal-line",
@@ -159,47 +242,196 @@ const BarMenu: FC<BarMenuProps> = ({ editor, darkMode }) => {
   ];
 
   return (
-    <div
-      className={clsx(
-        "flex flex-row gap-4 border-b p-[8px]",
-        darkMode ? "border-zinc-700" : "border-zinc-200",
-      )}
-    >
-      {Formats.map((format, index) => {
-        return (
-          <Fragment key={`format-group-${index}`}>
-            <div className="flex gap-2">
-              {format.map((item) => {
-                return (
-                  <button
-                    title={item.name}
-                    disabled={item?.disabled}
-                    key={item.name}
-                    className={clsx(
-                      "rounded-md",
-                      item.isActive() ? (darkMode ? "bg-zinc-700" : "bg-zinc-200") : "",
-                      item?.disabled ? "cursor-not-allowed bg-opacity-50" : "",
-                    )}
-                    onClick={item.command}
-                  >
-                    <img
-                      src={item.icon}
-                      alt={item.name}
-                      style={{ filter: `invert(${darkMode ? 1 : 0})` }}
-                    />
-                  </button>
-                );
-              })}
-            </div>
-            {index !== Formats.length - 1 && (
-              <div
-                className={clsx("border-l", darkMode ? "border-zinc-700" : "border-zinc-200")}
-              ></div>
-            )}
-          </Fragment>
-        );
-      })}
-    </div>
+    <Box className="scribe-toolbar">
+      <Flex align="center" gap="3" wrap="wrap">
+        {Formats.map((format, index) => {
+          return (
+            <Fragment key={`format-group-${index}`}>
+              <Flex align="center" gap="2" wrap="wrap">
+                {format.map((item, idx) => {
+                  if (item.popover === "link") {
+                    return (
+                      <Popover.Root
+                        key={`${item.name}-${idx}`}
+                        open={linkPopoverOpen}
+                        onOpenChange={handleLinkPopoverOpenChange}
+                      >
+                        <Popover.Trigger>
+                          <IconButton
+                            type="button"
+                            radius="medium"
+                            color="gray"
+                            variant={item.isActive() ? "soft" : "ghost"}
+                            disabled={item.disabled || !editor.isEditable}
+                            title={item.name}
+                            onMouseDown={handlePopoverTriggerMouseDown}
+                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                          >
+                            <item.icon className="scribe-toolbar-icon" />
+                          </IconButton>
+                        </Popover.Trigger>
+                        <Popover.Content
+                          container={popupContainer}
+                          size="2"
+                          side="bottom"
+                          align="start"
+                          style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
+                        >
+                          <Flex direction="column" gap="4">
+                            <Box>
+                              <Text as="p" size="3" weight="medium">
+                                Link
+                              </Text>
+                              <Text as="p" size="2" color="gray">
+                                Add or update a link for the current selection.
+                              </Text>
+                            </Box>
+                            <label>
+                              <Flex direction="column" gap="2">
+                                <Text as="span" size="2" weight="medium">
+                                  URL
+                                </Text>
+                                <TextField.Root
+                                  autoFocus
+                                  placeholder="https://example.com"
+                                  value={linkValue}
+                                  onChange={handleLinkValueChange}
+                                />
+                              </Flex>
+                            </label>
+                            <Flex justify="between" gap="3" wrap="wrap">
+                              <Button
+                                type="button"
+                                color="red"
+                                variant="soft"
+                                disabled={
+                                  !(
+                                    (
+                                      (editor.getAttributes("link").href as string | undefined) ??
+                                      ""
+                                    ).trim() || linkValue.trim()
+                                  )
+                                }
+                                onClick={handleRemoveLink}
+                              >
+                                Remove link
+                              </Button>
+                              <Flex gap="2" justify="end" style={{ marginLeft: "auto" }}>
+                                <Popover.Close>
+                                  <Button type="button" variant="soft" color="gray">
+                                    Cancel
+                                  </Button>
+                                </Popover.Close>
+                                <Button
+                                  type="button"
+                                  disabled={linkValue.trim().length === 0}
+                                  onClick={handleApplyLink}
+                                >
+                                  Save
+                                </Button>
+                              </Flex>
+                            </Flex>
+                          </Flex>
+                        </Popover.Content>
+                      </Popover.Root>
+                    );
+                  }
+
+                  if (item.popover === "image") {
+                    return (
+                      <Popover.Root
+                        key={`${item.name}-${idx}`}
+                        open={imagePopoverOpen}
+                        onOpenChange={handleImagePopoverOpenChange}
+                      >
+                        <Popover.Trigger>
+                          <IconButton
+                            type="button"
+                            radius="medium"
+                            color="gray"
+                            variant={item.isActive() ? "soft" : "ghost"}
+                            disabled={item.disabled || !editor.isEditable}
+                            title={item.name}
+                            onMouseDown={handlePopoverTriggerMouseDown}
+                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                          >
+                            <item.icon className="scribe-toolbar-icon" />
+                          </IconButton>
+                        </Popover.Trigger>
+                        <Popover.Content
+                          container={popupContainer}
+                          size="2"
+                          side="bottom"
+                          align="start"
+                          style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
+                        >
+                          <Flex direction="column" gap="4">
+                            <Box>
+                              <Text as="p" size="3" weight="medium">
+                                Image
+                              </Text>
+                              <Text as="p" size="2" color="gray">
+                                Insert an image from a URL.
+                              </Text>
+                            </Box>
+                            <label>
+                              <Flex direction="column" gap="2">
+                                <Text as="span" size="2" weight="medium">
+                                  Image URL
+                                </Text>
+                                <TextField.Root
+                                  autoFocus
+                                  placeholder="https://example.com/image.png"
+                                  value={imageValue}
+                                  onChange={handleImageValueChange}
+                                />
+                              </Flex>
+                            </label>
+                            <Flex justify="end" gap="2">
+                              <Popover.Close>
+                                <Button type="button" variant="soft" color="gray">
+                                  Cancel
+                                </Button>
+                              </Popover.Close>
+                              <Button
+                                type="button"
+                                disabled={imageValue.trim().length === 0}
+                                onClick={handleApplyImage}
+                              >
+                                Save
+                              </Button>
+                            </Flex>
+                          </Flex>
+                        </Popover.Content>
+                      </Popover.Root>
+                    );
+                  }
+
+                  return (
+                    <IconButton
+                      key={`${item.name}-${idx}`}
+                      type="button"
+                      radius="medium"
+                      color="gray"
+                      variant={item.isActive() ? "soft" : "ghost"}
+                      disabled={item.disabled || !editor.isEditable}
+                      title={item.name}
+                      onMouseDown={(event) => handleToolbarMouseDown(event, item.command!)}
+                      className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                    >
+                      <item.icon className="scribe-toolbar-icon" />
+                    </IconButton>
+                  );
+                })}
+              </Flex>
+              {index !== Formats.length - 1 ? (
+                <Separator orientation="vertical" decorative style={{ height: 20 }} />
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </Flex>
+    </Box>
   );
 };
 

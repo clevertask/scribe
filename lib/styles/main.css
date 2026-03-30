@@ -1,56 +1,302 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 .scribe {
-  @apply w-full h-full border-0 outline-none;
+  border: 0;
+  height: 100%;
+  outline: none;
+  width: 100%;
+}
+
+.scribe-root {
+  min-width: 0;
+}
+
+.scribe-frame {
+  min-width: 0;
+}
+
+.scribe-frame--editable {
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-6);
+  border-radius: 12px;
+  overflow: hidden;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.scribe-frame--editable:focus-within {
+  border-color: var(--accent-8);
+  box-shadow: 0 0 0 1px var(--accent-8);
+}
+
+.scribe-toolbar {
+  background: var(--color-panel-solid);
+  border-bottom: 1px solid var(--gray-6);
+  padding: 10px 12px;
+}
+
+.scribe-toolbar-button--disabled {
+  cursor: not-allowed;
+}
+
+.scribe-toolbar-icon {
+  display: block;
+}
+
+.scribe-content {
+  color: var(--gray-12);
+  min-width: 0;
+}
+
+.scribe-content--editable {
+  padding: 16px;
+}
+
+.scribe-content .tiptap {
+  color: inherit;
+  line-height: 1.65;
+  outline: none;
+  word-break: break-word;
+}
+
+.scribe-content .tiptap > *:first-child {
+  margin-top: 0;
+}
+
+.scribe-content .tiptap > *:last-child {
+  margin-bottom: 0;
+}
+
+.scribe-content .tiptap p,
+.scribe-content .tiptap ul,
+.scribe-content .tiptap ol,
+.scribe-content .tiptap pre,
+.scribe-content .tiptap blockquote,
+.scribe-content .tiptap hr,
+.scribe-content .tiptap table {
+  margin: 0 0 1rem;
+}
+
+.scribe-content .tiptap h1,
+.scribe-content .tiptap h2,
+.scribe-content .tiptap h3 {
+  color: inherit;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 1.5rem 0 0.75rem;
+}
+
+.scribe-content .tiptap h1 {
+  font-size: 2rem;
+}
+
+.scribe-content .tiptap h2 {
+  font-size: 1.5rem;
+}
+
+.scribe-content .tiptap h3 {
+  font-size: 1.25rem;
+}
+
+.scribe-content .tiptap ul,
+.scribe-content .tiptap ol {
+  padding-left: 1.5rem;
+}
+
+.scribe-content .tiptap li + li {
+  margin-top: 0.35rem;
+}
+
+.scribe-content .tiptap a {
+  color: var(--accent-11);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.scribe-content .tiptap blockquote {
+  border-left: 3px solid var(--gray-6);
+  color: var(--gray-11);
+  padding-left: 1rem;
+}
+
+.scribe-content .tiptap code {
+  background: var(--gray-a3);
+  border-radius: 6px;
+  padding: 0.12em 0.35em;
+}
+
+.scribe-content .tiptap pre {
+  background: var(--gray-2);
+  border: 1px solid var(--gray-6);
+  border-radius: 10px;
+  color: inherit;
+  overflow-x: auto;
+  padding: 14px 16px;
+}
+
+.scribe-content .tiptap pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.scribe-content .tiptap hr {
+  border: 0;
+  border-top: 1px solid var(--gray-6);
+}
+
+.scribe-content .tiptap table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.scribe-content .tiptap th,
+.scribe-content .tiptap td {
+  border: 1px solid var(--gray-6);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.scribe-content .tiptap th {
+  background: var(--gray-3);
+  font-weight: 600;
+}
+
+.scribe-content .tiptap img {
+  display: block;
+  max-width: 100%;
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  @apply text-[#959595] float-left h-0 pointer-events-none;
   content: attr(data-placeholder);
+  color: var(--gray-9);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }
 
-.tiptap {
-  [data-type="emoji"] {
-    img {
-      height: 1em;
-      width: 1em;
-      width: 100%;
-    }
-  }
+.tiptap [data-type="emoji"] img {
+  height: 1em;
+  width: 1em;
 }
 
-.bubble-menu-wrapper {
-  @apply rounded-[6px] p-[10px] bg-white;
-  box-shadow: 0 0 5px 0 rgba(0, 0, 0, 0.2);
-}
-.menu-item-wrapper {
-  @apply flex gap-2;
-}
-.menu-item-wrapper > button {
-  @apply bg-transparent border-none cursor-pointer p-1 rounded-[4px] hover:bg-gray-200;
-}
-.menu-item-wrapper > button.active {
-  @apply p-1 rounded-[4px] bg-gray-200;
-}
-.menu-icon {
-  @apply w-4 h-4 fill-transparent stroke-current;
+.scribe-bubble-menu {
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-6);
+  border-radius: 12px;
+  box-shadow:
+    0 18px 38px -24px rgba(15, 23, 42, 0.35),
+    0 10px 20px -18px rgba(15, 23, 42, 0.35);
+  padding: 8px;
 }
 
-.slash-menu-wrapper {
-  @apply max-h-[300px] py-[12px] bg-white overflow-y-auto border border-solid border-gray-200 shadow-lg rounded-[6px];
+.scribe-inline-menu-icon {
+  display: block;
+  fill: transparent;
+  height: 16px;
+  stroke: currentColor;
+  width: 16px;
+}
+
+.scribe-popup {
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-6);
+  border-radius: 14px;
+  box-shadow:
+    0 20px 40px -26px rgba(15, 23, 42, 0.4),
+    0 12px 20px -18px rgba(15, 23, 42, 0.35);
+  overflow: hidden;
+}
+
+.scribe-popup-list {
+  padding: 6px;
+}
+
+.scribe-popup-group-label {
+  display: block;
+  padding: 8px 10px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.scribe-popup-item {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  color: var(--gray-12);
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.scribe-popup-item:hover,
+.scribe-popup-item[data-selected="true"] {
+  background: var(--gray-a3);
+}
+
+.scribe-popup-item--command {
+  align-items: flex-start;
+}
+
+.scribe-popup-item-icon {
+  align-items: center;
+  background: var(--gray-2);
+  border: 1px solid var(--gray-6);
+  border-radius: 10px;
+  color: var(--gray-11);
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.scribe-popup-item-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.scribe-popup-item-title {
+  display: block;
+  font-weight: 600;
+}
+
+.scribe-emoji-preview {
+  align-items: center;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-size: 1rem;
+  height: 18px;
+  justify-content: center;
+  width: 18px;
 }
 
 .slash-menu-icon {
-  @apply h-[20px] w-[20px] fill-black;
+  fill: currentColor;
+  height: 20px;
+  width: 20px;
 }
+
 .slash-menu-icon-with-strokes {
-  @apply stroke-black h-[20px] w-[20px];
+  fill: none;
+  height: 20px;
+  stroke: currentColor;
+  width: 20px;
 }
 
 .scribe .scribe-image-node {
-  @apply m-auto w-full h-auto;
+  height: auto;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .scribe-task-list li {
@@ -60,4 +306,8 @@
 .scribe-task-list li p {
   margin: 0;
   margin-left: 0.5rem;
+}
+
+.scribe-list-toolbar {
+  padding: 0 16px 16px;
 }

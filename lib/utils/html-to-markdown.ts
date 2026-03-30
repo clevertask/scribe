@@ -14,10 +14,9 @@ export const html2md = (html: string) => {
       return node.nodeName === "SPAN" && node.getAttribute("data-type") === "latex";
     },
     replacement: function (_content, node) {
-      //@ts-ignore
-      const content = node.getAttribute("data-content") || "";
-      //@ts-ignore
-      const isBlock = node.getAttribute("data-display-mode") === "true";
+      const latexNode = node as Element;
+      const content = latexNode.getAttribute("data-content") || "";
+      const isBlock = latexNode.getAttribute("data-display-mode") === "true";
 
       return isBlock ? `\n\n$$\n${content}\n$$\n\n` : `$${content}$`;
     },

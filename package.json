@@ -2,7 +2,7 @@
   "name": "@clevertask/scribe",
   "version": "0.0.15",
   "private": false,
-  "description": "A Tiptap-based rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
+  "description": "A Radix-based Tiptap rich text editor with a Notion-style block interface for viewing and creating content. Perfect for diverse needs like notes, documents, AI chat, Markdown parsing, and comments.",
   "keywords": [
     "block-based",
     "editor",
@@ -38,7 +38,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && npm run build:style && tsc -p tsconfig.types.json --noCheck",
-    "build:style": "postcss ./lib/styles/main.css -o ./dist/main.css",
+    "build:style": "mkdir -p ./dist && cp ./lib/styles/main.css ./dist/main.css",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "fmt": "oxfmt",
@@ -73,14 +73,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@tailwindcss/typography": "^0.5.19",
+    "@radix-ui/themes": "^3.3.0",
     "@types/lodash": "^4.17.24",
     "@types/node": "^24.12.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^5.2.0",
-    "autoprefixer": "^10.4.27",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -88,15 +87,13 @@
     "globals": "^17.4.0",
     "lodash": "^4.17.23",
     "oxfmt": "^0.37.0",
-    "postcss": "^8.5.8",
-    "postcss-cli": "^11.0.1",
-    "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.2",
     "vite": "^7.3.1",
     "vite-plugin-lib-inject-css": "^2.2.2"
   },
   "peerDependencies": {
+    "@radix-ui/themes": ">=3.3.0",
     "react": ">=18.3.1 <20.0.0",
     "react-dom": ">=18.3.1 <20.0.0"
   },

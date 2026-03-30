@@ -1,18 +1,17 @@
 import { ReactRenderer } from "@tiptap/react";
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
-import { isEmpty } from "lodash";
 import tippy, { Instance, Props } from "tippy.js";
+import { getPopupMountTarget } from "../getPopupMountTarget";
 import { SlashCommandList, SlashCommandRef } from "./SlashCommandList";
 
-const renderItems = (_props) => () => {
-  let component: ReactRenderer;
-  let popup: Instance<Props>[] = [];
+const renderItems = () => {
+  let component: ReactRenderer<SlashCommandRef>;
+  let popup: Instance<Props> | null = null;
   let suggestionProps: SuggestionProps;
-  let hasPopup = !isEmpty(popup);
 
   return {
     onStart: (props: SuggestionProps) => {
-      suggestionProps = { ...props, ..._props };
+      suggestionProps = props;
       component = new ReactRenderer(SlashCommandList, {
         props: suggestionProps,
         editor: props.editor,
@@ -22,33 +21,35 @@ const renderItems = (_props) => () => {
         return;
       }
 
-      popup = tippy("body", {
+      popup = tippy(props.editor.view.dom, {
         getReferenceClientRect: props.clientRect as Props["getReferenceClientRect"],
-        appendTo: () => document.body,
+        appendTo: getPopupMountTarget(props.editor),
         content: component.element,
+        popperOptions: {
+          strategy: "fixed",
+        },
         showOnCreate: true,
         interactive: true,
         trigger: "manual",
         placement: "bottom-start",
       });
-      hasPopup = !isEmpty(popup);
     },
     onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
-      component.updateProps(props);
+      component?.updateProps(suggestionProps);
 
       if (!props.clientRect) {
         return;
       }
-      if (hasPopup) {
-        popup[0].setProps({
+      if (popup && !popup.state.isDestroyed) {
+        popup.setProps({
           getReferenceClientRect: props.clientRect as Props["getReferenceClientRect"],
         });
       }
     },
     onKeyDown(props: SuggestionKeyDownProps) {
-      if (props.event.key === "Escape" && hasPopup && !popup[0].state.isDestroyed) {
-        popup[0].hide();
+      if (props.event.key === "Escape" && popup && !popup.state.isDestroyed) {
+        popup.hide();
 
         return true;
       }
@@ -63,12 +64,13 @@ const renderItems = (_props) => () => {
         }
       }
 
-      return (component?.ref as SlashCommandRef)?.onKeyDown(props) || false;
+      return (component?.ref as SlashCommandRef | undefined)?.onKeyDown(props) || false;
     },
     onExit() {
-      if (hasPopup && !popup[0].state.isDestroyed) {
-        popup[0].destroy();
+      if (popup && !popup.state.isDestroyed) {
+        popup.destroy();
       }
+      component?.destroy();
     },
   };
 };

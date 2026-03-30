@@ -18,7 +18,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useRef,
+  useState,
 } from "react";
 import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
 
@@ -51,7 +51,6 @@ export interface ScribeProps {
   mainContainerStyle?: React.CSSProperties;
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
-  darkMode?: boolean;
   mobile?: boolean;
 }
 
@@ -70,11 +69,9 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mainContainerClassName,
     onKeyDown,
     externalEditor,
-    darkMode,
     mobile,
   } = props;
 
-  const editorRef = useRef<Editor | null>(externalEditor || null);
   const onUpdate = useCallback(
     ({ editor }: EditorEvents["update"]) => {
       const htmlContent = editor.getHTML();
@@ -92,39 +89,45 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     },
     [editable, onContentChange],
   );
-
-  if (!editorRef.current) {
-    editorRef.current = new Editor({
-      ...editorProps,
-      editable,
-      extensions: [...initExtensions(props), ...(extensions ?? [])],
-      editorProps: {
-        attributes: {
-          class: "scribe",
+  const [editor] = useState(() => {
+    return (
+      externalEditor ??
+      new Editor({
+        ...editorProps,
+        editable,
+        extensions: [...initExtensions(props), ...(extensions ?? [])],
+        editorProps: {
+          attributes: {
+            class: "scribe",
+          },
+          ...editorProps?.editorProps,
         },
-        ...editorProps?.editorProps,
-      },
-    });
-  }
-
-  const editor = editorRef.current!;
+      })
+    );
+  });
 
   const resetContent = useCallback(() => {
-    editor?.commands.setContent("");
-  }, []);
+    editor.commands.setContent("");
+  }, [editor]);
 
-  const getContent = useCallback((contentType: "html" | "json" | "markdown") => {
-    const options = {
-      html: () => editor?.getHTML(),
-      json: () => editor?.getJSON(),
-      markdown: () => html2md(editor?.getHTML() || ""),
-    };
-    return editor?.isEmpty ? "" : options[contentType]?.();
-  }, []);
+  const getContent = useCallback(
+    (contentType: "html" | "json" | "markdown") => {
+      const options = {
+        html: () => editor.getHTML(),
+        json: () => editor.getJSON(),
+        markdown: () => html2md(editor.getHTML()),
+      };
+      return editor.isEmpty ? "" : options[contentType]?.();
+    },
+    [editor],
+  );
 
-  const setContent = useCallback((content: Content) => {
-    editor?.commands.setContent(content);
-  }, []);
+  const setContent = useCallback(
+    (content: Content) => {
+      editor.commands.setContent(content);
+    },
+    [editor],
+  );
 
   useImperativeHandle(ref, () => {
     return {
@@ -133,15 +136,15 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       getContent,
       editor,
     };
-  }, [resetContent]);
+  }, [editor, getContent, resetContent, setContent]);
 
   useEffect(() => {
-    editor?.commands.setContent(content || "");
-  }, [content]);
+    editor.commands.setContent(content || "");
+  }, [content, editor]);
 
   useEffect(() => {
-    editor?.setEditable(Boolean(editable));
-  }, [editable]);
+    editor.setEditable(Boolean(editable));
+  }, [editable, editor]);
 
   useEffect(() => {
     editor.off("update");
@@ -149,28 +152,26 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     return () => {
       editor.off("update", onUpdate);
     };
-  }, [onUpdate]);
+  }, [editor, onUpdate]);
 
   useEffect(() => {
     if (autoFocus) {
-      editor?.commands.focus("end");
+      editor.commands.focus("end");
     }
-  }, [autoFocus]);
+  }, [autoFocus, editor]);
 
   return (
-    <div className={clsx("scribe-wrapper", mainContainerClassName)} style={mainContainerStyle}>
-      <div
-        className={clsx(
-          editable && "rounded-lg border",
-          darkMode ? "border-zinc-700" : "border-zinc-200",
-        )}
-      >
-        {editor && showBarMenu && <BarMenu editor={editor} darkMode={!!darkMode} />}
+    <div
+      className={clsx("scribe-wrapper", "scribe-root", mainContainerClassName)}
+      data-scribe-root
+      style={mainContainerStyle}
+    >
+      <div className={clsx("scribe-frame", editable && "scribe-frame--editable")}>
+        {editor && showBarMenu ? <BarMenu editor={editor} /> : null}
         <div
           className={clsx(
-            "prose max-w-none",
-            editable && "w-full p-[16px]",
-            darkMode && "prose-invert",
+            "scribe-content",
+            editable && "scribe-content--editable",
             editorContentClassName,
           )}
           style={editorContentStyle}
@@ -178,8 +179,9 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
           <EditorContent editor={editor} onKeyDown={onKeyDown} />
         </div>
 
-        {mobile && <ListOptionBar editor={editor} />}
+        {mobile ? <ListOptionBar editor={editor} /> : null}
       </div>
+      <div className="scribe-popup-root" data-scribe-popup-root />
     </div>
   );
 });

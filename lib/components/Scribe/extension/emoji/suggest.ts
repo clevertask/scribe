@@ -1,9 +1,10 @@
-import tippy from "tippy.js";
+import tippy, { Instance, Props } from "tippy.js";
 import { ReactRenderer } from "@tiptap/react";
 
-import { EmojiList } from "./EmojiList";
+import { getPopupMountTarget } from "../getPopupMountTarget";
+import { EmojiList, EmojiListRef } from "./EmojiList";
 
-export default ({ darkMode }) => ({
+export default () => ({
   items: ({ editor, query }) => {
     return editor.storage.emoji.emojis
       .filter(({ shortcodes, tags }) => {
@@ -18,20 +19,27 @@ export default ({ darkMode }) => ({
   allowSpaces: false,
 
   render: () => {
-    let component;
-    let popup;
+    let component: ReactRenderer<EmojiListRef>;
+    let popup: Instance<Props> | null = null;
 
     return {
       onStart: (props) => {
+        if (!props.clientRect) {
+          return;
+        }
+
         component = new ReactRenderer(EmojiList, {
-          props: { ...props, darkMode },
+          props,
           editor: props.editor,
         });
 
-        popup = tippy("body", {
+        popup = tippy(props.editor.view.dom, {
           getReferenceClientRect: props.clientRect,
-          appendTo: () => document.body,
+          appendTo: getPopupMountTarget(props.editor),
           content: component.element,
+          popperOptions: {
+            strategy: "fixed",
+          },
           showOnCreate: true,
           interactive: true,
           trigger: "manual",
@@ -40,27 +48,30 @@ export default ({ darkMode }) => ({
       },
 
       onUpdate(props) {
+        if (!component || !popup || !props.clientRect) {
+          return;
+        }
+
         component.updateProps(props);
 
-        popup[0].setProps({
+        popup.setProps({
           getReferenceClientRect: props.clientRect,
         });
       },
 
       onKeyDown(props) {
-        if (props.event.key === "Escape") {
-          popup[0].hide();
-          component.destroy();
+        if (props.event.key === "Escape" && popup) {
+          popup.hide();
 
           return true;
         }
 
-        return component.ref?.onKeyDown(props);
+        return component?.ref?.onKeyDown(props) ?? false;
       },
 
       onExit() {
-        popup[0].destroy();
-        component.destroy();
+        popup?.destroy();
+        component?.destroy();
       },
     };
   },

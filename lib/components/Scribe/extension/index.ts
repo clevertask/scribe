@@ -8,13 +8,10 @@ import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
-import TableRow from "@tiptap/extension-table-row";
 import Highlight from "@tiptap/extension-highlight";
 import SelectedText from "./extension-selectedText";
-import TableCell from "@tiptap/extension-table-cell";
 import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
-import TableHeader from "@tiptap/extension-table-header";
 import { getSuggestionItems } from "./slashCommand/items";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import Typography from "@tiptap/extension-typography";
@@ -37,11 +34,8 @@ export const initExtensions = (props: ScribeProps) => [
     nested: true,
   }),
   TableKit.configure({
-    table: {resizable: true}
+    table: { resizable: true },
   }),
-  TableRow,
-  TableHeader,
-  TableCell,
   Placeholder.configure({
     showOnlyWhenEditable: true,
     includeChildren: true,
@@ -64,7 +58,7 @@ export const initExtensions = (props: ScribeProps) => [
   SlashCommand.configure({
     slashSuggestion: {
       items: getSuggestionItems,
-      render: renderItems(props),
+      render: renderItems,
     },
   }),
   Highlight,
@@ -80,7 +74,7 @@ export const initExtensions = (props: ScribeProps) => [
   Emoji.configure({
     emojis: gitHubEmojis,
     enableEmoticons: true,
-    suggestion: suggestion(props),
+    suggestion: suggestion(),
   }),
   Mathematics,
   Typography,
