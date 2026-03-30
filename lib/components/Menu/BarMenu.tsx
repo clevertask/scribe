@@ -10,15 +10,7 @@ import {
 } from "@radix-ui/themes";
 import clsx from "clsx";
 import { Editor, useEditorState } from "@tiptap/react";
-import {
-  ChangeEvent,
-  ComponentPropsWithoutRef,
-  FC,
-  Fragment,
-  MouseEvent,
-  useCallback,
-  useState,
-} from "react";
+import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
 import {
   BlockQuoteIcon,
   BoldIcon,
@@ -31,6 +23,7 @@ import {
   LinkIcon,
   OrderedListIcon,
   StrikeIcon,
+  type ToolbarIconComponent,
   UnorderedListIcon,
 } from "../../icons/ToolbarIcons";
 
@@ -41,7 +34,7 @@ export interface BarMenuProps {
 interface FormatItem {
   command: () => void;
   disabled?: boolean;
-  icon: FC<ComponentPropsWithoutRef<"svg">>;
+  icon: ToolbarIconComponent;
   isActive: () => boolean;
   name: string;
 }
@@ -235,9 +228,10 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
             return (
               <Fragment key={`format-group-${index}`}>
                 <Flex align="center" gap="2" wrap="wrap">
-                  {format.map((item) => {
+                  {format.map((item,idx) => {
                     return (
                       <IconButton
+                        key={item.name + idx}
                         type="button"
                         radius="medium"
                         color="gray"
