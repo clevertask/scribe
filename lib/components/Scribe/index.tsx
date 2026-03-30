@@ -163,6 +163,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   return (
     <div
       className={clsx("scribe-wrapper", "scribe-root", mainContainerClassName)}
+      data-scribe-root
       style={mainContainerStyle}
     >
       <div className={clsx("scribe-frame", editable && "scribe-frame--editable")}>
@@ -180,6 +181,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
 
         {mobile ? <ListOptionBar editor={editor} /> : null}
       </div>
+      <div className="scribe-popup-root" data-scribe-popup-root />
     </div>
   );
 });

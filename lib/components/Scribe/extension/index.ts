@@ -8,13 +8,10 @@ import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
-import TableRow from "@tiptap/extension-table-row";
 import Highlight from "@tiptap/extension-highlight";
 import SelectedText from "./extension-selectedText";
-import TableCell from "@tiptap/extension-table-cell";
 import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
-import TableHeader from "@tiptap/extension-table-header";
 import { getSuggestionItems } from "./slashCommand/items";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import Typography from "@tiptap/extension-typography";
@@ -39,9 +36,6 @@ export const initExtensions = (props: ScribeProps) => [
   TableKit.configure({
     table: { resizable: true },
   }),
-  TableRow,
-  TableHeader,
-  TableCell,
   Placeholder.configure({
     showOnlyWhenEditable: true,
     includeChildren: true,

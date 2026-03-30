@@ -15,7 +15,7 @@ export default defineConfig({
     },
     copyPublicDir: false,
     rollupOptions: {
-      external: ["react", "react/jsx-runtime", "react-dom"],
+      external: ["@radix-ui/themes", "react", "react/jsx-runtime", "react-dom"],
       input: Object.fromEntries(
         glob.sync("lib/**/*.{ts,tsx}").map((file) => [
           // The name of the entry point

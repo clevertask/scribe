@@ -1,9 +1,9 @@
 import {
   Box,
   Button,
-  Dialog,
   Flex,
   IconButton,
+  Popover,
   Separator,
   Text,
   TextField,
@@ -11,6 +11,7 @@ import {
 import clsx from "clsx";
 import { Editor, useEditorState } from "@tiptap/react";
 import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
+import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import {
   BlockQuoteIcon,
   BoldIcon,
@@ -32,18 +33,20 @@ export interface BarMenuProps {
 }
 
 interface FormatItem {
-  command: () => void;
+  command?: () => void;
   disabled?: boolean;
   icon: ToolbarIconComponent;
   isActive: () => boolean;
   name: string;
+  popover?: "image" | "link";
 }
 
 const BarMenu: FC<BarMenuProps> = ({ editor }) => {
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [linkPopoverOpen, setLinkPopoverOpen] = useState(false);
+  const [imagePopoverOpen, setImagePopoverOpen] = useState(false);
   const [linkValue, setLinkValue] = useState("");
   const [imageValue, setImageValue] = useState("");
+  const popupContainer = getPopupMountTarget(editor);
   const editorState = useEditorState({
     editor,
     selector: ({ editor }) => {
@@ -67,24 +70,38 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     },
   });
 
-  const handleOpenLinkDialog = useCallback(() => {
-    const previousUrl = (editor.getAttributes("link").href as string | undefined) ?? "";
-    setLinkValue(previousUrl);
-    setLinkDialogOpen(true);
-  }, [editor]);
+  const handleLinkPopoverOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        const previousUrl = (editor.getAttributes("link").href as string | undefined) ?? "";
+        setLinkValue(previousUrl);
+        setImagePopoverOpen(false);
+      }
 
-  const handleOpenImageDialog = useCallback(() => {
-    const previousUrl = (editor.getAttributes("image").src as string | undefined) ?? "";
-    setImageValue(previousUrl);
-    setImageDialogOpen(true);
-  }, [editor]);
+      setLinkPopoverOpen(open);
+    },
+    [editor],
+  );
+
+  const handleImagePopoverOpenChange = useCallback(
+    (open: boolean) => {
+      if (open) {
+        const previousUrl = (editor.getAttributes("image").src as string | undefined) ?? "";
+        setImageValue(previousUrl);
+        setLinkPopoverOpen(false);
+      }
+
+      setImagePopoverOpen(open);
+    },
+    [editor],
+  );
 
   const handleApplyLink = useCallback(() => {
     const url = linkValue.trim();
 
     if (url.length === 0) {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      setLinkDialogOpen(false);
+      setLinkPopoverOpen(false);
       return;
     }
 
@@ -95,12 +112,12 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
       .setLink({ href: url })
       .selectTextblockEnd()
       .run();
-    setLinkDialogOpen(false);
+    setLinkPopoverOpen(false);
   }, [editor, linkValue]);
 
   const handleRemoveLink = useCallback(() => {
     editor.chain().focus().extendMarkRange("link").unsetLink().run();
-    setLinkDialogOpen(false);
+    setLinkPopoverOpen(false);
   }, [editor]);
 
   const handleApplyImage = useCallback(() => {
@@ -111,7 +128,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     }
 
     editor.chain().focus().setImage({ src: url }).run();
-    setImageDialogOpen(false);
+    setImagePopoverOpen(false);
   }, [editor, imageValue]);
 
   const handleToolbarMouseDown = useCallback(
@@ -121,6 +138,10 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     },
     [],
   );
+
+  const handlePopoverTriggerMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  }, []);
 
   const handleLinkValueChange = useCallback(
     ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
@@ -189,15 +210,15 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
       {
         name: "link",
         icon: LinkIcon,
-        command: handleOpenLinkDialog,
         isActive: () => Boolean(editorState?.isLink),
+        popover: "link",
       },
       {
         name: "image",
         icon: ImageIcon,
-        command: handleOpenImageDialog,
         isActive: () => Boolean(editorState?.isImage),
         disabled: false,
+        popover: "image",
       },
       {
         name: "code-block",
@@ -221,134 +242,196 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   ];
 
   return (
-    <>
-      <Box className="scribe-toolbar">
-        <Flex align="center" gap="3" wrap="wrap">
-          {Formats.map((format, index) => {
-            return (
-              <Fragment key={`format-group-${index}`}>
-                <Flex align="center" gap="2" wrap="wrap">
-                  {format.map((item,idx) => {
+    <Box className="scribe-toolbar">
+      <Flex align="center" gap="3" wrap="wrap">
+        {Formats.map((format, index) => {
+          return (
+            <Fragment key={`format-group-${index}`}>
+              <Flex align="center" gap="2" wrap="wrap">
+                {format.map((item, idx) => {
+                  if (item.popover === "link") {
                     return (
-                      <IconButton
-                        key={item.name + idx}
-                        type="button"
-                        radius="medium"
-                        color="gray"
-                        variant={item.isActive() ? "soft" : "ghost"}
-                        disabled={item.disabled || !editor.isEditable}
-                        title={item.name}
-                        onMouseDown={(event) => handleToolbarMouseDown(event, item.command)}
-                        className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                      <Popover.Root
+                        key={`${item.name}-${idx}`}
+                        open={linkPopoverOpen}
+                        onOpenChange={handleLinkPopoverOpenChange}
                       >
-                        <item.icon className="scribe-toolbar-icon" />
-                      </IconButton>
+                        <Popover.Trigger>
+                          <IconButton
+                            type="button"
+                            radius="medium"
+                            color="gray"
+                            variant={item.isActive() ? "soft" : "ghost"}
+                            disabled={item.disabled || !editor.isEditable}
+                            title={item.name}
+                            onMouseDown={handlePopoverTriggerMouseDown}
+                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                          >
+                            <item.icon className="scribe-toolbar-icon" />
+                          </IconButton>
+                        </Popover.Trigger>
+                        <Popover.Content
+                          container={popupContainer}
+                          size="2"
+                          side="bottom"
+                          align="start"
+                          style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
+                        >
+                          <Flex direction="column" gap="4">
+                            <Box>
+                              <Text as="p" size="3" weight="medium">
+                                Link
+                              </Text>
+                              <Text as="p" size="2" color="gray">
+                                Add or update a link for the current selection.
+                              </Text>
+                            </Box>
+                            <label>
+                              <Flex direction="column" gap="2">
+                                <Text as="span" size="2" weight="medium">
+                                  URL
+                                </Text>
+                                <TextField.Root
+                                  autoFocus
+                                  placeholder="https://example.com"
+                                  value={linkValue}
+                                  onChange={handleLinkValueChange}
+                                />
+                              </Flex>
+                            </label>
+                            <Flex justify="between" gap="3" wrap="wrap">
+                              <Button
+                                type="button"
+                                color="red"
+                                variant="soft"
+                                disabled={
+                                  !(
+                                    (
+                                      (editor.getAttributes("link").href as string | undefined) ??
+                                      ""
+                                    ).trim() || linkValue.trim()
+                                  )
+                                }
+                                onClick={handleRemoveLink}
+                              >
+                                Remove link
+                              </Button>
+                              <Flex gap="2" justify="end" style={{ marginLeft: "auto" }}>
+                                <Popover.Close>
+                                  <Button type="button" variant="soft" color="gray">
+                                    Cancel
+                                  </Button>
+                                </Popover.Close>
+                                <Button
+                                  type="button"
+                                  disabled={linkValue.trim().length === 0}
+                                  onClick={handleApplyLink}
+                                >
+                                  Save
+                                </Button>
+                              </Flex>
+                            </Flex>
+                          </Flex>
+                        </Popover.Content>
+                      </Popover.Root>
                     );
-                  })}
-                </Flex>
-                {index !== Formats.length - 1 ? (
-                  <Separator orientation="vertical" decorative style={{ height: 20 }} />
-                ) : null}
-              </Fragment>
-            );
-          })}
-        </Flex>
-      </Box>
+                  }
 
-      <Dialog.Root open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <Dialog.Content style={{ maxWidth: 420 }}>
-          <Flex direction="column" gap="4">
-            <Box>
-              <Dialog.Title>Link</Dialog.Title>
-              <Dialog.Description size="2">
-                Add or update a link for the current selection.
-              </Dialog.Description>
-            </Box>
-            <label>
-              <Flex direction="column" gap="2">
-                <Text as="span" size="2" weight="medium">
-                  URL
-                </Text>
-                <TextField.Root
-                  autoFocus
-                  placeholder="https://example.com"
-                  value={linkValue}
-                  onChange={handleLinkValueChange}
-                />
-              </Flex>
-            </label>
-            <Flex justify="between" gap="3" wrap="wrap">
-              <Button
-                type="button"
-                color="red"
-                variant="soft"
-                disabled={
-                  !(
-                    ((editor.getAttributes("link").href as string | undefined) ?? "").trim() ||
-                    linkValue.trim()
-                  )
-                }
-                onClick={handleRemoveLink}
-              >
-                Remove link
-              </Button>
-              <Flex gap="2" justify="end" style={{ marginLeft: "auto" }}>
-                <Dialog.Close>
-                  <Button type="button" variant="soft" color="gray">
-                    Cancel
-                  </Button>
-                </Dialog.Close>
-                <Button
-                  type="button"
-                  disabled={linkValue.trim().length === 0}
-                  onClick={handleApplyLink}
-                >
-                  Save
-                </Button>
-              </Flex>
-            </Flex>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
+                  if (item.popover === "image") {
+                    return (
+                      <Popover.Root
+                        key={`${item.name}-${idx}`}
+                        open={imagePopoverOpen}
+                        onOpenChange={handleImagePopoverOpenChange}
+                      >
+                        <Popover.Trigger>
+                          <IconButton
+                            type="button"
+                            radius="medium"
+                            color="gray"
+                            variant={item.isActive() ? "soft" : "ghost"}
+                            disabled={item.disabled || !editor.isEditable}
+                            title={item.name}
+                            onMouseDown={handlePopoverTriggerMouseDown}
+                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                          >
+                            <item.icon className="scribe-toolbar-icon" />
+                          </IconButton>
+                        </Popover.Trigger>
+                        <Popover.Content
+                          container={popupContainer}
+                          size="2"
+                          side="bottom"
+                          align="start"
+                          style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
+                        >
+                          <Flex direction="column" gap="4">
+                            <Box>
+                              <Text as="p" size="3" weight="medium">
+                                Image
+                              </Text>
+                              <Text as="p" size="2" color="gray">
+                                Insert an image from a URL.
+                              </Text>
+                            </Box>
+                            <label>
+                              <Flex direction="column" gap="2">
+                                <Text as="span" size="2" weight="medium">
+                                  Image URL
+                                </Text>
+                                <TextField.Root
+                                  autoFocus
+                                  placeholder="https://example.com/image.png"
+                                  value={imageValue}
+                                  onChange={handleImageValueChange}
+                                />
+                              </Flex>
+                            </label>
+                            <Flex justify="end" gap="2">
+                              <Popover.Close>
+                                <Button type="button" variant="soft" color="gray">
+                                  Cancel
+                                </Button>
+                              </Popover.Close>
+                              <Button
+                                type="button"
+                                disabled={imageValue.trim().length === 0}
+                                onClick={handleApplyImage}
+                              >
+                                Save
+                              </Button>
+                            </Flex>
+                          </Flex>
+                        </Popover.Content>
+                      </Popover.Root>
+                    );
+                  }
 
-      <Dialog.Root open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
-        <Dialog.Content style={{ maxWidth: 420 }}>
-          <Flex direction="column" gap="4">
-            <Box>
-              <Dialog.Title>Image</Dialog.Title>
-              <Dialog.Description size="2">Insert an image from a URL.</Dialog.Description>
-            </Box>
-            <label>
-              <Flex direction="column" gap="2">
-                <Text as="span" size="2" weight="medium">
-                  Image URL
-                </Text>
-                <TextField.Root
-                  autoFocus
-                  placeholder="https://example.com/image.png"
-                  value={imageValue}
-                  onChange={handleImageValueChange}
-                />
+                  return (
+                    <IconButton
+                      key={`${item.name}-${idx}`}
+                      type="button"
+                      radius="medium"
+                      color="gray"
+                      variant={item.isActive() ? "soft" : "ghost"}
+                      disabled={item.disabled || !editor.isEditable}
+                      title={item.name}
+                      onMouseDown={(event) => handleToolbarMouseDown(event, item.command!)}
+                      className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                    >
+                      <item.icon className="scribe-toolbar-icon" />
+                    </IconButton>
+                  );
+                })}
               </Flex>
-            </label>
-            <Flex justify="end" gap="2">
-              <Dialog.Close>
-                <Button type="button" variant="soft" color="gray">
-                  Cancel
-                </Button>
-              </Dialog.Close>
-              <Button
-                type="button"
-                disabled={imageValue.trim().length === 0}
-                onClick={handleApplyImage}
-              >
-                Save
-              </Button>
-            </Flex>
-          </Flex>
-        </Dialog.Content>
-      </Dialog.Root>
-    </>
+              {index !== Formats.length - 1 ? (
+                <Separator orientation="vertical" decorative style={{ height: 20 }} />
+              ) : null}
+            </Fragment>
+          );
+        })}
+      </Flex>
+    </Box>
   );
 };
 
