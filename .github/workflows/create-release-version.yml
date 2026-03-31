@@ -1,57 +1,26 @@
-name: Create Stable Release
+name: Create Release Version
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to release (e.g. 1.2.3)"
+        description: "Version to release (for example 0.1.0 or 1.0.0-alpha.0)"
         required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
 
 jobs:
   release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Setup Git
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "github-actions@clevertask.ai"
-
-      - name: Bump version in package.json
-        run: |
-          pnpm version ${{ inputs.version }} --no-git-tag-version
-          git add package.json pnpm-lock.yaml
-          git commit -m "chore(release): bump version to v${{ inputs.version }}"
-
-      - name: Setup SSH for deploy key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.CLEVERTASK_DEPLOYMENT_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-      - name: Set Git remote to SSH
-        run: |
-          git remote set-url origin git@github.com:${{ github.repository }}.git
-
-      - name: Create Git tag and push
-        run: |
-          git tag v${{ inputs.version }}
-          git push origin HEAD
-          git push origin v${{ inputs.version }}
-
-      - name: Create GitHub Release with notes
-        env:
-          GH_TOKEN: ${{ secrets.CLEVERTASK_PAT }}
-        run: |
-          gh release create v${{ inputs.version }} \
-            --title "v${{ inputs.version }}" \
-            --generate-notes
+    uses: clevertask/clevertask-public-workflows/.github/workflows/create-release-version.yml@main
+    with:
+      version: ${{ inputs.version }}
+      prerelease: ${{ inputs.prerelease }}
+    secrets:
+      github_pat: ${{ secrets.CLEVERTASK_PAT }}
