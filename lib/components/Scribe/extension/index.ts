@@ -1,9 +1,10 @@
-import { ScribeProps } from "..";
+import type { ScribeProps, ScribeTableOfContentsItem } from "..";
 import Link from "./extension-link";
 import MarkdownPaste from "./extension-markdown-paste";
 import Focus from "@tiptap/extension-focus";
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
+import { TableOfContents, type TableOfContentData } from "@tiptap/extension-table-of-contents";
 import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
 import TaskItem from "@tiptap/extension-task-item";
@@ -18,6 +19,49 @@ import Typography from "@tiptap/extension-typography";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
 
+const findHeadingElement = (item: TableOfContentData[number]) => {
+  const heading = Array.from(
+    item.editor.view.dom.querySelectorAll<HTMLElement>("[data-toc-id]"),
+  ).find((element) => element.dataset.tocId === item.id);
+
+  return heading ?? item.dom;
+};
+
+const mapTableOfContentsItems = (items: TableOfContentData): ScribeTableOfContentsItem[] =>
+  items.map(
+    ({
+      id,
+      isActive,
+      isScrolledOver,
+      itemIndex,
+      level,
+      originalLevel,
+      pos,
+      textContent,
+      ...item
+    }) => ({
+      dom: findHeadingElement({
+        id,
+        isActive,
+        isScrolledOver,
+        itemIndex,
+        level,
+        originalLevel,
+        pos,
+        textContent,
+        ...item,
+      }),
+      id,
+      isActive,
+      isScrolledOver,
+      itemIndex,
+      level,
+      originalLevel,
+      pos,
+      textContent,
+    }),
+  );
+
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
     dropcursor: {
@@ -25,6 +69,15 @@ export const initExtensions = (props: ScribeProps) => [
       color: "#ebf6fe",
     },
   }),
+  ...(props.enableTableOfContents
+    ? [
+        TableOfContents.configure({
+          onUpdate: (items, isCreate) => {
+            props.onTableOfContentsChange?.(mapTableOfContentsItems(items), isCreate);
+          },
+        }),
+      ]
+    : []),
   TaskList.configure({
     HTMLAttributes: {
       class: "scribe-task-list",
