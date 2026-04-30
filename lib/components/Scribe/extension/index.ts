@@ -4,7 +4,11 @@ import MarkdownPaste from "./extension-markdown-paste";
 import Focus from "@tiptap/extension-focus";
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
-import { TableOfContents, type TableOfContentData } from "@tiptap/extension-table-of-contents";
+import {
+  getHierarchicalIndexes,
+  TableOfContents,
+  type TableOfContentData,
+} from "@tiptap/extension-table-of-contents";
 import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
 import TaskItem from "@tiptap/extension-task-item";
@@ -72,6 +76,7 @@ export const initExtensions = (props: ScribeProps) => [
   ...(props.enableTableOfContents
     ? [
         TableOfContents.configure({
+          getIndex: getHierarchicalIndexes,
           onUpdate: (items, isCreate) => {
             props.onTableOfContentsChange?.(mapTableOfContentsItems(items), isCreate);
           },

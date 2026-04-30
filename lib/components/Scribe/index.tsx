@@ -10,6 +10,7 @@ import {
   EditorEvents,
   Extension,
   JSONContent,
+  useEditor,
   UseEditorOptions,
 } from "@tiptap/react";
 import {
@@ -19,7 +20,6 @@ import {
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
 } from "react";
 import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
 
@@ -59,10 +59,22 @@ export interface ScribeRef {
 
 export interface ScribeProps {
   onContentChange?: (content: ScribeOnChangeContents) => void;
+  /**
+   * @experimental Emits heading outline data for app-owned table-of-contents UI.
+   */
   onTableOfContentsChange?: ScribeTableOfContentsChangeHandler;
+  /**
+   * Initial editor content.
+   *
+   * @deprecated Controlled updates through `content` are deprecated. Prefer
+   * `ScribeRef.setContent` for programmatic updates after mount.
+   */
   content?: string;
   editable?: boolean;
   autoFocus?: boolean;
+  /**
+   * @experimental Enables headless table-of-contents data for heading nodes.
+   */
   enableTableOfContents?: boolean;
   extensions?: Extension[];
   externalEditor?: Editor;
@@ -110,6 +122,9 @@ const findTableOfContentsHeading = (editor: Editor, target: ScribeTableOfContent
   return target.dom;
 };
 
+const getTableOfContentsSelectionPosition = (item?: ScribeTableOfContentsItem) =>
+  item ? item.pos + item.textContent.length + 1 : undefined;
+
 export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   const {
     autoFocus = false,
@@ -129,15 +144,14 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mobile,
   } = props;
 
-  const enableTableOfContents = Boolean(props.enableTableOfContents);
   const initialContentRef = useRef<Content>(content ?? editorProps?.content ?? "");
-  const shouldSkipInitialContentEffectRef = useRef(!externalEditor);
-  const tableOfContentsChangeRef = useRef(onTableOfContentsChange);
   const lastTableOfContentsSignatureRef = useRef<string | null>(null);
-  tableOfContentsChangeRef.current = onTableOfContentsChange;
+  const tableOfContentsItemsRef = useRef<ScribeTableOfContentsItem[]>([]);
 
   const handleTableOfContentsChange = useCallback<ScribeTableOfContentsChangeHandler>(
     (items, isCreate) => {
+      tableOfContentsItemsRef.current = items;
+
       const signature = getTableOfContentsItemsSignature(items);
 
       if (!isCreate && signature === lastTableOfContentsSignatureRef.current) {
@@ -145,9 +159,9 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       }
 
       lastTableOfContentsSignatureRef.current = signature;
-      tableOfContentsChangeRef.current?.(items, isCreate);
+      onTableOfContentsChange?.(items, isCreate);
     },
-    [],
+    [onTableOfContentsChange],
   );
 
   const onUpdate = useCallback(
@@ -167,49 +181,44 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     },
     [editable, onContentChange],
   );
-  const [editor] = useState(() => {
-    return (
-      externalEditor ??
-      new Editor({
-        ...editorProps,
-        content: initialContentRef.current,
-        editable,
-        extensions: [
-          ...initExtensions({
-            ...props,
-            onTableOfContentsChange: handleTableOfContentsChange,
-          }),
-          ...(extensions ?? []),
-        ],
-        editorProps: {
-          attributes: {
-            class: "scribe",
-          },
-          ...editorProps?.editorProps,
-        },
-      })
-    );
-  });
 
-  const updateTableOfContents = useCallback(() => {
-    if (!enableTableOfContents || editor.isDestroyed) {
+  const internalEditor = useEditor(
+    {
+      ...editorProps,
+      content: initialContentRef.current,
+      editable,
+      extensions: [
+        ...initExtensions({
+          ...props,
+          onTableOfContentsChange: handleTableOfContentsChange,
+        }),
+        ...(extensions ?? []),
+      ],
+      editorProps: {
+        attributes: {
+          class: "scribe",
+        },
+        ...editorProps?.editorProps,
+      },
+    },
+    [],
+  );
+  const editor = externalEditor ?? internalEditor;
+
+  const resetContent = useCallback(() => {
+    if (!editor) {
       return;
     }
 
-    requestAnimationFrame(() => {
-      if (!editor.isDestroyed) {
-        editor.commands.updateTableOfContents();
-      }
-    });
-  }, [editor, enableTableOfContents]);
-
-  const resetContent = useCallback(() => {
     editor.commands.setContent("");
-    updateTableOfContents();
-  }, [editor, updateTableOfContents]);
+  }, [editor]);
 
   const getContent = useCallback(
     (contentType: "html" | "json" | "markdown") => {
+      if (!editor) {
+        return undefined;
+      }
+
       const options = {
         html: () => editor.getHTML(),
         json: () => editor.getJSON(),
@@ -222,36 +231,44 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
 
   const setContent = useCallback(
     (content: Content) => {
+      if (!editor) {
+        return;
+      }
       editor.commands.setContent(content);
-      updateTableOfContents();
     },
-    [editor, updateTableOfContents],
+    [editor],
   );
 
   const scrollToTableOfContentsItem = useCallback(
     (target: ScribeTableOfContentsScrollTarget) => {
-      if (!enableTableOfContents || editor.isDestroyed || typeof window === "undefined") {
+      if (!editor || editor.isDestroyed || typeof window === "undefined") {
         return;
       }
 
+      const item =
+        typeof target === "string"
+          ? tableOfContentsItemsRef.current.find((candidate) => candidate.id === target)
+          : target;
       const heading = findTableOfContentsHeading(editor, target);
 
       if (!heading) {
         return;
       }
 
-      try {
-        editor.commands.focus(editor.view.posAtDOM(heading, 0), { scrollIntoView: false });
-      } catch {
-        editor.commands.focus(undefined, { scrollIntoView: false });
+      const selectionPosition = getTableOfContentsSelectionPosition(item);
+
+      if (selectionPosition !== undefined) {
+        editor.commands.setTextSelection(selectionPosition);
       }
+
+      editor.commands.focus(undefined, { scrollIntoView: false });
 
       window.scrollTo({
         behavior: "smooth",
         top: Math.max(heading.getBoundingClientRect().top + window.scrollY - 16, 0),
       });
     },
-    [editor, enableTableOfContents],
+    [editor],
   );
 
   useImperativeHandle(ref, () => {
@@ -260,31 +277,33 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       setContent,
       getContent,
       scrollToTableOfContentsItem,
-      editor,
+      editor: editor as Editor,
     };
   }, [editor, getContent, resetContent, scrollToTableOfContentsItem, setContent]);
 
   useEffect(() => {
-    if (shouldSkipInitialContentEffectRef.current) {
-      shouldSkipInitialContentEffectRef.current = false;
-      updateTableOfContents();
+    if (!editor) {
       return;
     }
 
-    if (content === undefined) {
-      updateTableOfContents();
-      return;
+    if (content) {
+      editor.commands.setContent(content);
     }
-
-    editor.commands.setContent(content);
-    updateTableOfContents();
-  }, [content, editor, updateTableOfContents]);
+  }, [content, editor]);
 
   useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
     editor.setEditable(Boolean(editable));
   }, [editable, editor]);
 
   useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
     editor.off("update");
     editor.on("update", onUpdate);
     return () => {
@@ -293,10 +312,14 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   }, [editor, onUpdate]);
 
   useEffect(() => {
-    if (autoFocus) {
+    if (autoFocus && editor) {
       editor.commands.focus("end");
     }
   }, [autoFocus, editor]);
+
+  if (!editor) {
+    return null;
+  }
 
   return (
     <div
