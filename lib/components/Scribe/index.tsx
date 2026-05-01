@@ -3,6 +3,12 @@ import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
+import { SCRIBE_TABLE_OF_CONTENTS_META } from "./extension/tableOfContents";
+import type {
+  ScribeTableOfContentsChangeHandler,
+  ScribeTableOfContentsItem,
+  ScribeTableOfContentsScrollTarget,
+} from "./extension/tableOfContents";
 import {
   Content,
   Editor,
@@ -18,9 +24,16 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useRef,
   useState,
 } from "react";
 import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
+
+export type {
+  ScribeTableOfContentsChangeHandler,
+  ScribeTableOfContentsItem,
+  ScribeTableOfContentsScrollTarget,
+} from "./extension/tableOfContents";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
@@ -33,11 +46,17 @@ export interface ScribeRef {
   resetContent: () => void;
   getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
   setContent: (content: Content) => void;
+  /** @experimental The table of contents API may change while we stabilize outline behavior. */
+  scrollToTableOfContentsItem: (target: ScribeTableOfContentsScrollTarget) => void;
   editor: Editor;
 }
 
 export interface ScribeProps {
   onContentChange?: (content: ScribeOnChangeContents) => void;
+  /**
+   * @deprecated Controlled content updates are being phased out. Prefer
+   * `ScribeRef.setContent` for programmatic updates after mount.
+   */
   content?: string;
   editable?: boolean;
   autoFocus?: boolean;
@@ -52,6 +71,10 @@ export interface ScribeProps {
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
   mobile?: boolean;
+  /** @experimental Enables Scribe's app-owned document outline API. */
+  enableTableOfContents?: boolean;
+  /** @experimental Receives the current heading outline when it changes. */
+  onTableOfContentsChange?: ScribeTableOfContentsChangeHandler;
 }
 
 export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
@@ -70,10 +93,30 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     onKeyDown,
     externalEditor,
     mobile,
+    onTableOfContentsChange,
   } = props;
+  const didSetInitialContentInEditorOptionsRef = useRef(!externalEditor && content !== undefined);
+  const tableOfContentsItemsRef = useRef<ScribeTableOfContentsItem[]>([]);
+  const onTableOfContentsChangeRef = useRef(onTableOfContentsChange);
+
+  useEffect(() => {
+    onTableOfContentsChangeRef.current = onTableOfContentsChange;
+  }, [onTableOfContentsChange]);
+
+  const handleTableOfContentsChange = useCallback(
+    (items: ScribeTableOfContentsItem[], isCreate?: boolean) => {
+      tableOfContentsItemsRef.current = items;
+      onTableOfContentsChangeRef.current?.(items, isCreate);
+    },
+    [],
+  );
 
   const onUpdate = useCallback(
-    ({ editor }: EditorEvents["update"]) => {
+    ({ editor, transaction }: EditorEvents["update"]) => {
+      if (transaction.getMeta(SCRIBE_TABLE_OF_CONTENTS_META)) {
+        return;
+      }
+
       const htmlContent = editor.getHTML();
       const jsonContent = editor.getJSON();
       const isProgrammatic = !editable;
@@ -94,8 +137,15 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       externalEditor ??
       new Editor({
         ...editorProps,
+        content: content ?? editorProps?.content,
         editable,
-        extensions: [...initExtensions(props), ...(extensions ?? [])],
+        extensions: [
+          ...initExtensions({
+            ...props,
+            onTableOfContentsChange: handleTableOfContentsChange,
+          }),
+          ...(extensions ?? []),
+        ],
         editorProps: {
           attributes: {
             class: "scribe",
@@ -129,17 +179,55 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     [editor],
   );
 
+  const scrollToTableOfContentsItem = useCallback(
+    (target: ScribeTableOfContentsScrollTarget) => {
+      const targetId = typeof target === "string" ? target : target.id;
+      const item =
+        tableOfContentsItemsRef.current.find((currentItem) => currentItem.id === targetId) ??
+        (typeof target === "string" ? undefined : target);
+
+      if (!item || editor.isDestroyed) {
+        return;
+      }
+
+      const dom = editor.view.nodeDOM(item.pos);
+      const headingElement = dom instanceof HTMLElement ? dom : item.dom;
+
+      if (editor.isEditable) {
+        const headingEndPosition = Math.max(
+          0,
+          Math.min(item.pos + item.node.nodeSize - 1, editor.state.doc.content.size),
+        );
+
+        editor.commands.focus(headingEndPosition, { scrollIntoView: false });
+      }
+
+      headingElement.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    [editor],
+  );
+
   useImperativeHandle(ref, () => {
     return {
       resetContent,
       setContent,
       getContent,
+      scrollToTableOfContentsItem,
       editor,
     };
-  }, [editor, getContent, resetContent, setContent]);
+  }, [editor, getContent, resetContent, scrollToTableOfContentsItem, setContent]);
 
   useEffect(() => {
-    editor.commands.setContent(content || "");
+    if (content === undefined) {
+      return;
+    }
+
+    if (didSetInitialContentInEditorOptionsRef.current) {
+      didSetInitialContentInEditorOptionsRef.current = false;
+      return;
+    }
+
+    editor.commands.setContent(content, { emitUpdate: false });
   }, [content, editor]);
 
   useEffect(() => {
