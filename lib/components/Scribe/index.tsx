@@ -46,7 +46,7 @@ export interface ScribeRef {
   resetContent: () => void;
   getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
   setContent: (content: Content) => void;
-  /** @experimental The table of contents API may change while we stabilize outline behavior. */
+  /** @experimental The table of contents API may change while we stabilize this behavior. */
   scrollToTableOfContentsItem: (target: ScribeTableOfContentsScrollTarget) => void;
   editor: Editor;
 }
@@ -71,9 +71,9 @@ export interface ScribeProps {
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
   mobile?: boolean;
-  /** @experimental Enables Scribe's app-owned document outline API. */
+  /** @experimental Enables Scribe's app-owned table-of-contents API. */
   enableTableOfContents?: boolean;
-  /** @experimental Receives the current heading outline when it changes. */
+  /** @experimental Receives the current table-of-contents items when they change. */
   onTableOfContentsChange?: ScribeTableOfContentsChangeHandler;
 }
 
@@ -95,7 +95,13 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     mobile,
     onTableOfContentsChange,
   } = props;
+
+  // Initial content is passed into the editor constructor, so the deprecated
+  // content sync effect skips its first run to avoid re-applying the same doc.
   const didSetInitialContentInEditorOptionsRef = useRef(!externalEditor && content !== undefined);
+
+  // The TipTap editor/extensions live outside React's render cycle. These refs
+  // keep the latest table-of-contents items and callback available to imperative editor APIs.
   const tableOfContentsItemsRef = useRef<ScribeTableOfContentsItem[]>([]);
   const onTableOfContentsChangeRef = useRef(onTableOfContentsChange);
 

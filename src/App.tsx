@@ -12,13 +12,13 @@ const demoContent = `
   <h2>Quadratic equations</h2>
   <p>Practice steps can live under each section.</p>
   <h3>Factoring</h3>
-  <p>A smaller section still appears nested in the outline.</p>
+  <p>A smaller section still appears nested in the table of contents.</p>
 `;
 
 const ChatBox = function ChatBox() {
   const editor = useRef<ScribeRef>(null);
-  const [outlineItems, setOutlineItems] = useState<ScribeTableOfContentsItem[]>([]);
-  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [tableOfContentsItems, setTableOfContentsItems] = useState<ScribeTableOfContentsItem[]>([]);
+  const [tableOfContentsOpen, setTableOfContentsOpen] = useState(false);
 
   return (
     <div style={{ position: "relative" }}>
@@ -27,16 +27,16 @@ const ChatBox = function ChatBox() {
         content={demoContent}
         enableTableOfContents
         onContentChange={(c) => console.log(c)}
-        onTableOfContentsChange={(items) => setOutlineItems(items)}
+        onTableOfContentsChange={(items) => setTableOfContentsItems(items)}
         placeholderText="Type your message..."
         editorContentStyle={{ maxHeight: "200px", overflowY: "scroll" }}
       />
 
-      {outlineItems.length > 0 ? (
+      {tableOfContentsItems.length > 0 ? (
         <div style={{ position: "absolute", right: "12px", top: "12px", zIndex: 1 }}>
           <button
             type="button"
-            onClick={() => setOutlineOpen((isOpen) => !isOpen)}
+            onClick={() => setTableOfContentsOpen((isOpen) => !isOpen)}
             style={{
               background: "var(--accent-9)",
               border: 0,
@@ -51,7 +51,7 @@ const ChatBox = function ChatBox() {
             Outline
           </button>
 
-          {outlineOpen ? (
+          {tableOfContentsOpen ? (
             <div
               style={{
                 background: "var(--color-panel-solid)",
@@ -64,13 +64,13 @@ const ChatBox = function ChatBox() {
                 padding: "6px",
               }}
             >
-              {outlineItems.map((item) => (
+              {tableOfContentsItems.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => {
                     editor.current?.scrollToTableOfContentsItem(item);
-                    setOutlineOpen(false);
+                    setTableOfContentsOpen(false);
                   }}
                   style={{
                     background: item.isActive ? "var(--accent-a3)" : "transparent",

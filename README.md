@@ -9,14 +9,14 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - **Markdown Paste:** Paste plain-text markdown into the editor and have it converted into rich content automatically.
 - **Versatile Integration:** Easily integrate `@clevertask/scribe` into any project requiring rich text editing.
 - **View and Edit:** Seamlessly switch between viewing and editing modes.
-- **Experimental Document Outline:** Subscribe to heading changes and render an app-owned outline outside the editor.
+- **Experimental Table of Contents:** Subscribe to heading changes and render an app-owned table of contents outside the editor.
 
 ## Table of Contents
 
 - [@clevertask/scribe](#clevertaskscribe)
   - [Installation](#installation)
   - [Usage](#usage)
-  - [Experimental Document Outline](#experimental-document-outline)
+  - [Experimental Table of Contents](#experimental-table-of-contents)
   - [Math Expressions](#math-expressions)
   - [Props](#props)
   - [Helper Functions](#helper-functions)
@@ -103,9 +103,9 @@ function App() {
 }
 ```
 
-## Experimental Document Outline
+## Experimental Table of Contents
 
-Scribe can expose a heading outline without rendering table-of-contents content inside the editable document. Enable the experimental API with `enableTableOfContents`, keep the latest items in your app state, and call `scrollToTableOfContentsItem` when a user selects an outline entry.
+Scribe can expose table-of-contents data without rendering a table-of-contents block inside the editable document. Enable the experimental API with `enableTableOfContents`, keep the latest items in your app state, and call `scrollToTableOfContentsItem` when a user selects an entry.
 
 ```tsx
 import { Scribe, ScribeRef, ScribeTableOfContentsItem } from "@clevertask/scribe";
@@ -113,15 +113,19 @@ import { useRef, useState } from "react";
 
 function DocumentEditor() {
   const scribe = useRef<ScribeRef>(null);
-  const [outlineItems, setOutlineItems] = useState<ScribeTableOfContentsItem[]>([]);
+  const [tableOfContentsItems, setTableOfContentsItems] = useState<ScribeTableOfContentsItem[]>([]);
 
   return (
     <>
-      <Scribe ref={scribe} enableTableOfContents onTableOfContentsChange={setOutlineItems} />
+      <Scribe
+        ref={scribe}
+        enableTableOfContents
+        onTableOfContentsChange={setTableOfContentsItems}
+      />
 
-      {outlineItems.length > 0 ? (
-        <nav aria-label="Document outline">
-          {outlineItems.map((item) => (
+      {tableOfContentsItems.length > 0 ? (
+        <nav aria-label="Table of contents">
+          {tableOfContentsItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -137,7 +141,7 @@ function DocumentEditor() {
 }
 ```
 
-The outline currently tracks default TipTap heading nodes only. Each item includes the heading text, depth, document position, DOM node, and active/scrolled state. This API is marked experimental while we validate the contract in real document surfaces.
+The table of contents currently tracks default TipTap heading nodes only. Each item includes the heading text, depth, document position, DOM node, and active/scrolled state. This API is marked experimental while we validate the contract in real document surfaces.
 
 ## Math Expressions
 
@@ -172,23 +176,23 @@ If your content arrives as HTML (for example from a server), use the helper belo
 
 ## Props
 
-| Prop                      | Type                                                               | Default                    | Description                                                                                                                                                                                                                                        |
-| ------------------------- | ------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`                 | `string`                                                           | `undefined`                | The initial content of the editor. Controlled updates through this prop are deprecated; prefer `ScribeRef.setContent` for programmatic updates after mount.                                                                                        |
-| `onContentChange`         | `(content: ScribeOnChangeContents) => void;`                       | `undefined`                | A callback function triggered whenever the editor's content changes. It receives an object containing the current content in various formats (`jsonContent`, `htmlContent`, `markdownContent`). Internal outline metadata updates are ignored.     |
-| `editable`                | `boolean`                                                          | `true`                     | Controls whether the editor is editable.                                                                                                                                                                                                           |
-| `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                               |
-| `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                            |
-| `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                            |
-| `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                     |
-| `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                |
-| `editorContentStyle`      | `React.CSSProperties`                                              | `undefined`                | You can send a CSS object to add styles to the editor content container. Useful if you want to limit the editor's height.                                                                                                                          |
-| `editorContentClassName`  | `string`                                                           | `undefined`                | The same idea of `editorContentStyle` but with classes.                                                                                                                                                                                            |
-| `mainContainerStyle`      | `React.CSSProperties`                                              | `undefined`                | You can send a CSS object to style the main editor container                                                                                                                                                                                       |
-| `mainContainerClassName`  | `string`                                                           | `undefined`                | The same idea of `mainContainerStyle` but with classes.                                                                                                                                                                                            |
-| `onKeyDown`               | `KeyboardEventHandler`                                             | `undefined`                | A callback function that is triggered when a key is pressed within the editor. This allows you to handle custom keyboard shortcuts. For example, you can use this prop to implement a "send message" functionality when `Ctrl + Enter` is pressed. |
-| `enableTableOfContents`   | `boolean`                                                          | `false`                    | Experimental. Enables the app-owned document outline API for heading nodes.                                                                                                                                                                        |
-| `onTableOfContentsChange` | `(items: ScribeTableOfContentsItem[], isCreate?: boolean) => void` | `undefined`                | Experimental. Receives outline items whenever heading text, structure, or active/scrolled state changes.                                                                                                                                           |
+| Prop                      | Type                                                               | Default                    | Description                                                                                                                                                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`                 | `string`                                                           | `undefined`                | The initial content of the editor. Controlled updates through this prop are deprecated; prefer `ScribeRef.setContent` for programmatic updates after mount.                                                                                              |
+| `onContentChange`         | `(content: ScribeOnChangeContents) => void;`                       | `undefined`                | A callback function triggered whenever the editor's content changes. It receives an object containing the current content in various formats (`jsonContent`, `htmlContent`, `markdownContent`). Internal table-of-contents metadata updates are ignored. |
+| `editable`                | `boolean`                                                          | `true`                     | Controls whether the editor is editable.                                                                                                                                                                                                                 |
+| `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
+| `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
+| `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
+| `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |
+| `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                      |
+| `editorContentStyle`      | `React.CSSProperties`                                              | `undefined`                | You can send a CSS object to add styles to the editor content container. Useful if you want to limit the editor's height.                                                                                                                                |
+| `editorContentClassName`  | `string`                                                           | `undefined`                | The same idea of `editorContentStyle` but with classes.                                                                                                                                                                                                  |
+| `mainContainerStyle`      | `React.CSSProperties`                                              | `undefined`                | You can send a CSS object to style the main editor container                                                                                                                                                                                             |
+| `mainContainerClassName`  | `string`                                                           | `undefined`                | The same idea of `mainContainerStyle` but with classes.                                                                                                                                                                                                  |
+| `onKeyDown`               | `KeyboardEventHandler`                                             | `undefined`                | A callback function that is triggered when a key is pressed within the editor. This allows you to handle custom keyboard shortcuts. For example, you can use this prop to implement a "send message" functionality when `Ctrl + Enter` is pressed.       |
+| `enableTableOfContents`   | `boolean`                                                          | `false`                    | Experimental. Enables the app-owned table-of-contents API for heading nodes.                                                                                                                                                                             |
+| `onTableOfContentsChange` | `(items: ScribeTableOfContentsItem[], isCreate?: boolean) => void` | `undefined`                | Experimental. Receives table-of-contents items whenever heading text, structure, or active/scrolled state changes.                                                                                                                                       |
 
 ## Helper Functions
 
