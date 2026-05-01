@@ -1,4 +1,4 @@
-import { ScribeProps } from "..";
+import type { ScribeProps } from "..";
 import Link from "./extension-link";
 import MarkdownPaste from "./extension-markdown-paste";
 import Focus from "@tiptap/extension-focus";
@@ -17,6 +17,7 @@ import { Mathematics } from "@tiptap/extension-mathematics";
 import Typography from "@tiptap/extension-typography";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
+import { ScribeTableOfContents } from "./tableOfContents";
 
 export const initExtensions = (props: ScribeProps) => [
   StarterKit.configure({
@@ -78,4 +79,11 @@ export const initExtensions = (props: ScribeProps) => [
   }),
   Mathematics,
   Typography,
+  ...(props.enableTableOfContents
+    ? [
+        ScribeTableOfContents.configure({
+          onUpdate: props.onTableOfContentsChange,
+        }),
+      ]
+    : []),
 ];
