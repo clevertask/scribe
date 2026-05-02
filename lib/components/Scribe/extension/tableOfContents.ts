@@ -42,6 +42,7 @@ type ScribeTableOfContentsStorage = {
   content: ScribeTableOfContentsItem[];
   hasCreated: boolean;
   lastSignature: string;
+  layoutRefreshRetries: number;
   rafId: number | null;
   refresh: () => void;
   scheduleRefresh: () => void;
@@ -51,6 +52,7 @@ type ScribeTableOfContentsStorage = {
 };
 
 const pluginKey = new PluginKey("scribeTableOfContents");
+const MAX_LAYOUT_REFRESH_RETRIES = 10;
 
 const slugify = (content: string) => {
   const slug = content
@@ -172,6 +174,10 @@ const getActivationThreshold = (scrollParent: ScrollParent) => {
   return scrollParent.getBoundingClientRect().top + 32;
 };
 
+const isElementMeasurable = (element: HTMLElement) => {
+  return element.isConnected && element.getClientRects().length > 0;
+};
+
 const getHeadingElement = (editor: Editor, pos: number) => {
   const dom = editor.view.nodeDOM(pos);
 
@@ -192,11 +198,28 @@ const collectHeadingEntries = (editor: Editor, anchorTypes: string[]) => {
   return entries;
 };
 
+const canMeasureActiveStates = (
+  items: ScribeTableOfContentsItem[],
+  scrollParent: ScrollParent | null,
+) => {
+  // Tiptap can create the editor view before React mounts it into the page.
+  // Detached heading nodes measure as if every heading is at the top.
+  if (items.length === 0) {
+    return true;
+  }
+
+  if (!scrollParent || !items.every((item) => isElementMeasurable(item.dom))) {
+    return false;
+  }
+
+  return isWindowScrollParent(scrollParent) || isElementMeasurable(scrollParent);
+};
+
 const withActiveStates = (
   items: ScribeTableOfContentsItem[],
   scrollParent: ScrollParent | null,
 ) => {
-  if (!scrollParent) {
+  if (!canMeasureActiveStates(items, scrollParent)) {
     return items;
   }
 
@@ -321,6 +344,7 @@ export const ScribeTableOfContents = Extension.create<
       content: [],
       hasCreated: false,
       lastSignature: "",
+      layoutRefreshRetries: 0,
       rafId: null,
       refresh: () => null,
       scheduleRefresh: () => null,
@@ -421,8 +445,23 @@ export const ScribeTableOfContents = Extension.create<
         this.options.anchorTypes,
         this.storage.scrollParent,
       );
+      const canMeasureActiveItems =
+        this.editor.view.dom.isConnected &&
+        canMeasureActiveStates(items, this.storage.scrollParent);
+
+      if (canMeasureActiveItems) {
+        this.storage.layoutRefreshRetries = 0;
+      }
 
       emitTableOfContentsUpdate(this.storage, this.options, items);
+
+      if (
+        !canMeasureActiveItems &&
+        this.storage.layoutRefreshRetries < MAX_LAYOUT_REFRESH_RETRIES
+      ) {
+        this.storage.layoutRefreshRetries += 1;
+        this.storage.scheduleRefresh();
+      }
     };
 
     this.storage.scheduleRefresh = () => {
