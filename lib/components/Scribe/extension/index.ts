@@ -12,78 +12,99 @@ import Highlight from "@tiptap/extension-highlight";
 import SelectedText from "./extension-selectedText";
 import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
-import { getSuggestionItems } from "./slashCommand/items";
+import { getSlashCommandContext, getSuggestionItems } from "./slashCommand/items";
 import { Mathematics } from "@tiptap/extension-mathematics";
 import Typography from "@tiptap/extension-typography";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
 
-export const initExtensions = (props: ScribeProps) => [
-  StarterKit.configure({
-    dropcursor: {
-      width: 4,
-      color: "#ebf6fe",
-    },
-  }),
-  TaskList.configure({
-    HTMLAttributes: {
-      class: "scribe-task-list",
-    },
-  }),
-  TaskItem.configure({
-    nested: true,
-  }),
-  TableKit.configure({
-    table: { resizable: true },
-  }),
-  Placeholder.configure({
-    showOnlyWhenEditable: true,
-    includeChildren: true,
-    showOnlyCurrent: false,
-    emptyEditorClass: "is-editor-empty",
-    emptyNodeClass: "is-node-empty",
-    placeholder: ({ editor: coreEditor, node }) => {
-      if (coreEditor.isDestroyed) {
-        return "";
-      }
-      if (node.type.name === "heading") {
-        return `Heading ${node.attrs.level}`;
-      }
+export const initExtensions = (props: ScribeProps) => {
+  const {
+    items: getCustomSlashCommandItems,
+    render: renderSlashCommandItems,
+    ...slashSuggestion
+  } = props.slashCommand ?? {};
 
-      return props.placeholderText || 'Type "/" for commands...';
-    },
-  }),
-  Focus.configure({ mode: "deepest", className: "has-focus" }),
-  MarkdownPaste,
-  SlashCommand.configure({
-    slashSuggestion: {
-      items: getSuggestionItems,
-      render: renderItems,
-    },
-  }),
-  Highlight,
-  SelectedText,
-  Link,
-  Image.configure({
-    inline: true,
-    HTMLAttributes: {
-      class: "scribe-image-node",
-    },
-    allowBase64: true,
-  }),
-  Emoji.configure({
-    emojis: gitHubEmojis,
-    enableEmoticons: true,
-    suggestion: suggestion(),
-  }),
-  Mathematics,
-  Typography,
-  ...(props.enableTableOfContents
-    ? [
-        ScribeTableOfContents.configure({
-          onUpdate: props.onTableOfContentsChange,
-        }),
-      ]
-    : []),
-];
+  return [
+    StarterKit.configure({
+      dropcursor: {
+        width: 4,
+        color: "#ebf6fe",
+      },
+    }),
+    TaskList.configure({
+      HTMLAttributes: {
+        class: "scribe-task-list",
+      },
+    }),
+    TaskItem.configure({
+      nested: true,
+    }),
+    TableKit.configure({
+      table: { resizable: true },
+    }),
+    Placeholder.configure({
+      showOnlyWhenEditable: true,
+      includeChildren: true,
+      showOnlyCurrent: false,
+      emptyEditorClass: "is-editor-empty",
+      emptyNodeClass: "is-node-empty",
+      placeholder: ({ editor: coreEditor, node }) => {
+        if (coreEditor.isDestroyed) {
+          return "";
+        }
+        if (node.type.name === "heading") {
+          return `Heading ${node.attrs.level}`;
+        }
+
+        return props.placeholderText || 'Type "/" for commands...';
+      },
+    }),
+    Focus.configure({ mode: "deepest", className: "has-focus" }),
+    MarkdownPaste,
+    SlashCommand.configure({
+      slashSuggestion: {
+        ...slashSuggestion,
+        items: (suggestionProps) => {
+          const defaultItems = getSuggestionItems(suggestionProps);
+
+          if (!getCustomSlashCommandItems) {
+            return defaultItems;
+          }
+
+          return getCustomSlashCommandItems({
+            ...suggestionProps,
+            context: getSlashCommandContext(suggestionProps.editor),
+            defaultItems,
+          });
+        },
+        render: renderSlashCommandItems ?? renderItems,
+      },
+    }),
+    Highlight,
+    SelectedText,
+    Link,
+    Image.configure({
+      inline: true,
+      HTMLAttributes: {
+        class: "scribe-image-node",
+      },
+      allowBase64: true,
+    }),
+    Emoji.configure({
+      emojis: gitHubEmojis,
+      enableEmoticons: true,
+      suggestion: suggestion(),
+    }),
+    Mathematics,
+    Typography,
+    ...(props.enableTableOfContents
+      ? [
+          ScribeTableOfContents.configure({
+            onUpdate: props.onTableOfContentsChange,
+          }),
+        ]
+      : []),
+  ];
+};
