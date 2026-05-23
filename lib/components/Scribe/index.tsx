@@ -3,6 +3,7 @@ import BarMenu from "../Menu/BarMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
+import type { ScribeSlashCommandOptions } from "./extension/slashCommand";
 import { SCRIBE_TABLE_OF_CONTENTS_META } from "./extension/tableOfContents";
 import type {
   ScribeTableOfContentsChangeHandler,
@@ -29,6 +30,14 @@ import {
 } from "react";
 import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
 
+export type {
+  ScribeSlashCommandOptions,
+  SlashCommandContext,
+  SlashCommandItemsProvider,
+  SlashCommandItemsProviderProps,
+  SuggestionItem,
+} from "./extension/slashCommand";
+export { SuggestionItemType } from "./extension/slashCommand/items";
 export type {
   ScribeTableOfContentsChangeHandler,
   ScribeTableOfContentsItem,
@@ -71,6 +80,11 @@ export interface ScribeProps {
   mainContainerClassName?: ClassValue;
   onKeyDown?: KeyboardEventHandler;
   mobile?: boolean;
+  /**
+   * Allows callers to customize Scribe's slash command menu while keeping
+   * Scribe's default command list available.
+   */
+  slashCommand?: ScribeSlashCommandOptions;
   /** @experimental Enables Scribe's app-owned table-of-contents API. */
   enableTableOfContents?: boolean;
   /** @experimental Receives the current table-of-contents items when they change. */

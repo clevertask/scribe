@@ -9,7 +9,31 @@ export enum SuggestionItemType {
 interface CommandProps {
   editor: Editor;
   range: Range;
+  props: SuggestionItem;
 }
+
+export interface SlashCommandContext {
+  isInsideListItem: boolean;
+  isInsideBulletList: boolean;
+  isInsideOrderedList: boolean;
+  isInsideTaskList: boolean;
+  listDepth: number;
+  parentListType: string | null;
+  parentNodeType: string;
+  selectionFrom: number;
+  selectionTo: number;
+}
+
+export interface SlashCommandItemsProviderProps {
+  query: string;
+  editor: Editor;
+  context: SlashCommandContext;
+  defaultItems: SuggestionItem[];
+}
+
+export type SlashCommandItemsProvider = (
+  props: SlashCommandItemsProviderProps,
+) => SuggestionItem[] | Promise<SuggestionItem[]>;
 
 export interface SuggestionItem {
   title: string;
@@ -19,6 +43,37 @@ export interface SuggestionItem {
   icon?: ReactNode;
   command: (props: CommandProps) => void;
 }
+
+export const getSlashCommandContext = (editor: Editor): SlashCommandContext => {
+  const { from, to } = editor.state.selection;
+  const $from = editor.state.doc.resolve(from);
+  let listDepth = 0;
+  let parentListType: string | null = null;
+
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const nodeType = $from.node(depth).type.name;
+
+    if (nodeType === "listItem") {
+      listDepth += 1;
+    }
+
+    if (!parentListType && ["bulletList", "orderedList", "taskList"].includes(nodeType)) {
+      parentListType = nodeType;
+    }
+  }
+
+  return {
+    isInsideListItem: listDepth > 0,
+    isInsideBulletList: parentListType === "bulletList",
+    isInsideOrderedList: parentListType === "orderedList",
+    isInsideTaskList: parentListType === "taskList",
+    listDepth,
+    parentListType,
+    parentNodeType: $from.parent.type.name,
+    selectionFrom: from,
+    selectionTo: to,
+  };
+};
 
 export const getSuggestionItems = (props: { query: string; editor: Editor }) => {
   const { query } = props;
