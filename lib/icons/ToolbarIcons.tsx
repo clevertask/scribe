@@ -1,3 +1,5 @@
+/* oxlint-disable react/only-export-components */
+
 import {
   forwardRef,
   type ForwardRefExoticComponent,
