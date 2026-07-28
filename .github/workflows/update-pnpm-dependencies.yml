@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   update:
-    uses: clevertask/clevertask-public-workflows/.github/workflows/update-pnpm-dependencies.yml@11321374192243f587a0f88fd5fd570099e842e2
+    uses: clevertask/clevertask-public-workflows/.github/workflows/update-pnpm-dependencies.yml@df42d860aab0c55b520df7e4894915a5e80d09d3
     with:
       package_roots: '["."]'
       review_team: dependency-reviewers
