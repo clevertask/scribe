@@ -1,6 +1,8 @@
 allowBuilds:
   esbuild: true
 
+minimumReleaseAge: 4320
+
 updateConfig:
   # Update this manually when .nvmrc moves to the next Node LTS line.
   ignoreDependencies:

@@ -18,6 +18,6 @@ permissions:
 
 jobs:
   publish:
-    uses: clevertask/clevertask-public-workflows/.github/workflows/publish-npm.yml@main
+    uses: clevertask/clevertask-public-workflows/.github/workflows/publish-npm.yml@e4628df244ed07fb722ec9ae9bd512c0db7d0e07
     with:
       dist_tag: ${{ inputs.dist_tag }}
