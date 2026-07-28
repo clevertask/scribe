@@ -20,4 +20,4 @@ jobs:
       package_roots: '["."]'
       review_team: dependency-reviewers
     secrets:
-      review_token: ${{ secrets.CLEVERTASK_PAT }}
+      review_token: ${{ secrets.CLEVERTASK_DEPENDENCY_REVIEW_TOKEN }}
