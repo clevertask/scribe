@@ -42,7 +42,8 @@
     "lint": "oxlint . --report-unused-disable-directives --deny-warnings",
     "preview": "vite preview",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run build"
   },
   "dependencies": {
     "@tiptap/core": "^3.29.0",

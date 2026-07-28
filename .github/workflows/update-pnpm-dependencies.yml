@@ -1,0 +1,21 @@
+name: Update pnpm Dependencies
+
+on:
+  schedule:
+    - cron: "27 10 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: weekly-dependency-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    uses: clevertask/clevertask-public-workflows/.github/workflows/update-pnpm-dependencies.yml@e4628df244ed07fb722ec9ae9bd512c0db7d0e07
+    with:
+      package_roots: '["."]'
+      review_team: dependency-reviewers
