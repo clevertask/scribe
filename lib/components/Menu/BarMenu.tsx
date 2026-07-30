@@ -12,6 +12,8 @@ import clsx from "clsx";
 import { Editor, useEditorState } from "@tiptap/react";
 import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
+import LinkEditor from "./LinkEditor";
+import { hideLinkBubbleMenu } from "./linkBubbleMenuPlugin";
 import {
   BlockQuoteIcon,
   BoldIcon,
@@ -73,6 +75,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const handleLinkPopoverOpenChange = useCallback(
     (open: boolean) => {
       if (open) {
+        hideLinkBubbleMenu(editor);
         const previousUrl = (editor.getAttributes("link").href as string | undefined) ?? "";
         setLinkValue(previousUrl);
         setImagePopoverOpen(false);
@@ -86,6 +89,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const handleImagePopoverOpenChange = useCallback(
     (open: boolean) => {
       if (open) {
+        hideLinkBubbleMenu(editor);
         const previousUrl = (editor.getAttributes("image").src as string | undefined) ?? "";
         setImageValue(previousUrl);
         setLinkPopoverOpen(false);
@@ -95,30 +99,6 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     },
     [editor],
   );
-
-  const handleApplyLink = useCallback(() => {
-    const url = linkValue.trim();
-
-    if (url.length === 0) {
-      editor.chain().focus().extendMarkRange("link").unsetLink().run();
-      setLinkPopoverOpen(false);
-      return;
-    }
-
-    editor
-      .chain()
-      .focus()
-      .extendMarkRange("link")
-      .setLink({ href: url })
-      .selectTextblockEnd()
-      .run();
-    setLinkPopoverOpen(false);
-  }, [editor, linkValue]);
-
-  const handleRemoveLink = useCallback(() => {
-    editor.chain().focus().extendMarkRange("link").unsetLink().run();
-    setLinkPopoverOpen(false);
-  }, [editor]);
 
   const handleApplyImage = useCallback(() => {
     const url = imageValue.trim();
@@ -142,13 +122,6 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
   const handlePopoverTriggerMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   }, []);
-
-  const handleLinkValueChange = useCallback(
-    ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
-      setLinkValue(value);
-    },
-    [],
-  );
 
   const handleImageValueChange = useCallback(
     ({ target: { value } }: ChangeEvent<HTMLInputElement>) => {
@@ -277,61 +250,16 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                           align="start"
                           style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
                         >
-                          <Flex direction="column" gap="4">
-                            <Box>
-                              <Text as="p" size="3" weight="medium">
-                                Link
-                              </Text>
-                              <Text as="p" size="2" color="gray">
-                                Add or update a link for the current selection.
-                              </Text>
-                            </Box>
-                            <label>
-                              <Flex direction="column" gap="2">
-                                <Text as="span" size="2" weight="medium">
-                                  URL
-                                </Text>
-                                <TextField.Root
-                                  autoFocus
-                                  placeholder="https://example.com"
-                                  value={linkValue}
-                                  onChange={handleLinkValueChange}
-                                />
-                              </Flex>
-                            </label>
-                            <Flex justify="between" gap="3" wrap="wrap">
-                              <Button
-                                type="button"
-                                color="red"
-                                variant="soft"
-                                disabled={
-                                  !(
-                                    (
-                                      (editor.getAttributes("link").href as string | undefined) ??
-                                      ""
-                                    ).trim() || linkValue.trim()
-                                  )
-                                }
-                                onClick={handleRemoveLink}
-                              >
-                                Remove link
-                              </Button>
-                              <Flex gap="2" justify="end" style={{ marginLeft: "auto" }}>
-                                <Popover.Close>
-                                  <Button type="button" variant="soft" color="gray">
-                                    Cancel
-                                  </Button>
-                                </Popover.Close>
-                                <Button
-                                  type="button"
-                                  disabled={linkValue.trim().length === 0}
-                                  onClick={handleApplyLink}
-                                >
-                                  Save
-                                </Button>
-                              </Flex>
-                            </Flex>
-                          </Flex>
+                          <LinkEditor
+                            editor={editor}
+                            existingHref={
+                              (editor.getAttributes("link").href as string | undefined) ?? ""
+                            }
+                            onClose={() => setLinkPopoverOpen(false)}
+                            onValueChange={setLinkValue}
+                            selectTextblockEndAfterSave
+                            value={linkValue}
+                          />
                         </Popover.Content>
                       </Popover.Root>
                     );

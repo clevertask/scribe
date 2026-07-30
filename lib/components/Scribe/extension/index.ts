@@ -32,6 +32,7 @@ export const initExtensions = (props: ScribeProps) => {
         width: 4,
         color: "#ebf6fe",
       },
+      link: false,
     }),
     TaskList.configure({
       HTMLAttributes: {

@@ -1,5 +1,6 @@
 import "katex/dist/katex.css";
 import BarMenu from "../Menu/BarMenu";
+import LinkBubbleMenu from "../Menu/LinkBubbleMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
@@ -285,6 +286,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
           style={editorContentStyle}
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />
+          {editable ? <LinkBubbleMenu editor={editor} /> : null}
         </div>
 
         {mobile ? <ListOptionBar editor={editor} /> : null}
