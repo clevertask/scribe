@@ -192,6 +192,16 @@
   padding: 8px;
 }
 
+.scribe-link-popover {
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-6);
+  border-radius: 12px;
+  box-shadow:
+    0 18px 38px -24px rgba(15, 23, 42, 0.35),
+    0 10px 20px -18px rgba(15, 23, 42, 0.35);
+  padding: 16px;
+}
+
 .scribe-inline-menu-icon {
   display: block;
   fill: transparent;

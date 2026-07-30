@@ -6,7 +6,10 @@ import { Scribe, ScribeRef, ScribeTableOfContentsItem } from "../lib/main";
 
 const demoContent = `
   <h1>Math fundamentals</h1>
-  <p>Start with a short note about the document.</p>
+  <p>
+    Start with a short note about the document, then try editing
+    <a href="https://example.com">this sample link</a>.
+  </p>
   <h2>Linear equations</h2>
   <p>Keep related examples close to the heading.</p>
   <h2>Quadratic equations</h2>
