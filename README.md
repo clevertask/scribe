@@ -2,6 +2,9 @@
 
 A versatile, block-based rich text editor for diverse applications, built with Tiptap and inspired by Notion's intuitive interface. `@clevertask/scribe` allows you to seamlessly view, create, and edit rich text content, with added support for Markdown parsing.
 
+> [!WARNING]
+> Scribe is experimental and has not reached version 1.0. Its APIs, default extensions, editor behavior, and built-in UI can change between releases, including minor releases. Pin an exact package version and test each upgrade before deployment. Forks and contributions are welcome.
+
 ## Features
 
 - **Block-based Editing:** Enjoy a familiar and intuitive Notion-style editing experience.

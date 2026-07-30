@@ -59,7 +59,7 @@ const LinkEditor: FC<LinkEditorProps> = ({
       const href = normalizeLinkUrl(value);
 
       if (!href) {
-        setErrorMessage("Enter a valid HTTP or HTTPS URL.");
+        setErrorMessage("Enter a valid web address or root-relative path.");
         return;
       }
 

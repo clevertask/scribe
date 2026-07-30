@@ -198,7 +198,9 @@ describe("link editing", () => {
     fireEvent.change(urlInput, { target: { value: "javascript:alert(1)" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("valid HTTP or HTTPS URL");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "valid web address or root-relative path",
+    );
     expect(getRenderedLink(editor)).toHaveAttribute("href", "https://old.example/docs");
 
     fireEvent.keyDown(urlInput, { key: "Escape" });
@@ -222,7 +224,7 @@ describe("link editing", () => {
     expect(link).toHaveAttribute("target", "_blank");
   });
 
-  it("keeps the toolbar flow for creating a link", async () => {
+  it("keeps the toolbar flow and preserves a root-relative link", async () => {
     const { editor } = renderScribe({ content: "<p>Plain text</p>", showBarMenu: true });
     const range = findTextRange(editor, "Plain");
 
@@ -233,13 +235,17 @@ describe("link editing", () => {
 
     fireEvent.click(screen.getByTitle("link"));
     const urlInput = await screen.findByRole("textbox", { name: "URL" });
-    fireEvent.change(urlInput, { target: { value: "created.example/docs" } });
+    fireEvent.change(urlInput, { target: { value: "/docs?view=compact#today" } });
+    expect(screen.getByRole("link", { name: "Open link" })).toHaveAttribute(
+      "href",
+      "/docs?view=compact#today",
+    );
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     await waitFor(() => {
       expect(editor.view.dom.querySelector("a")).not.toBeNull();
     });
-    expect(getRenderedLink(editor)).toHaveAttribute("href", "https://created.example/docs");
+    expect(getRenderedLink(editor)).toHaveAttribute("href", "/docs?view=compact#today");
     expect(getRenderedLink(editor)).toHaveTextContent("Plain");
   });
 });
