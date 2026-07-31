@@ -19,6 +19,7 @@ import {
   Extension,
   JSONContent,
   UseEditorOptions,
+  useEditor,
 } from "@tiptap/react";
 import {
   forwardRef,
@@ -71,6 +72,10 @@ export interface ScribeProps {
   editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
+  /**
+   * A caller-owned editor. Scribe attaches it without taking responsibility
+   * for destroying it.
+   */
   externalEditor?: Editor;
   editorProps?: UseEditorOptions;
   showBarMenu?: boolean;
@@ -92,31 +97,7 @@ export interface ScribeProps {
   onTableOfContentsChange?: ScribeTableOfContentsChangeHandler;
 }
 
-export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
-  const {
-    autoFocus = false,
-    content,
-    editable = true,
-    editorProps,
-    extensions,
-    onContentChange,
-    showBarMenu = true,
-    editorContentStyle,
-    editorContentClassName,
-    mainContainerStyle,
-    mainContainerClassName,
-    onKeyDown,
-    externalEditor,
-    mobile,
-    onTableOfContentsChange,
-  } = props;
-
-  // Initial content is passed into the editor constructor, so the deprecated
-  // content sync effect skips its first run to avoid re-applying the same doc.
-  const didSetInitialContentInEditorOptionsRef = useRef(!externalEditor && content !== undefined);
-
-  // The TipTap editor/extensions live outside React's render cycle. These refs
-  // keep the latest table-of-contents items and callback available to imperative editor APIs.
+const useTableOfContentsBridge = (onTableOfContentsChange?: ScribeTableOfContentsChangeHandler) => {
   const tableOfContentsItemsRef = useRef<ScribeTableOfContentsItem[]>([]);
   const onTableOfContentsChangeRef = useRef(onTableOfContentsChange);
 
@@ -130,6 +111,42 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       onTableOfContentsChangeRef.current?.(items, isCreate);
     },
     [],
+  );
+
+  return {
+    handleTableOfContentsChange,
+    tableOfContentsItemsRef,
+  };
+};
+
+type ScribeEditorProps = ScribeProps & {
+  editor: Editor;
+  initialContentWasApplied: boolean;
+  tableOfContentsItemsRef: ReturnType<typeof useTableOfContentsBridge>["tableOfContentsItemsRef"];
+};
+
+const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
+  const {
+    autoFocus = false,
+    content,
+    editable = true,
+    editor,
+    initialContentWasApplied,
+    onContentChange,
+    showBarMenu = true,
+    editorContentStyle,
+    editorContentClassName,
+    mainContainerStyle,
+    mainContainerClassName,
+    onKeyDown,
+    mobile,
+    tableOfContentsItemsRef,
+  } = props;
+
+  // Initial content is passed into the editor constructor, so the deprecated
+  // content sync effect skips its first run to avoid re-applying the same doc.
+  const didSetInitialContentInEditorOptionsRef = useRef(
+    initialContentWasApplied && content !== undefined,
   );
 
   const onUpdate = useCallback(
@@ -153,29 +170,6 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     },
     [editable, onContentChange],
   );
-  const [editor] = useState(() => {
-    return (
-      externalEditor ??
-      new Editor({
-        ...editorProps,
-        content: content ?? editorProps?.content,
-        editable,
-        extensions: [
-          ...initExtensions({
-            ...props,
-            onTableOfContentsChange: handleTableOfContentsChange,
-          }),
-          ...(extensions ?? []),
-        ],
-        editorProps: {
-          attributes: {
-            class: "scribe",
-          },
-          ...editorProps?.editorProps,
-        },
-      })
-    );
-  });
 
   const resetContent = useCallback(() => {
     editor.commands.setContent("");
@@ -225,7 +219,7 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
 
       headingElement.scrollIntoView({ behavior: "smooth", block: "start" });
     },
-    [editor],
+    [editor, tableOfContentsItemsRef],
   );
 
   useImperativeHandle(ref, () => {
@@ -295,3 +289,78 @@ export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     </div>
   );
 });
+
+ScribeEditor.displayName = "ScribeEditor";
+
+const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
+  const { content, editable = true, editorProps, extensions, onTableOfContentsChange } = props;
+  const { handleTableOfContentsChange, tableOfContentsItemsRef } =
+    useTableOfContentsBridge(onTableOfContentsChange);
+  const [initialEditorOptions] = useState<UseEditorOptions>(() => ({
+    ...editorProps,
+    content: content ?? editorProps?.content,
+    editable,
+    extensions: [
+      ...initExtensions({
+        ...props,
+        onTableOfContentsChange: handleTableOfContentsChange,
+      }),
+      ...(extensions ?? []),
+    ],
+    editorProps: {
+      attributes: {
+        class: "scribe",
+      },
+      ...editorProps?.editorProps,
+    },
+    shouldRerenderOnTransaction: editorProps?.shouldRerenderOnTransaction ?? false,
+  }));
+  const editor = useEditor(initialEditorOptions);
+
+  if (!editor) {
+    return null;
+  }
+
+  return (
+    <ScribeEditor
+      {...props}
+      ref={ref}
+      editor={editor}
+      initialContentWasApplied
+      tableOfContentsItemsRef={tableOfContentsItemsRef}
+    />
+  );
+});
+
+OwnedScribe.displayName = "OwnedScribe";
+
+const ExternalScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
+  const { externalEditor, onTableOfContentsChange } = props;
+  const { tableOfContentsItemsRef } = useTableOfContentsBridge(onTableOfContentsChange);
+
+  if (!externalEditor) {
+    return null;
+  }
+
+  return (
+    <ScribeEditor
+      {...props}
+      ref={ref}
+      editor={externalEditor}
+      initialContentWasApplied={false}
+      tableOfContentsItemsRef={tableOfContentsItemsRef}
+    />
+  );
+});
+
+ExternalScribe.displayName = "ExternalScribe";
+
+export const Scribe = forwardRef<ScribeRef, ScribeProps>((props, ref) =>
+  props.externalEditor ? (
+    <ExternalScribe {...props} ref={ref} />
+  ) : (
+    <OwnedScribe {...props} ref={ref} />
+  ),
+);
+
+Scribe.displayName = "Scribe";
