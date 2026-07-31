@@ -37,14 +37,16 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:style && tsc -p tsconfig.types.json --noCheck",
+    "build": "vite build && npm run check:browser-bundle && npm run build:style && tsc -p tsconfig.types.json --noCheck",
     "build:style": "mkdir -p ./dist && cp ./lib/styles/main.css ./dist/main.css",
+    "check:browser-bundle": "node scripts/check-browser-bundle.mjs",
     "lint": "oxlint . --report-unused-disable-directives --deny-warnings",
     "preview": "vite preview",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "vitest run --config vitest.config.ts",
-    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run build"
+    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run build",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@tiptap/core": "^3.29.0",
@@ -99,6 +101,5 @@
     "react": ">=18.3.1 <20.0.0",
     "react-dom": ">=18.3.1 <20.0.0"
   },
-  "packageManager": "pnpm@11.17.0",
-  "prepublishOnly": "npm run build"
+  "packageManager": "pnpm@11.17.0"
 }

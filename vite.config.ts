@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, esmExternalRequirePlugin } from "vite";
 import { resolve, extname, relative } from "path";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
@@ -7,15 +7,21 @@ import { glob } from "glob";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), libInjectCss()],
+  plugins: [
+    esmExternalRequirePlugin({
+      external: [/^react(?:\/.*)?$/, /^react-dom(?:\/.*)?$/],
+    }),
+    react(),
+    libInjectCss(),
+  ],
   build: {
     lib: {
       entry: resolve(__dirname, "lib/main.ts"),
       formats: ["es"],
     },
     copyPublicDir: false,
-    rollupOptions: {
-      external: ["@radix-ui/themes", "react", "react/jsx-runtime", "react-dom"],
+    rolldownOptions: {
+      external: ["@radix-ui/themes"],
       input: Object.fromEntries(
         glob.sync("lib/**/*.{ts,tsx}").map((file) => [
           // The name of the entry point
