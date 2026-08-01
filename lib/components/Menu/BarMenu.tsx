@@ -39,6 +39,8 @@ interface FormatItem {
   disabled?: boolean;
   icon: ToolbarIconComponent;
   isActive: () => boolean;
+  isToggle?: boolean;
+  label: string;
   name: string;
   popover?: "image" | "link";
 }
@@ -111,15 +113,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     setImagePopoverOpen(false);
   }, [editor, imageValue]);
 
-  const handleToolbarMouseDown = useCallback(
-    (event: MouseEvent<HTMLButtonElement>, command: () => void) => {
-      event.preventDefault();
-      command();
-    },
-    [],
-  );
-
-  const handlePopoverTriggerMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  const handleToolbarMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   }, []);
 
@@ -137,18 +131,24 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         icon: BoldIcon,
         command: () => editor.chain().focus().toggleBold().run(),
         isActive: () => Boolean(editorState?.isBold),
+        isToggle: true,
+        label: "Bold",
       },
       {
         name: "italic",
         icon: ItalicIcon,
         command: () => editor.chain().focus().toggleItalic().run(),
         isActive: () => Boolean(editorState?.isItalic),
+        isToggle: true,
+        label: "Italic",
       },
       {
         name: "strike",
         icon: StrikeIcon,
         command: () => editor.chain().focus().toggleStrike().run(),
         isActive: () => Boolean(editorState?.isStrike),
+        isToggle: true,
+        label: "Strikethrough",
       },
     ],
     [
@@ -157,12 +157,16 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         icon: InlineCodeIcon,
         command: () => editor.chain().focus().toggleCode().run(),
         isActive: () => Boolean(editorState?.isCode),
+        isToggle: true,
+        label: "Inline code",
       },
       {
         name: "highlight",
         icon: HighlightIcon,
         command: () => editor.chain().focus().toggleHighlight().run(),
         isActive: () => Boolean(editorState?.isHighlight),
+        isToggle: true,
+        label: "Highlight",
       },
     ],
     [
@@ -171,12 +175,16 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         icon: UnorderedListIcon,
         command: () => editor.chain().focus().toggleBulletList().run(),
         isActive: () => Boolean(editorState?.isBulletList),
+        isToggle: true,
+        label: "Bulleted list",
       },
       {
         name: "ordered-list",
         icon: OrderedListIcon,
         command: () => editor.chain().focus().toggleOrderedList().run(),
         isActive: () => Boolean(editorState?.isOrderedList),
+        isToggle: true,
+        label: "Numbered list",
       },
     ],
     [
@@ -184,6 +192,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         name: "link",
         icon: LinkIcon,
         isActive: () => Boolean(editorState?.isLink),
+        label: "Link",
         popover: "link",
       },
       {
@@ -191,6 +200,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         icon: ImageIcon,
         isActive: () => Boolean(editorState?.isImage),
         disabled: false,
+        label: "Insert image",
         popover: "image",
       },
       {
@@ -198,24 +208,29 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
         icon: CodeBlockIcon,
         command: () => editor.chain().focus().toggleCodeBlock().run(),
         isActive: () => Boolean(editorState?.isCodeBlock),
+        isToggle: true,
+        label: "Code block",
       },
       {
         name: "block-quote",
         icon: BlockQuoteIcon,
         command: () => editor.chain().focus().toggleBlockquote().run(),
         isActive: () => Boolean(editorState?.isBlockquote),
+        isToggle: true,
+        label: "Block quote",
       },
       {
         name: "horizontal-line",
         icon: HorizontalLineIcon,
         command: () => editor.chain().focus().setHorizontalRule().run(),
         isActive: () => false,
+        label: "Horizontal rule",
       },
     ],
   ];
 
   return (
-    <Box className="scribe-toolbar">
+    <Box className="scribe-toolbar" role="toolbar" aria-label="Text formatting">
       <Flex align="center" gap="3" wrap="wrap">
         {Formats.map((format, index) => {
           return (
@@ -232,18 +247,20 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                         <Popover.Trigger>
                           <IconButton
                             type="button"
+                            aria-label={item.label}
                             radius="medium"
                             color="gray"
                             variant={item.isActive() ? "soft" : "ghost"}
                             disabled={item.disabled || !editor.isEditable}
-                            title={item.name}
-                            onMouseDown={handlePopoverTriggerMouseDown}
+                            title={item.label}
+                            onMouseDown={handleToolbarMouseDown}
                             className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
                           >
                             <item.icon className="scribe-toolbar-icon" />
                           </IconButton>
                         </Popover.Trigger>
                         <Popover.Content
+                          aria-label="Link settings"
                           container={popupContainer}
                           size="2"
                           side="bottom"
@@ -275,18 +292,20 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                         <Popover.Trigger>
                           <IconButton
                             type="button"
+                            aria-label={item.label}
                             radius="medium"
                             color="gray"
                             variant={item.isActive() ? "soft" : "ghost"}
                             disabled={item.disabled || !editor.isEditable}
-                            title={item.name}
-                            onMouseDown={handlePopoverTriggerMouseDown}
+                            title={item.label}
+                            onMouseDown={handleToolbarMouseDown}
                             className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
                           >
                             <item.icon className="scribe-toolbar-icon" />
                           </IconButton>
                         </Popover.Trigger>
                         <Popover.Content
+                          aria-label="Insert image"
                           container={popupContainer}
                           size="2"
                           side="bottom"
@@ -339,12 +358,15 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                     <IconButton
                       key={`${item.name}-${idx}`}
                       type="button"
+                      aria-label={item.label}
+                      aria-pressed={item.isToggle ? item.isActive() : undefined}
                       radius="medium"
                       color="gray"
                       variant={item.isActive() ? "soft" : "ghost"}
                       disabled={item.disabled || !editor.isEditable}
-                      title={item.name}
-                      onMouseDown={(event) => handleToolbarMouseDown(event, item.command!)}
+                      title={item.label}
+                      onMouseDown={handleToolbarMouseDown}
+                      onClick={item.command}
                       className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
                     >
                       <item.icon className="scribe-toolbar-icon" />

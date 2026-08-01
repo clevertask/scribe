@@ -1,7 +1,7 @@
 import { SuggestionKeyDownProps, SuggestionProps } from "@tiptap/suggestion";
 import { Box, ScrollArea, Text } from "@radix-ui/themes";
 import { isEmpty, noop } from "lodash";
-import { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useId, useImperativeHandle, useState } from "react";
 import { SuggestionItem } from "./items";
 
 export interface SlashCommandRef {
@@ -12,6 +12,7 @@ type SlashCommandListProps = SuggestionProps & { items: SuggestionItem[] };
 
 export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProps>((props, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const commandListId = useId();
   const { items, command } = props;
   const resolvedSelectedIndex = items.length === 0 ? 0 : Math.min(selectedIndex, items.length - 1);
 
@@ -37,7 +38,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
 
           setSelectedIndex((previousIndex) => {
             const newIndex = (previousIndex + items.length - 1) % items.length;
-            const commandListing = document.getElementById(`editor-command-${newIndex}`);
+            const commandListing = document.getElementById(`${commandListId}-command-${newIndex}`);
             if (commandListing) {
               commandListing.scrollIntoView({ block: "nearest" });
             }
@@ -55,7 +56,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
 
           setSelectedIndex((previousIndex) => {
             const newIndex = (previousIndex + 1) % items.length;
-            const commandListing = document.getElementById(`editor-command-${newIndex}`);
+            const commandListing = document.getElementById(`${commandListId}-command-${newIndex}`);
             if (commandListing) {
               commandListing.scrollIntoView({ block: "nearest" });
             }
@@ -75,7 +76,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
         return false;
       },
     }),
-    [items, resolvedSelectedIndex, selectItem],
+    [commandListId, items, resolvedSelectedIndex, selectItem],
   );
 
   if (isEmpty(items)) {
@@ -85,9 +86,11 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
   return (
     <Box className="scribe-popup" style={{ width: 320 }}>
       <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 300 }}>
-        <div className="scribe-popup-list">
+        <div className="scribe-popup-list" role="group" aria-label="Block suggestions">
           {items.map((item, index) => {
             const previousItem = items[index - 1];
+            const commandId = `${commandListId}-command-${index}`;
+            const descriptionId = `${commandId}-description`;
             const showGroupLabel = index === 0 || previousItem?.type !== item.type;
 
             return (
@@ -99,9 +102,12 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
                 ) : null}
                 <button
                   type="button"
+                  aria-current={index === resolvedSelectedIndex ? "true" : undefined}
+                  aria-describedby={descriptionId}
+                  aria-label={item.title}
                   className="scribe-popup-item scribe-popup-item--command"
                   data-selected={index === resolvedSelectedIndex}
-                  id={`editor-command-${index}`}
+                  id={commandId}
                   onClick={() => selectItem(index)}
                   onKeyDown={noop}
                 >
@@ -112,7 +118,7 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SlashCommandListProp
                     <Text as="span" size="2" className="scribe-popup-item-title">
                       {item.title}
                     </Text>
-                    <Text as="span" size="1" color="gray">
+                    <Text id={descriptionId} as="span" size="1" color="gray">
                       {item.description}
                     </Text>
                   </span>

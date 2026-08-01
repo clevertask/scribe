@@ -18,39 +18,42 @@ export const ListOptionBar = ({ editor }: ListOptionBarProps) => {
       };
     },
   });
-  const handleListAction = useCallback(
-    (event: MouseEvent<HTMLButtonElement>, command: () => void) => {
-      event.preventDefault();
-      command();
-    },
-    [],
-  );
+  const handleListMouseDown = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  }, []);
 
   if (!editorState?.isInsideList || !editorState.isEditable) {
     return null;
   }
 
   return (
-    <Flex align="center" justify="between" className="scribe-list-toolbar" gap="3">
+    <Flex
+      align="center"
+      justify="between"
+      className="scribe-list-toolbar"
+      gap="3"
+      role="group"
+      aria-label="List indentation"
+    >
       <Button
         type="button"
+        aria-label="Outdent list item"
         size="1"
         variant="soft"
         color="gray"
-        onMouseDown={(event) =>
-          handleListAction(event, () => editor.chain().focus().liftListItem("listItem").run())
-        }
+        onMouseDown={handleListMouseDown}
+        onClick={() => editor.chain().focus().liftListItem("listItem").run()}
       >
         ← Outdent
       </Button>
       <Button
         type="button"
+        aria-label="Indent list item"
         size="1"
         variant="soft"
         color="gray"
-        onMouseDown={(event) =>
-          handleListAction(event, () => editor.chain().focus().sinkListItem("listItem").run())
-        }
+        onMouseDown={handleListMouseDown}
+        onClick={() => editor.chain().focus().sinkListItem("listItem").run()}
       >
         Indent →
       </Button>
