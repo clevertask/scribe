@@ -27,6 +27,11 @@ Object.defineProperty(window, "scrollBy", {
   value: () => undefined,
 });
 
+Object.defineProperty(Element.prototype, "scrollIntoView", {
+  configurable: true,
+  value: () => undefined,
+});
+
 const createRect = () => new DOMRect(0, 0, 120, 24);
 
 Object.defineProperties(Range.prototype, {

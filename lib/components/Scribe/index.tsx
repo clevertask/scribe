@@ -11,6 +11,7 @@ import type {
   ScribeTableOfContentsItem,
   ScribeTableOfContentsScrollTarget,
 } from "./extension/tableOfContents";
+import type { EditorState } from "@tiptap/pm/state";
 import {
   Content,
   Editor,
@@ -53,6 +54,35 @@ export type ScribeOnChangeContents = {
   source: "user" | "programmatic";
 };
 
+const DEFAULT_EDITOR_ARIA_LABEL = "Rich text editor";
+const EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES = [
+  "role",
+  "aria-label",
+  "aria-multiline",
+  "aria-readonly",
+] as const;
+
+const getAccessibleEditorAttributes = (
+  attributes: Record<string, string>,
+  ariaLabel: string | undefined,
+  editable: boolean,
+) => {
+  const role = attributes.role ?? "textbox";
+
+  return {
+    ...attributes,
+    role,
+    class: clsx("scribe", attributes.class),
+    "aria-label": ariaLabel ?? attributes["aria-label"] ?? DEFAULT_EDITOR_ARIA_LABEL,
+    ...(role === "textbox"
+      ? {
+          "aria-multiline": "true",
+          "aria-readonly": String(!editable),
+        }
+      : {}),
+  };
+};
+
 export interface ScribeRef {
   resetContent: () => void;
   getContent: (contentType: "html" | "json" | "markdown") => string | JSONContent | undefined;
@@ -69,6 +99,8 @@ export interface ScribeProps {
    * `ScribeRef.setContent` for programmatic updates after mount.
    */
   content?: string;
+  /** Accessible name for the rich-text editing surface. */
+  ariaLabel?: string;
   editable?: boolean;
   autoFocus?: boolean;
   extensions?: Extension[];
@@ -127,10 +159,13 @@ type ScribeEditorProps = ScribeProps & {
 
 const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
   const {
+    ariaLabel,
     autoFocus = false,
     content,
     editable = true,
     editor,
+    editorProps,
+    externalEditor,
     initialContentWasApplied,
     onContentChange,
     showBarMenu = true,
@@ -145,6 +180,13 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
 
   // Initial content is passed into the editor constructor, so the deprecated
   // content sync effect skips its first run to avoid re-applying the same doc.
+  const accessibilityPropsRef = useRef({ ariaLabel, editable });
+  const externalEditorAccessibilityRef = useRef<{
+    editor: Editor;
+    attributes: Record<string, string>;
+  } | null>(null);
+
+  accessibilityPropsRef.current = { ariaLabel, editable };
   const didSetInitialContentInEditorOptionsRef = useRef(
     initialContentWasApplied && content !== undefined,
   );
@@ -246,8 +288,151 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
   }, [content, editor]);
 
   useEffect(() => {
+    if (!externalEditor) {
+      externalEditorAccessibilityRef.current = null;
+      return;
+    }
+
+    const editorElement = editor.view.dom;
+    const originalDomAttributes = Object.fromEntries(
+      EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES.map((name) => [name, editorElement.getAttribute(name)]),
+    ) as Record<(typeof EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES)[number], string | null>;
+    const originalEditable = editor.options.editable;
+    const originalEditorProps = editor.options.editorProps ?? {};
+    const originalEditorAttributes = originalEditorProps.attributes;
+    const managedAttributeNames = new Set<string>();
+    const getConfiguredEditorAttributes = (state: EditorState, thisArg: unknown) => {
+      const attributes =
+        typeof originalEditorAttributes === "function"
+          ? originalEditorAttributes.call(thisArg, state)
+          : originalEditorAttributes;
+
+      Object.keys(attributes ?? {}).forEach((name) => managedAttributeNames.add(name));
+
+      return attributes ?? {};
+    };
+    const getCallerEditorAttributes = (state: EditorState, thisArg: unknown) => {
+      const configuredAttributes = getConfiguredEditorAttributes(state, thisArg);
+      const directDomAttributes: Record<string, string> = {};
+
+      EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES.forEach((name) => {
+        const value = originalDomAttributes[name];
+
+        if (!managedAttributeNames.has(name) && value !== null) {
+          directDomAttributes[name] = value;
+        }
+      });
+
+      return {
+        ...directDomAttributes,
+        ...configuredAttributes,
+      };
+    };
+    const initialCallerAttributes = getCallerEditorAttributes(editor.state, originalEditorProps);
+
+    externalEditorAccessibilityRef.current = {
+      editor,
+      attributes: initialCallerAttributes,
+    };
+
+    const accessibleExternalEditorAttributes = function (this: unknown, state: EditorState) {
+      const callerAttributes = getCallerEditorAttributes(state, this);
+
+      if (externalEditorAccessibilityRef.current?.editor === editor) {
+        externalEditorAccessibilityRef.current.attributes = callerAttributes;
+      }
+
+      const currentAccessibilityProps = accessibilityPropsRef.current;
+
+      return getAccessibleEditorAttributes(
+        callerAttributes,
+        currentAccessibilityProps.ariaLabel,
+        currentAccessibilityProps.editable,
+      );
+    };
+
+    editor.setOptions({
+      editorProps: {
+        ...originalEditorProps,
+        attributes: accessibleExternalEditorAttributes,
+      },
+    });
+
+    return () => {
+      if (!editor.isDestroyed) {
+        const currentEditorProps = editor.options.editorProps ?? {};
+        const attributesAreWrapped =
+          currentEditorProps.attributes === accessibleExternalEditorAttributes;
+
+        if (attributesAreWrapped) {
+          const restoredEditorProps = { ...currentEditorProps };
+
+          if (originalEditorAttributes === undefined) {
+            delete restoredEditorProps.attributes;
+          } else {
+            restoredEditorProps.attributes = originalEditorAttributes;
+          }
+
+          editor.setOptions({ editorProps: restoredEditorProps });
+        }
+
+        editor.setEditable(Boolean(originalEditable), false);
+
+        const configuredAttributes = attributesAreWrapped
+          ? getConfiguredEditorAttributes(editor.state, originalEditorProps)
+          : null;
+
+        if (configuredAttributes) {
+          EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES.forEach((name) => {
+            const value =
+              name in configuredAttributes
+                ? configuredAttributes[name]
+                : managedAttributeNames.has(name)
+                  ? null
+                  : originalDomAttributes[name];
+
+            if (value === null || value === undefined) {
+              editorElement.removeAttribute(name);
+              return;
+            }
+
+            editorElement.setAttribute(name, value);
+          });
+        }
+      }
+
+      if (externalEditorAccessibilityRef.current?.editor === editor) {
+        externalEditorAccessibilityRef.current = null;
+      }
+    };
+  }, [editor, externalEditor]);
+
+  useEffect(() => {
     editor.setEditable(Boolean(editable));
-  }, [editable, editor]);
+
+    const editorElement = editor.view.dom;
+    const configuredEditorAttributes = externalEditor
+      ? externalEditorAccessibilityRef.current?.attributes
+      : typeof editorProps?.editorProps?.attributes === "function"
+        ? editorProps.editorProps.attributes.call(editorProps.editorProps, editor.state)
+        : editorProps?.editorProps?.attributes;
+    const accessibleEditorAttributes = getAccessibleEditorAttributes(
+      configuredEditorAttributes ?? {},
+      ariaLabel,
+      editable,
+    );
+
+    EDITOR_ACCESSIBILITY_ATTRIBUTE_NAMES.forEach((name) => {
+      const value = accessibleEditorAttributes[name];
+
+      if (value === undefined) {
+        editorElement.removeAttribute(name);
+        return;
+      }
+
+      editorElement.setAttribute(name, value);
+    });
+  }, [ariaLabel, editable, editor, editorProps, externalEditor]);
 
   useEffect(() => {
     editor.off("update");
@@ -293,9 +478,33 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
 ScribeEditor.displayName = "ScribeEditor";
 
 const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
-  const { content, editable = true, editorProps, extensions, onTableOfContentsChange } = props;
+  const {
+    ariaLabel,
+    content,
+    editable = true,
+    editorProps,
+    extensions,
+    onTableOfContentsChange,
+  } = props;
   const { handleTableOfContentsChange, tableOfContentsItemsRef } =
     useTableOfContentsBridge(onTableOfContentsChange);
+  const editorAttributes = editorProps?.editorProps?.attributes;
+  const accessibilityPropsRef = useRef({ ariaLabel, editable });
+
+  accessibilityPropsRef.current = { ariaLabel, editable };
+
+  const accessibleEditorAttributes =
+    typeof editorAttributes === "function"
+      ? function (this: unknown, state: EditorState) {
+          const currentAccessibilityProps = accessibilityPropsRef.current;
+
+          return getAccessibleEditorAttributes(
+            editorAttributes.call(this, state),
+            currentAccessibilityProps.ariaLabel,
+            currentAccessibilityProps.editable,
+          );
+        }
+      : getAccessibleEditorAttributes(editorAttributes ?? {}, ariaLabel, editable);
   const [initialEditorOptions] = useState<UseEditorOptions>(() => ({
     ...editorProps,
     content: content ?? editorProps?.content,
@@ -308,10 +517,8 @@ const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
       ...(extensions ?? []),
     ],
     editorProps: {
-      attributes: {
-        class: "scribe",
-      },
       ...editorProps?.editorProps,
+      attributes: accessibleEditorAttributes,
     },
     shouldRerenderOnTransaction: editorProps?.shouldRerenderOnTransaction ?? false,
   }));

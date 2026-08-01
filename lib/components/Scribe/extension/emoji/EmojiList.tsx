@@ -71,11 +71,13 @@ export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) =
   return (
     <Box className="scribe-popup" style={{ width: 240 }}>
       <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 240 }}>
-        <div className="scribe-popup-list">
+        <div className="scribe-popup-list" role="group" aria-label="Emoji suggestions">
           {items.map((item, index) => (
             <button
               key={item.name}
               type="button"
+              aria-current={index === resolvedSelectedIndex ? "true" : undefined}
+              aria-label={`Insert ${item.name} emoji`}
               className="scribe-popup-item"
               data-selected={index === resolvedSelectedIndex}
               onClick={() => command({ name: item.name })}

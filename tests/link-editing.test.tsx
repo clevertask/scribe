@@ -198,8 +198,12 @@ describe("link editing", () => {
     fireEvent.change(urlInput, { target: { value: "javascript:alert(1)" } });
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "valid web address or root-relative path",
+    const errorMessage = await screen.findByRole("alert");
+
+    expect(errorMessage).toHaveTextContent("valid web address or root-relative path");
+    expect(urlInput).toHaveAttribute("aria-invalid", "true");
+    expect(urlInput).toHaveAccessibleDescription(
+      "Enter a valid web address or root-relative path.",
     );
     expect(getRenderedLink(editor)).toHaveAttribute("href", "https://old.example/docs");
 
@@ -233,7 +237,7 @@ describe("link editing", () => {
       editor.view.focus();
     });
 
-    fireEvent.click(screen.getByTitle("link"));
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
     const urlInput = await screen.findByRole("textbox", { name: "URL" });
     fireEvent.change(urlInput, { target: { value: "/docs?view=compact#today" } });
     expect(screen.getByRole("link", { name: "Open link" })).toHaveAttribute(
