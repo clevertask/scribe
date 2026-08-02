@@ -9,10 +9,16 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 function App() {
+  const mobile = new URLSearchParams(window.location.search).get("mobile") === "true";
+
   return (
     <Theme>
       <main style={{ margin: "2rem auto", maxWidth: "64rem", padding: "0 1rem" }}>
-        <Scribe ariaLabel="Document content" content="<p>Package consumer content</p>" />
+        <Scribe
+          ariaLabel="Document content"
+          content="<p>Package consumer content</p>"
+          mobile={mobile}
+        />
       </main>
     </Theme>
   );
