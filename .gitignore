@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Playwright
+playwright-report
+test-results
+e2e/consumer/package-under-test.tgz
+e2e/consumer/package.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

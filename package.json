@@ -29,23 +29,37 @@
     "dist"
   ],
   "type": "module",
-  "main": "dist/main.js",
-  "types": "dist/main.d.ts",
+  "main": "./dist/main.js",
+  "types": "./dist/main.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/main.d.ts",
+      "import": "./dist/main.js",
+      "default": "./dist/main.js"
+    },
+    "./styles.css": "./dist/main.css",
+    "./dist/main.css": "./dist/main.css"
+  },
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run check:browser-bundle && npm run build:style && tsc -p tsconfig.types.json --noCheck",
+    "e2e": "pnpm run e2e:prepare && playwright test && pnpm run e2e:build-consumer",
+    "e2e:build-consumer": "pnpm --dir e2e/consumer exec vite build",
+    "e2e:dev": "pnpm run e2e:prepare && playwright test --ui",
+    "e2e:install": "playwright install --with-deps chromium",
+    "e2e:prepare": "pnpm run build && node scripts/prepare-package-consumer.mjs",
+    "e2e:serve": "pnpm --dir e2e/consumer exec vite --force --strictPort --host 127.0.0.1 --port 5174",
+    "build": "vite build && npm run build:style && tsc -p tsconfig.types.json --noCheck",
     "build:style": "mkdir -p ./dist && cp ./lib/styles/main.css ./dist/main.css",
-    "check:browser-bundle": "node scripts/check-browser-bundle.mjs",
     "lint": "oxlint . --report-unused-disable-directives --deny-warnings",
     "preview": "vite preview",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test": "vitest run --config vitest.config.ts",
-    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run build",
+    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run e2e:install && pnpm run e2e",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
@@ -70,12 +84,13 @@
     "@tiptap/suggestion": "^3.29.0",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.12",
-    "katex": "^0.18.1",
+    "katex": "^0.17.0",
     "marked": "^18.0.7",
     "tippy.js": "^6.3.7",
     "turndown": "^7.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.0",
     "@radix-ui/themes": "^3.3.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",

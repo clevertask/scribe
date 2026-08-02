@@ -1,0 +1,54 @@
+name: Playwright Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ".nvmrc"
+          package-manager-cache: false
+
+      - name: Install Corepack and pnpm
+        run: | # zizmor: ignore[adhoc-packages] Corepack is exactly pinned.
+          npm install --global --ignore-scripts corepack@0.34.5
+          corepack enable
+          test "$(corepack --version)" = "0.34.5"
+
+          package_manager="$(
+            node --print "require('./package.json').packageManager ?? ''"
+          )"
+
+          if [[ ! "${package_manager}" =~ ^pnpm@([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "::error::package.json must declare an exact pnpm version in packageManager."
+            exit 1
+          fi
+
+          expected_pnpm_version="${BASH_REMATCH[1]}"
+          corepack install --global "${package_manager}"
+          test "$(pnpm --version)" = "${expected_pnpm_version}"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate dependency changes
+        run: pnpm run validate:deps

@@ -43,7 +43,7 @@ npm install @clevertask/scribe
 
 ```tsx
 import "@radix-ui/themes/styles.css";
-import "@clevertask/scribe/dist/main.css";
+import "@clevertask/scribe/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { Scribe, ScribeRef } from "@clevertask/scribe";
 
@@ -67,7 +67,7 @@ function App() {
 
 ```tsx
 import "@radix-ui/themes/styles.css";
-import "@clevertask/scribe/dist/main.css";
+import "@clevertask/scribe/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { Scribe, ScribeOnChangeContents } from "@clevertask/scribe";
 
@@ -93,7 +93,7 @@ function App() {
 
 ```tsx
 import "@radix-ui/themes/styles.css";
-import "@clevertask/scribe/dist/main.css";
+import "@clevertask/scribe/styles.css";
 import { Theme } from "@radix-ui/themes";
 import { Scribe } from "@clevertask/scribe";
 
@@ -148,7 +148,7 @@ The table of contents currently tracks default TipTap heading nodes only. Each i
 
 ## Math Expressions
 
-Scribe's default UI is styled with Radix Themes components. Load `@radix-ui/themes/styles.css` once in your app alongside `@clevertask/scribe/dist/main.css`, and render Scribe somewhere inside a Radix `<Theme>`.
+Scribe's default UI is styled with Radix Themes components. Load `@radix-ui/themes/styles.css` once in your app alongside `@clevertask/scribe/styles.css`, and render Scribe somewhere inside a Radix `<Theme>`.
 
 Scribe ships with `@tiptap/extension-mathematics`. The extension renders math when it receives math nodes in the HTML:
 
