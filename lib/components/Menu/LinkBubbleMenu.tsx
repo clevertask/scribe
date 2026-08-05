@@ -7,7 +7,11 @@ import {
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import LinkEditor from "./LinkEditor";
-import { hideLinkBubbleMenu, linkBubbleMenuPluginKey } from "./linkBubbleMenuPlugin";
+import {
+  hideLinkBubbleMenu,
+  linkBubbleMenuPluginKey,
+  showLinkBubbleMenu,
+} from "./linkBubbleMenuPlugin";
 
 export interface LinkBubbleMenuProps {
   editor: Editor;
@@ -44,6 +48,63 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (editor.isDestroyed) {
+      return;
+    }
+
+    const editorElement = editor.view.dom;
+    let activationTimeout: number | null = null;
+    let disposed = false;
+
+    const handleMouseUp = (event: MouseEvent) => {
+      if (event.button !== 0 || !editor.isEditable) {
+        return;
+      }
+
+      const target = event.target as Element | null;
+      const link = target?.closest?.("a");
+
+      if (!link || !editorElement.contains(link)) {
+        return;
+      }
+
+      if (activationTimeout !== null) {
+        window.clearTimeout(activationTimeout);
+      }
+
+      // ProseMirror resolves a click on its document-level mouseup handler.
+      // Its handled Link click cancels this event; text-selection gestures do not.
+      activationTimeout = window.setTimeout(() => {
+        activationTimeout = null;
+
+        if (disposed || editor.isDestroyed || !editor.isEditable || !event.defaultPrevented) {
+          return;
+        }
+
+        const { from, to } = editor.state.selection;
+
+        if (from === to || !editor.isActive("link")) {
+          return;
+        }
+
+        showLinkBubbleMenu(editor);
+      });
+    };
+
+    editorElement.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      disposed = true;
+
+      if (activationTimeout !== null) {
+        window.clearTimeout(activationTimeout);
+      }
+
+      editorElement.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [editor]);
+
   const handleClose = useCallback(() => {
     if (editor.isDestroyed) {
       return;
@@ -67,14 +128,11 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
   }, []);
 
   const handleShouldShow = useCallback<LinkBubbleMenuShouldShow>(
-    ({ editor: currentEditor, element, from, to, view }) => {
+    ({ editor: currentEditor, element, from, to }) => {
       const hasMenuFocus = element.contains(element.ownerDocument.activeElement);
 
       return (
-        currentEditor.isEditable &&
-        from !== to &&
-        currentEditor.isActive("link") &&
-        (view.hasFocus() || hasMenuFocus)
+        currentEditor.isEditable && from !== to && currentEditor.isActive("link") && hasMenuFocus
       );
     },
     [],
