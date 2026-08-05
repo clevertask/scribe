@@ -1,5 +1,6 @@
 import { Extension } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import type { EditorView } from "@tiptap/pm/view";
 import { marked, Token } from "marked";
 import { md2html } from "../../../utils/markdown-to-html";
 
@@ -109,6 +110,16 @@ const normalizeTaskListHtml = (html: string) => {
   return template.innerHTML;
 };
 
+const applyPastedHtmlTransforms = (view: EditorView, html: string) => {
+  let transformedHtml = html;
+
+  view.someProp("transformPastedHTML", (transform) => {
+    transformedHtml = transform(transformedHtml, view);
+  });
+
+  return transformedHtml;
+};
+
 export default Extension.create({
   name: "markdownPaste",
 
@@ -117,7 +128,7 @@ export default Extension.create({
       new Plugin({
         key: markdownPastePluginKey,
         props: {
-          handlePaste: (_, event) => {
+          handlePaste: (view, event) => {
             const clipboardHtml = event.clipboardData?.getData("text/html");
             const clipboardText = event.clipboardData?.getData("text/plain");
 
@@ -126,11 +137,9 @@ export default Extension.create({
             }
 
             event.preventDefault();
-            this.editor
-              .chain()
-              .focus()
-              .insertContent(normalizeTaskListHtml(md2html(clipboardText)))
-              .run();
+            const html = normalizeTaskListHtml(md2html(clipboardText));
+
+            this.editor.chain().focus().insertContent(applyPastedHtmlTransforms(view, html)).run();
 
             return true;
           },
