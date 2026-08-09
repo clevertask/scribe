@@ -21,7 +21,7 @@ export default defineConfig({
     },
     copyPublicDir: false,
     rolldownOptions: {
-      external: ["@radix-ui/themes"],
+      external: ["@radix-ui/themes", /^@tiptap\/pm(?:\/.*)?$/],
       input: Object.fromEntries(
         glob.sync("lib/**/*.{ts,tsx}").map((file) => [
           // The name of the entry point

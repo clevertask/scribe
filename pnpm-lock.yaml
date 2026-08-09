@@ -57,9 +57,6 @@ importers:
       '@tiptap/extension-typography':
         specifier: ^3.29.2
         version: 3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))
-      '@tiptap/pm':
-        specifier: ^3.29.2
-        version: 3.29.2
       '@tiptap/react':
         specifier: ^3.29.2
         version: 3.29.2(@floating-ui/dom@1.8.0)(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -109,6 +106,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.3.2
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@tiptap/pm':
+        specifier: 3.29.2
+        version: 3.29.2
       '@types/lodash':
         specifier: ^4.17.25
         version: 4.17.25
