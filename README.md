@@ -34,8 +34,11 @@ A versatile, block-based rich text editor for diverse applications, built with T
 ## Installation
 
 ```bash
-npm install @clevertask/scribe
+npm install --save-exact @clevertask/scribe @tiptap/pm@3.29.2
 ```
+
+Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
+installed version prevents identity conflicts between built-in and custom plugins.
 
 ## Usage
 
@@ -297,15 +300,13 @@ We're excited about these upcoming features and welcome any feedback or contribu
 
 ## Release Process
 
-This package is automatically published to npm when a new release is created on GitHub. To create a new release:
+Publishing is split into two explicit GitHub Actions after a change reaches `main`:
 
-1. Update the version in `package.json` according to semantic versioning rules.
-2. Commit the version change: `git commit -am "Bump version to x.x.x"`
-3. Create a new tag: `git tag x.x.x`
-4. Push the changes and the tag: `git push && git push --tags`
-5. Go to the GitHub repository and create a new release, selecting the tag you just created.
-
-The GitHub Action will automatically build, test, and publish the new version to npm.
+1. Run **Create Release Version** from `main` and enter the version to release.
+2. Wait for it to commit the version, create the tag, and create the GitHub release.
+3. Run **Publish Package** from the immutable `v<version>` tag and choose the `latest` or
+   `next` npm tag.
+4. Confirm the new version is available in the npm registry before updating consumers.
 
 ## License
 

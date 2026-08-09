@@ -41,6 +41,8 @@ const [
   radixThemesManifest,
   reactManifest,
   reactDomManifest,
+  tiptapCoreManifest,
+  tiptapPmManifest,
   viteManifest,
   viteReactPluginManifest,
 ] = await Promise.all([
@@ -48,6 +50,8 @@ const [
   readJson(resolve(repositoryDirectory, "node_modules/@radix-ui/themes/package.json")),
   readJson(resolve(repositoryDirectory, "node_modules/react/package.json")),
   readJson(resolve(repositoryDirectory, "node_modules/react-dom/package.json")),
+  readJson(resolve(repositoryDirectory, "node_modules/@tiptap/core/package.json")),
+  readJson(resolve(repositoryDirectory, "node_modules/@tiptap/pm/package.json")),
   readJson(resolve(repositoryDirectory, "node_modules/vite/package.json")),
   readJson(resolve(repositoryDirectory, "node_modules/@vitejs/plugin-react/package.json")),
 ]);
@@ -61,6 +65,8 @@ const consumerManifest = {
   dependencies: {
     "@clevertask/scribe": "file:./package-under-test.tgz",
     "@radix-ui/themes": radixThemesManifest.version,
+    "@tiptap/core": tiptapCoreManifest.version,
+    "@tiptap/pm": tiptapPmManifest.version,
     react: reactManifest.version,
     "react-dom": reactDomManifest.version,
   },
@@ -110,6 +116,16 @@ if (
 ) {
   throw new Error(
     `Installed ${installedManifest.name}@${installedManifest.version} instead of ${packageManifest.name}@${packageManifest.version}`,
+  );
+}
+
+if (installedManifest.dependencies?.["@tiptap/pm"] !== undefined) {
+  throw new Error("The installed package must not declare @tiptap/pm as an ordinary dependency");
+}
+
+if (installedManifest.peerDependencies?.["@tiptap/pm"] !== tiptapPmManifest.version) {
+  throw new Error(
+    `The installed package must require the consumer's exact @tiptap/pm ${tiptapPmManifest.version} runtime`,
   );
 }
 
