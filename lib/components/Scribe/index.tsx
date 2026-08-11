@@ -1,6 +1,7 @@
 import "katex/dist/katex.css";
 import BarMenu from "../Menu/BarMenu";
 import LinkBubbleMenu from "../Menu/LinkBubbleMenu";
+import TableBubbleMenu from "../Menu/TableBubbleMenu";
 import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
@@ -106,7 +107,8 @@ export interface ScribeProps {
   extensions?: Extension[];
   /**
    * A caller-owned editor. Scribe attaches it without taking responsibility
-   * for destroying it.
+   * for destroying it. Its extension and plugin lifecycle, including table
+   * resizing, also remains caller-owned.
    */
   externalEditor?: Editor;
   editorProps?: UseEditorOptions;
@@ -466,6 +468,7 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />
           {editable ? <LinkBubbleMenu editor={editor} /> : null}
+          {editable && editor.schema.nodes.table ? <TableBubbleMenu editor={editor} /> : null}
         </div>
 
         {mobile ? <ListOptionBar editor={editor} /> : null}

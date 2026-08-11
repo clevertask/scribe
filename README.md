@@ -10,6 +10,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - **Block-based Editing:** Enjoy a familiar and intuitive Notion-style editing experience.
 - **Markdown Support:** Parse and render Markdown content effortlessly.
 - **Markdown Paste:** Paste plain-text markdown into the editor and have it converted into rich content automatically.
+- **Table Authoring:** Insert, resize, and edit tables with controls that stay next to the active table.
 - **Versatile Integration:** Easily integrate `@clevertask/scribe` into any project requiring rich text editing.
 - **View and Edit:** Seamlessly switch between viewing and editing modes.
 - **Experimental Table of Contents:** Subscribe to heading changes and render an app-owned table of contents outside the editor.
@@ -19,6 +20,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - [@clevertask/scribe](#clevertaskscribe)
   - [Installation](#installation)
   - [Usage](#usage)
+  - [Table Authoring](#table-authoring)
   - [Experimental Table of Contents](#experimental-table-of-contents)
   - [Math Expressions](#math-expressions)
   - [Props](#props)
@@ -109,6 +111,14 @@ function App() {
 }
 ```
 
+## Table Authoring
+
+Type `/table` to insert a 3 × 3 table with a header row. Selecting a table cell opens nearby controls for adding or deleting rows and columns, toggling the header row, and deleting the table. Drag a column boundary to resize it.
+
+Keyboard users can press `Alt + F10` while editing a table to focus its controls, use the arrow, Home, and End keys to move between actions, and press Escape to return to the active cell.
+
+Simple headed tables serialize as GFM Markdown. Tables with merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
+
 ## Experimental Table of Contents
 
 Scribe can expose table-of-contents data without rendering a table-of-contents block inside the editable document. Enable the experimental API with `enableTableOfContents`, keep the latest items in your app state, and call `scrollToTableOfContentsItem` when a user selects an entry.
@@ -190,7 +200,7 @@ If your content arrives as HTML (for example from a server), use the helper belo
 | `editable`                | `boolean`                                                          | `true`                     | Controls whether the editor is editable.                                                                                                                                                                                                                 |
 | `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
-| `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. Scribe attaches the editor but does not destroy it. The caller remains responsible for destroying it.                                                                                                                 |
+| `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |
 | `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
 | `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |
 | `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                      |

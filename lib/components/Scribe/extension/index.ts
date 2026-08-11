@@ -18,6 +18,7 @@ import Typography from "@tiptap/extension-typography";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
+import { ScribeTable } from "./resizable-table";
 
 export const initExtensions = (props: ScribeProps) => {
   const {
@@ -42,9 +43,8 @@ export const initExtensions = (props: ScribeProps) => {
     TaskItem.configure({
       nested: true,
     }),
-    TableKit.configure({
-      table: { resizable: true },
-    }),
+    TableKit.configure({ table: false }),
+    ScribeTable,
     Placeholder.configure({
       showOnlyWhenEditable: true,
       includeChildren: true,

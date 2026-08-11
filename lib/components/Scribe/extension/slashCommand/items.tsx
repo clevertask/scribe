@@ -206,6 +206,34 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) => 
         </svg>
       ),
     },
+    {
+      title: "Table",
+      description: "Insert a 3 × 3 table",
+      type: SuggestionItemType.ADVANCED_BLOCKS,
+      command: ({ editor, range }) =>
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+          .run(),
+      searchTerms: ["grid", "rows", "columns"],
+      icon: (
+        <svg
+          className="slash-menu-icon slash-menu-icon-with-strokes"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M4 5H20V19H4V5ZM4 9H20M4 14H20M9.333 5V19M14.667 5V19"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+    },
     // advanced blocks
     {
       title: "Code Block",
