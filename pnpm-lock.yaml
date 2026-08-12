@@ -32,7 +32,7 @@ importers:
         version: 3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)
       '@tiptap/extension-mathematics':
         specifier: ^3.29.2
-        version: 3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)(katex@0.18.1)
+        version: 3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)(katex@0.17.0)
       '@tiptap/extension-placeholder':
         specifier: ^3.29.2
         version: 3.29.2(@tiptap/extensions@3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2))
@@ -73,8 +73,8 @@ importers:
         specifier: ^3.4.13
         version: 3.4.13
       katex:
-        specifier: ^0.18.1
-        version: 0.18.1
+        specifier: ^0.17.0
+        version: 0.17.0
       marked:
         specifier: ^18.0.9
         version: 18.0.9
@@ -2155,8 +2155,8 @@ packages:
       canvas:
         optional: true
 
-  katex@0.18.1:
-    resolution: {integrity: sha512-Td8GCYSxDAoMhHOlKmCFMJ/hz5qlAAb71n66Dryw9nfCVfumLo7nhuotbvKom/XPADmrYC3O5QR71EPq4DarJQ==}
+  katex@0.17.0:
+    resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
     hasBin: true
 
   lightningcss-android-arm64@1.33.0:
@@ -3962,11 +3962,11 @@ snapshots:
       '@tiptap/core': 3.29.2(@tiptap/pm@3.29.2)
       '@tiptap/pm': 3.29.2
 
-  '@tiptap/extension-mathematics@3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)(katex@0.18.1)':
+  '@tiptap/extension-mathematics@3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2)(katex@0.17.0)':
     dependencies:
       '@tiptap/core': 3.29.2(@tiptap/pm@3.29.2)
       '@tiptap/pm': 3.29.2
-      katex: 0.18.1
+      katex: 0.17.0
 
   '@tiptap/extension-ordered-list@3.29.2(@tiptap/extension-list@3.29.2(@tiptap/core@3.29.2(@tiptap/pm@3.29.2))(@tiptap/pm@3.29.2))':
     dependencies:
@@ -4409,7 +4409,7 @@ snapshots:
     transitivePeerDependencies:
       - '@noble/hashes'
 
-  katex@0.18.1:
+  katex@0.17.0:
     dependencies:
       commander: 8.3.0
 

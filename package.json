@@ -83,7 +83,7 @@
     "@tiptap/suggestion": "^3.29.2",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.13",
-    "katex": "^0.18.1",
+    "katex": "^0.17.0",
     "marked": "^18.0.9",
     "tippy.js": "^6.3.7",
     "turndown": "^7.2.4"
