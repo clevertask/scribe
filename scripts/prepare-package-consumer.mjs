@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { access, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { glob } from "glob";
 
 const repositoryDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const consumerDirectory = resolve(repositoryDirectory, "e2e/consumer");
@@ -34,6 +35,51 @@ function run(command, args, { captureOutput = false, cwd = repositoryDirectory }
   }
 
   return result.stdout?.trim() ?? "";
+}
+
+function assertManifestTiptapFamily(manifest, expectedVersion) {
+  const dependencyFields = ["dependencies", "devDependencies"];
+  const tiptapDependencies = dependencyFields.flatMap((field) =>
+    Object.entries(manifest[field] ?? {}).filter(([name]) => name.startsWith("@tiptap/")),
+  );
+  const mismatchedDependencies = tiptapDependencies.filter(
+    ([, version]) => version !== expectedVersion,
+  );
+
+  if (tiptapDependencies.length === 0 || mismatchedDependencies.length > 0) {
+    const mismatches = mismatchedDependencies
+      .map(([name, version]) => `${name}@${version}`)
+      .join(", ");
+
+    throw new Error(
+      `The package manifest must pin the complete Tiptap family to ${expectedVersion}${
+        mismatches.length > 0 ? `; found ${mismatches}` : ""
+      }`,
+    );
+  }
+}
+
+async function assertInstalledTiptapFamily(directory, expectedVersion, label) {
+  const manifestPaths = await glob(
+    "node_modules/.pnpm/@tiptap+*/node_modules/@tiptap/*/package.json",
+    {
+      absolute: true,
+      cwd: directory,
+    },
+  );
+  const manifests = await Promise.all(manifestPaths.map((path) => readJson(path)));
+  const mismatchedPackages = manifests
+    .filter((manifest) => manifest.version !== expectedVersion)
+    .map((manifest) => `${manifest.name}@${manifest.version}`)
+    .sort();
+
+  if (manifests.length === 0 || mismatchedPackages.length > 0) {
+    throw new Error(
+      `${label} must resolve the complete Tiptap family to ${expectedVersion}${
+        mismatchedPackages.length > 0 ? `; found ${mismatchedPackages.join(", ")}` : ""
+      }`,
+    );
+  }
 }
 
 const [
@@ -76,6 +122,13 @@ const consumerManifest = {
   },
 };
 
+assertManifestTiptapFamily(packageManifest, tiptapPmManifest.version);
+await assertInstalledTiptapFamily(
+  repositoryDirectory,
+  tiptapPmManifest.version,
+  "The package build",
+);
+
 await rm(consumerNodeModules, { force: true, recursive: true });
 await rm(packageTarballPath, { force: true });
 await writeFile(consumerManifestPath, `${JSON.stringify(consumerManifest, null, 2)}\n`);
@@ -109,6 +162,12 @@ try {
 
 const installedPackageDirectory = resolve(consumerNodeModules, "@clevertask/scribe");
 const installedManifest = await readJson(resolve(installedPackageDirectory, "package.json"));
+
+await assertInstalledTiptapFamily(
+  consumerDirectory,
+  tiptapPmManifest.version,
+  "The packed consumer",
+);
 
 if (
   installedManifest.name !== packageManifest.name ||
