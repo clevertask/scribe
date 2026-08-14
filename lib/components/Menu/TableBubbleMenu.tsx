@@ -16,6 +16,7 @@ import {
   useState,
 } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
+import { getSelectionContextualMenuOwner } from "./contextualMenuOwner";
 import { getSelectionTableContext, tableBubbleMenuPluginKey } from "./tableBubbleMenuPlugin";
 
 export interface TableBubbleMenuProps {
@@ -221,7 +222,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         hasTableCommands &&
         currentEditor.isEditable &&
         hasFocus &&
-        getSelectionTableContext(state) !== null
+        getSelectionContextualMenuOwner(state) === "table"
       );
     },
     [hasTableCommands],
@@ -326,7 +327,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         event.metaKey ||
         event.shiftKey ||
         !editor.isEditable ||
-        !getSelectionTableContext(editor.state)
+        getSelectionContextualMenuOwner(editor.state) !== "table"
       ) {
         return;
       }

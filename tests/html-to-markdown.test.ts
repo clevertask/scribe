@@ -167,3 +167,157 @@ describe("html2md tables", () => {
     expect(normalizeHtml(md2html(markdown))).toBe(normalizeHtml(html));
   });
 });
+
+describe("Callout Markdown fallback", () => {
+  it.each(["info", "tip", "warning", "caution"])(
+    "preserves a %s Callout as raw HTML with nested block content",
+    (variant) => {
+      const html = [
+        `<aside data-type="callout" data-variant="${variant}" role="note">`,
+        "<p><strong>Heads up</strong></p>",
+        "<ul><li><p>First consideration</p></li><li><p>Second consideration</p></li></ul>",
+        "</aside>",
+      ].join("");
+      const markdown = html2md(html);
+
+      expect(markdown).toBe(html);
+      expect(normalizeHtml(md2html(markdown))).toBe(normalizeHtml(html));
+    },
+  );
+
+  it.each([
+    ["a missing variant", "", "info"],
+    ["an unsupported variant", ' data-variant="success"', "info"],
+    ["a variant with inconsistent casing", ' data-variant=" WARNING "', "warning"],
+  ])("normalizes %s", (_description, variantAttribute, expectedVariant) => {
+    const markdown = html2md(
+      `<aside data-type="callout"${variantAttribute}><p>Consider this</p></aside>`,
+    );
+
+    expect(markdown).toBe(
+      `<aside data-type="callout" data-variant="${expectedVariant}" role="note"><p>Consider this</p></aside>`,
+    );
+    expect(md2html(markdown)).toContain(`data-variant="${expectedVariant}"`);
+  });
+
+  it("keeps the Callout wrapper strict and sanitizes unsafe nested content", () => {
+    const markdown = html2md(
+      [
+        '<aside data-type="callout" data-variant="warning" role="alert" class="spoofed" id="unsafe" style="position: fixed" onclick="alert(1)">',
+        '<p style="color: red" onmouseover="alert(2)">Safe<script>alert(3)</script>',
+        '<a href="javascript:alert(4)" onfocus="alert(5)">link</a></p>',
+        "</aside>",
+      ].join(""),
+    );
+
+    expect(markdown).toBe(
+      '<aside data-type="callout" data-variant="warning" role="note"><p>Safe<a>link</a></p></aside>',
+    );
+    expect(markdown).not.toContain('role="alert"');
+    expect(markdown).not.toMatch(/class=|id=|style=|on\w+=|<script|javascript:/i);
+  });
+
+  it("does not leak the synthetic LaTeX placeholder into a raw Callout", () => {
+    const html =
+      '<aside data-type="callout" data-variant="info" role="note"><p><span data-type="latex" data-content="x + y" data-display-mode="false"></span></p></aside>';
+    const markdown = html2md(html);
+
+    expect(markdown).not.toContain("•");
+    expect(normalizeHtml(md2html(markdown))).toBe(normalizeHtml(html));
+  });
+
+  it("normalizes and sanitizes a raw Callout imported from Markdown", () => {
+    const html = md2html(
+      [
+        '<aside data-type="callout" data-variant="danger" role="alert" class="spoofed" style="position: fixed" onclick="alert(1)">',
+        '<p style="color: red" onmouseover="alert(2)">Safe<script>alert(3)</script></p>',
+        "</aside>",
+      ].join(""),
+    );
+
+    expect(normalizeHtml(html)).toBe(
+      '<aside data-type="callout" data-variant="info" role="note"><p>Safe</p></aside>',
+    );
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toMatch(/class=|style=|on\w+=|<script/i);
+  });
+
+  it("keeps the Callout contract strict inside a raw-fallback table", () => {
+    const html = [
+      "<table><tbody>",
+      "<tr><th><p>Context</p></th></tr>",
+      '<tr><td><aside data-type="callout" data-variant="danger" role="alert" class="spoofed" style="position: fixed" onclick="alert(1)"><p style="color: red">Nested Callout</p></aside></td></tr>',
+      "</tbody></table>",
+    ].join("");
+    const markdown = html2md(html);
+    const container = document.createElement("div");
+
+    container.innerHTML = markdown;
+
+    const callout = container.querySelector('aside[data-type="callout"]');
+
+    expect(callout?.getAttribute("data-variant")).toBe("info");
+    expect(callout?.getAttribute("role")).toBe("note");
+    expect(Array.from(callout?.attributes ?? []).map((attribute) => attribute.name)).toEqual([
+      "data-type",
+      "data-variant",
+      "role",
+    ]);
+    expect(markdown).toContain("<table");
+    expect(markdown).not.toContain('role="alert"');
+    expect(markdown).not.toMatch(/class=|style=|on\w+=/i);
+  });
+
+  it("preserves safe table layout styles inside a Callout", () => {
+    const markdown = html2md(
+      [
+        '<aside data-type="callout" data-variant="warning" style="position: fixed">',
+        '<p style="color: red">Nested table</p>',
+        '<table style="width: 180px; position: fixed"><colgroup>',
+        '<col style="width: 180px; background: red"></colgroup><tbody>',
+        '<tr><th colwidth="180" style="text-align: center; color: red"><p>Heading</p></th></tr>',
+        '<tr><td colwidth="180" style="width: 180px; text-align: center; color: red"><p>Value</p></td></tr>',
+        "</tbody></table></aside>",
+      ].join(""),
+    );
+    const markdownContainer = document.createElement("div");
+
+    markdownContainer.innerHTML = markdown;
+
+    const markdownCallout = markdownContainer.querySelector('aside[data-type="callout"]');
+    const markdownTable = markdownContainer.querySelector("table");
+    const markdownColumn = markdownContainer.querySelector("col");
+    const markdownHeader = markdownContainer.querySelector("th");
+    const markdownCell = markdownContainer.querySelector("td");
+
+    expect(markdownCallout).not.toHaveAttribute("style");
+    expect(markdownContainer.querySelector("p")).not.toHaveAttribute("style");
+    expect(markdownTable).toHaveStyle({ width: "180px" });
+    expect(markdownTable).not.toHaveStyle({ position: "fixed" });
+    expect(markdownColumn).toHaveStyle({ width: "180px" });
+    expect(markdownColumn).not.toHaveStyle({ background: "red" });
+    expect(markdownHeader).toHaveStyle({ textAlign: "center" });
+    expect(markdownHeader).not.toHaveStyle({ color: "red" });
+    expect(markdownCell).toHaveStyle({ width: "180px", textAlign: "center" });
+    expect(markdownCell).not.toHaveStyle({ color: "red" });
+
+    const restoredContainer = document.createElement("div");
+
+    restoredContainer.innerHTML = md2html(markdown);
+
+    expect(restoredContainer.querySelector("table")).toHaveStyle({ width: "180px" });
+    expect(restoredContainer.querySelector("col")).toHaveStyle({ width: "180px" });
+    expect(restoredContainer.querySelector("th")).toHaveStyle({ textAlign: "center" });
+    expect(restoredContainer.querySelector("td")).toHaveStyle({
+      width: "180px",
+      textAlign: "center",
+    });
+    expect(restoredContainer.innerHTML).not.toMatch(
+      /position:\s*fixed|background:\s*red|color:\s*red/i,
+    );
+  });
+
+  it("does not treat an arbitrary aside as a Scribe Callout", () => {
+    expect(html2md("<aside><p>Ordinary note</p></aside>")).toBe("Ordinary note");
+  });
+});

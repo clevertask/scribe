@@ -1,5 +1,6 @@
 import "katex/dist/katex.css";
 import BarMenu from "../Menu/BarMenu";
+import CalloutBubbleMenu from "../Menu/CalloutBubbleMenu";
 import LinkBubbleMenu from "../Menu/LinkBubbleMenu";
 import TableBubbleMenu from "../Menu/TableBubbleMenu";
 import { ClassValue, clsx } from "clsx";
@@ -468,6 +469,7 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
         >
           <EditorContent editor={editor} onKeyDown={onKeyDown} />
           {editable ? <LinkBubbleMenu editor={editor} /> : null}
+          {editable && editor.schema.nodes.callout ? <CalloutBubbleMenu editor={editor} /> : null}
           {editable && editor.schema.nodes.table ? <TableBubbleMenu editor={editor} /> : null}
         </div>
 
