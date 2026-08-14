@@ -2,6 +2,8 @@ import DOMPurify from "dompurify";
 import TurndownService from "turndown";
 
 const TABLE_HARD_BREAK_PLACEHOLDER = "\uE000scribe-table-break\uE001";
+const CALLOUT_VARIANTS = new Set(["info", "tip", "warning", "caution"]);
+const SAFE_NESTED_TABLE_STYLE_PROPERTIES = ["width", "min-width", "max-width", "text-align"];
 const BLOCK_CONTENT_SELECTOR = [
   "address",
   "article",
@@ -212,7 +214,90 @@ const serializeRawTable = (table: HTMLTableElement) => {
     }
   });
 
+  normalizeCalloutsInTree(clone);
+
   return clone.outerHTML;
+};
+
+const normalizeCalloutVariant = (variant: string | null) => {
+  const normalizedVariant = variant?.trim().toLowerCase();
+
+  return normalizedVariant && CALLOUT_VARIANTS.has(normalizedVariant) ? normalizedVariant : "info";
+};
+
+const normalizeCalloutElement = (callout: Element) => {
+  const variant = normalizeCalloutVariant(callout.getAttribute("data-variant"));
+
+  Array.from(callout.attributes).forEach((attribute) => {
+    if (
+      attribute.name !== "data-type" &&
+      attribute.name !== "data-variant" &&
+      attribute.name !== "role"
+    ) {
+      callout.removeAttribute(attribute.name);
+    }
+  });
+
+  callout.setAttribute("data-type", "callout");
+  callout.setAttribute("data-variant", variant);
+  callout.setAttribute("role", "note");
+};
+
+const normalizeCalloutDescendantStyle = (element: Element) => {
+  const preservedTableStyles = element.matches("table, col, th, td")
+    ? SAFE_NESTED_TABLE_STYLE_PROPERTIES.map(
+        (property) =>
+          [property, (element as HTMLElement).style.getPropertyValue(property)] as const,
+      ).filter(([, value]) => Boolean(value))
+    : [];
+
+  element.removeAttribute("style");
+
+  preservedTableStyles.forEach(([property, value]) => {
+    (element as HTMLElement).style.setProperty(property, value);
+  });
+};
+
+const normalizeCalloutsInTree = (root: Element) => {
+  const callouts = [
+    ...(root.matches('aside[data-type="callout"]') ? [root] : []),
+    ...Array.from(root.querySelectorAll('aside[data-type="callout"]')),
+  ];
+
+  callouts.forEach((callout) => {
+    [callout, ...Array.from(callout.querySelectorAll("*"))].forEach((element) => {
+      normalizeCalloutDescendantStyle(element);
+
+      Array.from(element.attributes).forEach((attribute) => {
+        if (attribute.name.toLowerCase().startsWith("on")) {
+          element.removeAttribute(attribute.name);
+        }
+      });
+    });
+
+    normalizeCalloutElement(callout);
+  });
+};
+
+const serializeRawCallout = (callout: Element) => {
+  const clone = callout.cloneNode(true) as HTMLElement;
+
+  clone.querySelectorAll('span[data-type="latex"]').forEach((latex) => {
+    if (latex.textContent === "•") {
+      latex.textContent = "";
+    }
+  });
+
+  normalizeCalloutsInTree(clone);
+
+  return clone.outerHTML;
+};
+
+const addCalloutRule = (service: TurndownService) => {
+  service.addRule("scribeCallout", {
+    filter: (node) => node.nodeName === "ASIDE" && node.getAttribute("data-type") === "callout",
+    replacement: (_content, node) => `\n\n${serializeRawCallout(node as Element)}\n\n`,
+  });
 };
 
 const addTableRule = (service: TurndownService) => {
@@ -289,6 +374,7 @@ export const html2md = (html: string) => {
     },
   });
 
+  addCalloutRule(service);
   addTableRule(service);
 
   const patchLatexSpans = (html: string) => {

@@ -19,6 +19,7 @@ import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
 import { ScribeTable } from "./resizable-table";
+import { Callout } from "./callout";
 
 export const initExtensions = (props: ScribeProps) => {
   const {
@@ -35,6 +36,7 @@ export const initExtensions = (props: ScribeProps) => {
       },
       link: false,
     }),
+    Callout,
     TaskList.configure({
       HTMLAttributes: {
         class: "scribe-task-list",

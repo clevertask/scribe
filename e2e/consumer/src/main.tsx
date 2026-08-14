@@ -62,10 +62,20 @@ const tableFixture = `
   <p>Content after the table</p>
 `;
 
+const calloutFixture = `
+  <p>Content before the callout</p>
+  <aside data-type="callout" data-variant="warning">
+    <p>Review the deployment settings before continuing.</p>
+    <ul><li><p>Confirm the target environment</p></li></ul>
+  </aside>
+  <p>Content after the callout</p>
+`;
+
 function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const mobile = searchParams.get("mobile") === "true";
   const showConsumerDecoration = searchParams.get("consumerDecoration") === "true";
+  const showCalloutFixture = searchParams.get("callout") === "true";
   const showTableFixture = searchParams.get("table") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
@@ -83,9 +93,11 @@ function App() {
         content={
           showConsumerDecoration
             ? ""
-            : showTableFixture
-              ? tableFixture
-              : "<p>Package consumer content</p>"
+            : showCalloutFixture
+              ? calloutFixture
+              : showTableFixture
+                ? tableFixture
+                : "<p>Package consumer content</p>"
         }
         editable={editable}
         extensions={showConsumerDecoration ? [ConsumerDecoration] : undefined}
@@ -111,7 +123,9 @@ function App() {
             {editable ? "Disable editing" : "Enable editing"}
           </button>
         ) : null}
-        {showTableFixture ? <button type="button">Outside focus target</button> : null}
+        {showCalloutFixture || showTableFixture ? (
+          <button type="button">Outside focus target</button>
+        ) : null}
         {testNestedScroll ? (
           <div data-testid="nested-scroll-container" style={{ height: "24rem", overflowY: "auto" }}>
             <div aria-hidden style={{ height: "20rem" }} />
