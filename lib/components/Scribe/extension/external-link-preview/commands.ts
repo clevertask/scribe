@@ -2,6 +2,7 @@ import { getMarkRange } from "@tiptap/core";
 import type { Mark, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { normalizeLinkUrl } from "../../../Menu/linkUrl";
 import {
   EXTERNAL_LINK_PREVIEW_NODE_NAME,
   normalizeExternalLinkPreviewAttributes,
@@ -23,10 +24,15 @@ declare module "@tiptap/core" {
       insertExternalLinkPreview: (options: InsertExternalLinkPreviewOptions) => ReturnType;
       /** Convert the selected enhanced link or full-line Link mark to another presentation. */
       setExternalLinkDisplay: (display: ExternalLinkDisplay, targetPosition?: number) => ReturnType;
+      /** Atomically convert a preview to a Plain link while applying its edited destination. */
+      convertExternalLinkPreviewToPlain: (href: string, targetPosition?: number) => ReturnType;
       /** Explicitly refresh metadata for the selected enhanced link. */
       refreshExternalLinkPreview: (targetPosition?: number) => ReturnType;
       /** Safely update the selected preview's destination, fallback text, or metadata. */
-      updateExternalLinkPreview: (options: UpdateExternalLinkPreviewOptions) => ReturnType;
+      updateExternalLinkPreview: (
+        options: UpdateExternalLinkPreviewOptions,
+        targetPosition?: number,
+      ) => ReturnType;
     };
   }
 }
@@ -182,7 +188,12 @@ const createPreviewNode = (transaction: Transaction, attributes: ExternalLinkPre
   return type?.create(attributes) ?? null;
 };
 
-const replacePreviewWithPlainLink = (transaction: Transaction, context: PreviewContext) => {
+const replacePreviewWithPlainLink = (
+  transaction: Transaction,
+  context: PreviewContext,
+  href = context.attributes.href,
+  linkText = context.attributes.linkText,
+) => {
   const linkType = transaction.doc.type.schema.marks.link;
   const parent = transaction.doc.resolve(context.position).parent;
 
@@ -190,9 +201,7 @@ const replacePreviewWithPlainLink = (transaction: Transaction, context: PreviewC
     return false;
   }
 
-  const text = transaction.doc.type.schema.text(context.attributes.linkText, [
-    linkType.create({ href: context.attributes.href }),
-  ]);
+  const text = transaction.doc.type.schema.text(linkText, [linkType.create({ href })]);
 
   transaction.replaceWith(context.position, context.position + context.node.nodeSize, text);
   transaction.setSelection(
@@ -338,6 +347,39 @@ export const createExternalLinkPreviewCommands = ({
 
       return true;
     },
+  convertExternalLinkPreviewToPlain:
+    (requestedHref: string, targetPosition?: number) =>
+    ({ dispatch, tr }: { dispatch?: (args?: unknown) => unknown; tr: Transaction }) => {
+      const rejectAtomicChange = () => {
+        tr.setMeta("preventDispatch", true);
+
+        return false;
+      };
+      const preview = getSelectedExternalLinkPreview(tr, targetPosition);
+      const href = normalizeLinkUrl(requestedHref);
+
+      if (!preview || !href) {
+        return rejectAtomicChange();
+      }
+
+      const linkType = tr.doc.type.schema.marks.link;
+      const parent = tr.doc.resolve(preview.position).parent;
+
+      if (!linkType || !parent.type.allowsMarkType(linkType)) {
+        return rejectAtomicChange();
+      }
+
+      if (!dispatch) {
+        return true;
+      }
+
+      const linkText =
+        preview.attributes.linkText === preview.attributes.href
+          ? href
+          : preview.attributes.linkText;
+
+      return replacePreviewWithPlainLink(tr, preview, href, linkText);
+    },
   refreshExternalLinkPreview:
     (targetPosition?: number) =>
     ({ dispatch, tr }: { dispatch?: (args?: unknown) => unknown; tr: Transaction }) => {
@@ -362,12 +404,17 @@ export const createExternalLinkPreviewCommands = ({
       return true;
     },
   updateExternalLinkPreview:
-    (options: UpdateExternalLinkPreviewOptions) =>
+    (options: UpdateExternalLinkPreviewOptions, targetPosition?: number) =>
     ({ dispatch, tr }: { dispatch?: (args?: unknown) => unknown; tr: Transaction }) => {
-      const preview = getSelectedExternalLinkPreview(tr);
+      const rejectAtomicChange = () => {
+        tr.setMeta("preventDispatch", true);
+
+        return false;
+      };
+      const preview = getSelectedExternalLinkPreview(tr, targetPosition);
 
       if (!preview) {
-        return false;
+        return rejectAtomicChange();
       }
 
       const requestedHref = options.href ?? preview.attributes.href;
@@ -375,7 +422,7 @@ export const createExternalLinkPreviewCommands = ({
       const hrefChanged = normalizedHref !== preview.attributes.href;
 
       if (!normalizedHref || !canConsumerPreview(normalizedHref, shouldPreview)) {
-        return false;
+        return rejectAtomicChange();
       }
 
       const definedUpdates = Object.fromEntries(
@@ -404,7 +451,15 @@ export const createExternalLinkPreviewCommands = ({
       });
 
       if (!attributes) {
-        return false;
+        return rejectAtomicChange();
+      }
+
+      const hasChanges = Object.entries(attributes).some(
+        ([key, value]) => preview.attributes[key as keyof ExternalLinkPreviewAttributes] !== value,
+      );
+
+      if (!hasChanges) {
+        return true;
       }
 
       if (!dispatch) {

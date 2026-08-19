@@ -1,7 +1,7 @@
 import { Editor, Node, type Content, type NodeViewRenderer } from "@tiptap/core";
 import Image from "@tiptap/extension-image";
 import { closeHistory } from "@tiptap/pm/history";
-import { AllSelection } from "@tiptap/pm/state";
+import { AllSelection, NodeSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -210,6 +210,55 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.commands.setExternalLinkDisplay("plain")).toBe(true);
     expect(editor.getText()).toBe("Before inline destination after.");
     expect(editor.getHTML()).toContain(`<a target="_blank"`);
+  });
+
+  it.each([
+    [
+      "updates a URL-derived label",
+      "https://shop.example/products/original",
+      "/documents:recent/product",
+      "/documents:recent/product",
+    ],
+    [
+      "preserves a custom label",
+      "Saved jacket",
+      "https://shop.example/products/replacement?color=navy#details",
+      "Saved jacket",
+    ],
+  ])("atomically converts a preview to Plain and %s", (_label, linkText, href, expectedText) => {
+    const oldHref = "https://shop.example/products/original";
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="${linkText}" data-display="compact"><a data-link-preview-target href="${oldHref}">${linkText}</a></span></p>`,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+
+    expect(editor.can().convertExternalLinkPreviewToPlain(href, previewPosition)).toBe(true);
+    expect(editor.commands.convertExternalLinkPreviewToPlain(href, previewPosition)).toBe(true);
+    expect(hasNodeType(editor, "externalLinkPreview")).toBe(false);
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: "text",
+      text: expectedText,
+      marks: [{ type: "link", attrs: { href } }],
+    });
+  });
+
+  it("rejects an unsafe preview-to-Plain conversion without dispatching earlier changes", () => {
+    const href = "https://shop.example/products/original";
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${href}" data-link-text="${href}" data-display="compact"><a data-link-preview-target href="${href}">${href}</a></span></p><p>Elsewhere</p>`,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+    const elsewherePosition = findTextPosition(editor, "Elsewhere");
+    const before = editor.getJSON();
+
+    expect(
+      editor
+        .chain()
+        .insertContentAt(elsewherePosition, "Unexpected ")
+        .convertExternalLinkPreviewToPlain("javascript:alert(1)", previewPosition)
+        .run(),
+    ).toBe(false);
+    expect(editor.getJSON()).toEqual(before);
   });
 
   it("does not offer enhanced modes for an ordinary link without a configured resolver", () => {
@@ -564,6 +613,8 @@ describe("ExternalLinkPreview core", () => {
 
     expect(editor.can().refreshExternalLinkPreview(previewPosition)).toBe(true);
     expect(editor.chain().focus().refreshExternalLinkPreview(previewPosition).run()).toBe(true);
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+    expect(editor.state.selection.from).toBe(previewPosition);
     await waitFor(() =>
       expect(resolver).toHaveBeenCalledWith("https://example.com/refresh-target", {
         signal: expect.any(AbortSignal),
@@ -572,6 +623,144 @@ describe("ExternalLinkPreview core", () => {
     await waitFor(() => {
       expect(editor.state.doc.nodeAt(previewPosition)?.attrs.pageTitle).toBe("Refreshed target");
     });
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+    expect(editor.state.selection.from).toBe(previewPosition);
+  });
+
+  it("updates an explicit preview target and resolves its exact new destination", async () => {
+    const deferred = createDeferred<ExternalLinkPreviewMetadata | null>();
+    const resolver = vi.fn<ExternalLinkPreviewResolver>().mockReturnValue(deferred.promise);
+    const oldHref = "https://shop.example/old?campaign=wishlist";
+    const newHref = "https://shop.example/new?campaign=wishlist&color=navy#details";
+    const editor = createEditor({
+      content: {
+        type: "doc",
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "externalLinkPreview",
+                attrs: {
+                  href: oldHref,
+                  linkText: "Saved product",
+                  display: "compact",
+                  pageTitle: "Old product",
+                  description: "Old description",
+                  siteName: "Old shop",
+                  faviconUrl: "https://shop.example/old-icon.png",
+                  imageUrl: "https://shop.example/old-image.png",
+                  fetchedAt: "2026-08-19T06:00:00.000Z",
+                },
+              },
+            ],
+          },
+          { type: "paragraph", content: [{ type: "text", text: "Elsewhere" }] },
+        ],
+      },
+      resolve: resolver,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+
+    editor.commands.setTextSelection(findTextPosition(editor, "Elsewhere"));
+
+    expect(editor.can().updateExternalLinkPreview({ href: newHref }, previewPosition)).toBe(true);
+    expect(editor.commands.updateExternalLinkPreview({ href: newHref }, previewPosition)).toBe(
+      true,
+    );
+    expect(editor.state.selection).toBeInstanceOf(NodeSelection);
+    expect(editor.state.selection.from).toBe(previewPosition);
+    expect(editor.state.doc.nodeAt(previewPosition)?.attrs).toMatchObject({
+      href: newHref,
+      linkText: "Saved product",
+      pageTitle: null,
+      description: null,
+      siteName: null,
+      faviconUrl: null,
+      imageUrl: null,
+      fetchedAt: null,
+    });
+    await waitFor(() =>
+      expect(resolver).toHaveBeenCalledWith(newHref, { signal: expect.any(AbortSignal) }),
+    );
+
+    deferred.resolve({ pageTitle: "New product" });
+    await waitFor(() => {
+      expect(editor.state.doc.nodeAt(previewPosition)?.attrs.pageTitle).toBe("New product");
+    });
+  });
+
+  it("rejects an explicit preview URL update without dispatching earlier chained changes", () => {
+    const oldHref = "https://shop.example/product";
+    const rejectedHref = "https://clevertask.example/documents/internal";
+    const resolver = vi.fn<ExternalLinkPreviewResolver>();
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="Product" data-display="compact"><a data-link-preview-target href="${oldHref}">Product</a></span></p><p>Elsewhere</p>`,
+      resolve: resolver,
+      shouldPreview: (href) => !href.startsWith("https://clevertask.example/"),
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+    const elsewherePosition = findTextPosition(editor, "Elsewhere");
+    const before = editor.getJSON();
+
+    editor.commands.setTextSelection(elsewherePosition);
+
+    expect(
+      editor
+        .chain()
+        .insertContentAt(elsewherePosition, "Unexpected ")
+        .updateExternalLinkPreview({ href: rejectedHref }, previewPosition)
+        .run(),
+    ).toBe(false);
+    expect(editor.getJSON()).toEqual(before);
+    expect(resolver).not.toHaveBeenCalled();
+    expect(editor.commands.undo()).toBe(false);
+  });
+
+  it("does not create an undo step for an unchanged preview update", () => {
+    const href = "https://shop.example/product?campaign=wishlist";
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${href}" data-link-text="Product" data-display="compact"><a data-link-preview-target href="${href}">Product</a></span></p>`,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+
+    editor.commands.setNodeSelection(previewPosition);
+
+    expect(editor.commands.updateExternalLinkPreview({ href }, previewPosition)).toBe(true);
+    expect(editor.commands.undo()).toBe(false);
+  });
+
+  it("undoes a preview URL edit and aborts its pending resolution", async () => {
+    const deferred = createDeferred<ExternalLinkPreviewMetadata | null>();
+    let signal: AbortSignal | undefined;
+    const resolver: ExternalLinkPreviewResolver = vi.fn((_href, context) => {
+      signal = context.signal;
+      return deferred.promise;
+    });
+    const oldHref = "https://shop.example/original";
+    const newHref = "https://shop.example/replacement";
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="Product" data-display="compact" data-page-title="Original product"><a data-link-preview-target href="${oldHref}">Product</a></span></p>`,
+      resolve: resolver,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+
+    editor.commands.setNodeSelection(previewPosition);
+    expect(editor.commands.updateExternalLinkPreview({ href: newHref }, previewPosition)).toBe(
+      true,
+    );
+    await waitFor(() => expect(signal).toBeDefined());
+
+    expect(editor.commands.undo()).toBe(true);
+    await waitFor(() => expect(signal?.aborted).toBe(true));
+    expect(editor.state.doc.nodeAt(previewPosition)?.attrs).toMatchObject({
+      href: oldHref,
+      pageTitle: "Original product",
+    });
+
+    deferred.resolve({ pageTitle: "Stale replacement" });
+    await Promise.resolve();
+    expect(editor.state.doc.nodeAt(previewPosition)?.attrs.pageTitle).toBe("Original product");
   });
 
   it("downgrades persisted Card mode when text is inserted beside it", () => {

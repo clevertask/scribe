@@ -10,6 +10,7 @@ import LinkEditor from "../lib/components/Menu/LinkEditor";
 type EditorFixtureOptions = {
   availableDisplays?: ExternalLinkDisplay[];
   canCommandResult?: boolean;
+  canUpdateResult?: boolean;
   commandResult?: boolean;
   includeDisplayCommand?: boolean;
 };
@@ -17,16 +18,21 @@ type EditorFixtureOptions = {
 const createEditorFixture = ({
   availableDisplays = ["plain", "compact", "card"],
   canCommandResult,
+  canUpdateResult,
   commandResult = true,
   includeDisplayCommand = true,
 }: EditorFixtureOptions = {}) => {
   const resolvedCanCommandResult = canCommandResult ?? commandResult;
+  const resolvedCanUpdateResult = canUpdateResult ?? resolvedCanCommandResult;
+  const convertExternalLinkPreviewToPlain = vi.fn(() => commandResult);
   const setExternalLinkDisplay = vi.fn(() => commandResult);
   const canSetExternalLinkDisplay = vi.fn((display: ExternalLinkDisplay) =>
     availableDisplays.includes(display),
   );
   const chain = {} as Record<string, ReturnType<typeof vi.fn>>;
   const canChain = {} as Record<string, ReturnType<typeof vi.fn>>;
+  const updateExternalLinkPreview = vi.fn(() => chain);
+  const canUpdateExternalLinkPreview = vi.fn(() => resolvedCanUpdateResult);
   const chainSetLink = vi.fn(() => chain);
   const chainSetExternalLinkDisplay = vi.fn(() => chain);
   const canChainSetLink = vi.fn(() => canChain);
@@ -39,6 +45,7 @@ const createEditorFixture = ({
     setExternalLinkDisplay: chainSetExternalLinkDisplay,
     setLink: chainSetLink,
     setNodeSelection: vi.fn(() => chain),
+    updateExternalLinkPreview,
   });
   Object.assign(canChain, {
     extendMarkRange: vi.fn(() => canChain),
@@ -50,10 +57,16 @@ const createEditorFixture = ({
   const editor = {
     can: () =>
       includeDisplayCommand
-        ? { chain: () => canChain, setExternalLinkDisplay: canSetExternalLinkDisplay }
+        ? {
+            chain: () => canChain,
+            setExternalLinkDisplay: canSetExternalLinkDisplay,
+            updateExternalLinkPreview: canUpdateExternalLinkPreview,
+          }
         : {},
     chain: () => chain,
-    commands: includeDisplayCommand ? { setExternalLinkDisplay } : {},
+    commands: includeDisplayCommand
+      ? { convertExternalLinkPreviewToPlain, setExternalLinkDisplay }
+      : {},
   } as unknown as Editor;
 
   return {
@@ -62,8 +75,11 @@ const createEditorFixture = ({
     canChainSetLink,
     chainSetExternalLinkDisplay,
     chainSetLink,
+    canUpdateExternalLinkPreview,
+    convertExternalLinkPreviewToPlain,
     editor,
     setExternalLinkDisplay,
+    updateExternalLinkPreview,
   };
 };
 
@@ -274,5 +290,147 @@ describe("external link display options", () => {
     expect(screen.getByRole("alert")).toHaveTextContent(
       "This link can't use Compact or Preview card.",
     );
+  });
+
+  it("updates an existing preview URL at its explicit position", () => {
+    const onClose = vi.fn();
+    const { canUpdateExternalLinkPreview, editor, updateExternalLinkPreview } =
+      createEditorFixture();
+
+    render(
+      <Theme>
+        <LinkEditor
+          currentDisplay="compact"
+          editor={editor}
+          existingHref="https://old.example/product"
+          onClose={onClose}
+          onValueChange={vi.fn()}
+          targetPosition={17}
+          value="new.example/product"
+        />
+      </Theme>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Remove link" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const update = { href: "https://new.example/product" };
+
+    expect(canUpdateExternalLinkPreview).toHaveBeenCalledWith(update, 17);
+    expect(updateExternalLinkPreview).toHaveBeenCalledWith(update, 17);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("preserves an unchanged preview href exactly when saving", () => {
+    const onClose = vi.fn();
+    const { canUpdateExternalLinkPreview, editor, updateExternalLinkPreview } =
+      createEditorFixture();
+
+    render(
+      <Theme>
+        <LinkEditor
+          currentDisplay="compact"
+          editor={editor}
+          existingHref="https://example.com"
+          onClose={onClose}
+          onValueChange={vi.fn()}
+          targetPosition={19}
+          value="https://example.com"
+        />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const unchangedUpdate = { href: "https://example.com" };
+
+    expect(canUpdateExternalLinkPreview).toHaveBeenCalledWith(unchangedUpdate, 19);
+    expect(updateExternalLinkPreview).toHaveBeenCalledWith(unchangedUpdate, 19);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a rejected preview URL edit open without running the update", () => {
+    const onClose = vi.fn();
+    const { canUpdateExternalLinkPreview, editor, updateExternalLinkPreview } = createEditorFixture(
+      { canUpdateResult: false },
+    );
+
+    render(
+      <Theme>
+        <LinkEditor
+          currentDisplay="card"
+          editor={editor}
+          existingHref="https://old.example/product"
+          onClose={onClose}
+          onValueChange={vi.fn()}
+          targetPosition={23}
+          value="https://blocked.example/product"
+        />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(canUpdateExternalLinkPreview).toHaveBeenCalledWith(
+      { href: "https://blocked.example/product" },
+      23,
+    );
+    expect(updateExternalLinkPreview).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent("can't be used as a preview");
+  });
+
+  it("converts a dirty preview to a Plain link and preserves its edited URL", () => {
+    const onClose = vi.fn();
+    const { convertExternalLinkPreviewToPlain, editor } = createEditorFixture();
+
+    render(
+      <Theme>
+        <LinkEditor
+          currentDisplay="compact"
+          editor={editor}
+          existingHref="https://old.example/product"
+          onClose={onClose}
+          onValueChange={vi.fn()}
+          targetPosition={31}
+          value="/internal/product"
+        />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Plain link", exact: true }));
+
+    expect(convertExternalLinkPreviewToPlain).toHaveBeenCalledWith("/internal/product", 31);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("shows preview status and refresh without exposing Remove link", () => {
+    const onRefreshPreview = vi.fn();
+    const { editor } = createEditorFixture();
+
+    render(
+      <Theme>
+        <LinkEditor
+          canRefreshPreview
+          currentDisplay="compact"
+          editor={editor}
+          existingHref="https://example.com/product"
+          onClose={vi.fn()}
+          onRefreshPreview={onRefreshPreview}
+          onValueChange={vi.fn()}
+          previewStatus="error"
+          previewStatusLabel="Example Store"
+          targetPosition={37}
+          value="https://example.com/product"
+        />
+      </Theme>,
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Preview unavailable");
+    expect(screen.queryByRole("button", { name: "Remove link" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh preview" }));
+
+    expect(onRefreshPreview).toHaveBeenCalledOnce();
   });
 });
