@@ -1,10 +1,12 @@
 import { Editor, JSONContent } from "@tiptap/core";
 import { initExtensions } from "../components/Scribe/extension";
 import { html2md } from "../utils";
+import type { ExternalLinkPreviewOptions } from "../components/Scribe/extension/external-link-preview";
 
 export type CreateEditorOptions = {
   content?: string;
   editable?: boolean;
+  externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   onContentChange?: (content: {
     htmlContent: string;
     jsonContent: JSONContent;
@@ -15,12 +17,13 @@ export type CreateEditorOptions = {
 export function createScribeEditor({
   content = "",
   editable = false,
+  externalLinkPreview,
   onContentChange,
 }: CreateEditorOptions): Editor {
   return new Editor({
     content,
     editable,
-    extensions: initExtensions({}),
+    extensions: initExtensions({ externalLinkPreview }),
     onUpdate({ editor }) {
       if (onContentChange) {
         onContentChange({

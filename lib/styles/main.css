@@ -114,6 +114,167 @@
   text-underline-offset: 0.18em;
 }
 
+.scribe-content .tiptap [data-type="external-link-preview"] {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  line-height: 1.35;
+  max-width: 100%;
+  position: relative;
+  vertical-align: middle;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-target] {
+  align-items: center;
+  background: var(--gray-2);
+  border: 1px solid var(--gray-6);
+  border-radius: 8px;
+  color: var(--gray-12);
+  display: inline-flex;
+  gap: 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-target]:hover {
+  background: var(--gray-3);
+  border-color: var(--gray-7);
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-main] {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-copy] {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-title] {
+  font-size: 0.925rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-site],
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-description] {
+  color: var(--gray-11);
+  font-size: 0.8rem;
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-favicon],
+.scribe-content .tiptap [data-type="external-link-preview"] [data-link-preview-favicon-fallback] {
+  align-items: center;
+  border-radius: 4px;
+  display: inline-flex;
+  flex: 0 0 18px;
+  height: 18px;
+  justify-content: center;
+  object-fit: contain;
+  overflow: hidden;
+  width: 18px;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--compact [data-link-preview-site] {
+  display: none;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card {
+  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0.4rem 0;
+  width: 100%;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-target] {
+  align-items: stretch;
+  display: flex;
+  flex: 1;
+  flex-basis: 100%;
+  min-height: 104px;
+  overflow: hidden;
+  padding: 0;
+  width: 100%;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-main] {
+  align-items: flex-start;
+  flex: 1;
+  order: 1;
+  padding: 14px;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-copy] {
+  gap: 4px;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-title] {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-description] {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-image] {
+  align-self: stretch;
+  flex: 0 0 min(34%, 220px);
+  min-height: 104px;
+  object-fit: cover;
+  order: 2;
+  width: min(34%, 220px);
+}
+
+.scribe-content .tiptap [data-type="external-link-preview"].ProseMirror-selectednode {
+  outline: 2px solid var(--accent-8);
+  outline-offset: 2px;
+}
+
+.scribe-external-link-preview__options {
+  flex: 0 0 auto;
+  min-height: 36px;
+  white-space: nowrap;
+}
+
+.scribe-content .tiptap .scribe-external-link-preview--card .scribe-external-link-preview__options {
+  margin-left: auto;
+}
+
+.scribe-external-link-preview__popover {
+  max-height: min(32rem, calc(100vh - 32px));
+  overflow-y: auto;
+}
+
+@media (max-width: 480px) {
+  .scribe-content .tiptap .scribe-external-link-preview--card [data-link-preview-image] {
+    flex-basis: 30%;
+    width: 30%;
+  }
+}
+
+@media (pointer: coarse) {
+  .scribe-external-link-preview__options {
+    min-height: 44px;
+  }
+}
+
 .scribe-content .tiptap blockquote {
   border-left: 3px solid var(--gray-6);
   color: var(--gray-11);

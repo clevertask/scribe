@@ -7,6 +7,7 @@ import { ClassValue, clsx } from "clsx";
 import { html2md } from "../../utils";
 import { initExtensions } from "./extension";
 import type { ScribeSlashCommandOptions } from "./extension/slashCommand";
+import type { ExternalLinkPreviewOptions } from "./extension/external-link-preview";
 import { SCRIBE_TABLE_OF_CONTENTS_META } from "./extension/tableOfContents";
 import type {
   ScribeTableOfContentsChangeHandler,
@@ -48,6 +49,17 @@ export type {
   ScribeTableOfContentsItem,
   ScribeTableOfContentsScrollTarget,
 } from "./extension/tableOfContents";
+export type {
+  ExternalLinkDisplay,
+  ExternalLinkPreviewAttributes,
+  ExternalLinkPreviewDisplay,
+  ExternalLinkPreviewMetadata,
+  ExternalLinkPreviewOptions,
+  ExternalLinkPreviewResolver,
+  ExternalLinkPreviewResolverContext,
+  InsertExternalLinkPreviewOptions,
+  UpdateExternalLinkPreviewOptions,
+} from "./extension/external-link-preview";
 
 export type ScribeOnChangeContents = {
   jsonContent: Content;
@@ -126,6 +138,16 @@ export interface ScribeProps {
    * Scribe's default command list available.
    */
   slashCommand?: ScribeSlashCommandOptions;
+  /**
+   * Configures enhanced previews for external links. The consumer owns metadata
+   * fetching; Scribe never requests a website directly.
+   *
+   * Scribe reads this configuration when it creates its editor. Pass stable
+   * callback references when the component can re-render.
+   *
+   * A caller-owned `externalEditor` must register the extension itself.
+   */
+  externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   /** @experimental Enables Scribe's app-owned table-of-contents API. */
   enableTableOfContents?: boolean;
   /** @experimental Receives the current table-of-contents items when they change. */
@@ -438,8 +460,8 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
   }, [ariaLabel, editable, editor, editorProps, externalEditor]);
 
   useEffect(() => {
-    editor.off("update");
     editor.on("update", onUpdate);
+
     return () => {
       editor.off("update", onUpdate);
     };

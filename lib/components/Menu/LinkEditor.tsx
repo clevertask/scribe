@@ -10,6 +10,8 @@ import {
   useId,
   useState,
 } from "react";
+import ExternalLinkDisplayOptions from "./ExternalLinkDisplayOptions";
+import type { ExternalLinkDisplay } from "./ExternalLinkDisplayOptions";
 import { normalizeLinkUrl } from "./linkUrl";
 
 export interface LinkEditorProps {
@@ -90,6 +92,34 @@ const LinkEditor: FC<LinkEditorProps> = ({
     handleClose();
   }, [editor, handleClose]);
 
+  const hasPendingHrefChange = value !== existingHref;
+  const handlePendingDisplayChange = useCallback(
+    (display: ExternalLinkDisplay) => {
+      const href = normalizeLinkUrl(value);
+
+      if (!href) {
+        setErrorMessage("Enter a valid external web address before changing its display.");
+        return false;
+      }
+
+      const didChangeDisplay = editor
+        .chain()
+        .focus()
+        .extendMarkRange("link")
+        .setLink({ href })
+        .setExternalLinkDisplay(display)
+        .run();
+
+      if (!didChangeDisplay) {
+        setErrorMessage("This link can't use Compact or Preview card.");
+        return false;
+      }
+
+      return true;
+    },
+    [editor, value],
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLFormElement>) => {
       if (event.key !== "Escape") {
@@ -135,6 +165,12 @@ const LinkEditor: FC<LinkEditorProps> = ({
             {errorMessage}
           </Text>
         ) : null}
+        <ExternalLinkDisplayOptions
+          currentDisplay="plain"
+          editor={editor}
+          executeDisplayChange={hasPendingHrefChange ? handlePendingDisplayChange : undefined}
+          onDisplayChange={handleClose}
+        />
         <Flex justify="between" gap="3" wrap="wrap">
           <Button
             type="button"

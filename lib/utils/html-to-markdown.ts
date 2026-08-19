@@ -1,5 +1,9 @@
 import DOMPurify from "dompurify";
 import TurndownService from "turndown";
+import {
+  normalizeExternalLinkPreviewElement,
+  normalizeExternalLinkPreviewsInTree,
+} from "../components/Scribe/extension/external-link-preview/serialization";
 
 const TABLE_HARD_BREAK_PLACEHOLDER = "\uE000scribe-table-break\uE001";
 const CALLOUT_VARIANTS = new Set(["info", "tip", "warning", "caution"]);
@@ -215,6 +219,7 @@ const serializeRawTable = (table: HTMLTableElement) => {
   });
 
   normalizeCalloutsInTree(clone);
+  normalizeExternalLinkPreviewsInTree(clone);
 
   return clone.outerHTML;
 };
@@ -289,8 +294,27 @@ const serializeRawCallout = (callout: Element) => {
   });
 
   normalizeCalloutsInTree(clone);
+  normalizeExternalLinkPreviewsInTree(clone);
 
   return clone.outerHTML;
+};
+
+const serializeRawExternalLinkPreview = (preview: Element) => {
+  const clone = preview.cloneNode(true) as HTMLElement;
+
+  if (!normalizeExternalLinkPreviewElement(clone)) {
+    return clone.textContent ?? "";
+  }
+
+  return clone.outerHTML;
+};
+
+const addExternalLinkPreviewRule = (service: TurndownService) => {
+  service.addRule("scribeExternalLinkPreview", {
+    filter: (node) =>
+      node.nodeName === "SPAN" && node.getAttribute("data-type") === "external-link-preview",
+    replacement: (_content, node) => serializeRawExternalLinkPreview(node as Element),
+  });
 };
 
 const addCalloutRule = (service: TurndownService) => {
@@ -376,14 +400,19 @@ export const html2md = (html: string) => {
 
   addCalloutRule(service);
   addTableRule(service);
+  addExternalLinkPreviewRule(service);
 
   const patchLatexSpans = (html: string) => {
     return html.replace(/<span([^>]+data-type="latex"[^>]*)><\/span>/g, "<span$1>•</span>");
   };
 
-  return service.turndown(
-    DOMPurify.sanitize(patchLatexSpans(html), {
-      ADD_ATTR: ["colwidth"],
-    }),
-  );
+  const sanitizedHtml = DOMPurify.sanitize(patchLatexSpans(html), {
+    ADD_ATTR: ["colwidth"],
+  });
+  const container = document.createElement("div");
+
+  container.innerHTML = sanitizedHtml;
+  normalizeExternalLinkPreviewsInTree(container);
+
+  return service.turndown(container.innerHTML);
 };
