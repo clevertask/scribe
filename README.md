@@ -162,9 +162,9 @@ function DocumentEditor() {
 }
 ```
 
-Pasting a standalone external URL into an empty paragraph creates a Compact preview. Pasting a URL over selected text keeps an ordinary labeled link. The link options can switch between Plain link, Compact, and Preview card; a card is available only when the preview has its own line.
+Pasting a standalone external URL into an empty paragraph creates a Compact preview. Pasting a URL over selected text keeps an ordinary labeled link. While editing, select a Plain, Compact, or Card link to open its contextual menu. From there you can edit or open the destination, refresh preview metadata, or switch presentation; a Preview card is available only when the link has its own line. Keyboard users can press `Alt + F10` from a selected link to open the same menu and press Escape to return to the document.
 
-The resolver runs only after an explicit paste, conversion, or refresh—not when a saved document opens. It receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
+The resolver runs only after an explicit paste, conversion, destination edit, or refresh—not when a saved document opens. It receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
 
 Preview nodes use sanitized raw HTML when content is serialized as Markdown, so their metadata and presentation survive Scribe's current Markdown round trip. A caller-owned `externalEditor` must register `ExternalLinkPreview` itself.
 

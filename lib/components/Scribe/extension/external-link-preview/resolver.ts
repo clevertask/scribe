@@ -1,7 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import {
   EXTERNAL_LINK_PREVIEW_NODE_NAME,
@@ -167,6 +167,10 @@ const applyResolvedMetadata = (
     return;
   }
 
+  const preservePreviewSelection =
+    view.state.selection instanceof NodeSelection &&
+    view.state.selection.from === currentRequest.position &&
+    view.state.selection.node.type.name === EXTERNAL_LINK_PREVIEW_NODE_NAME;
   const transaction = view.state.tr
     .setNodeMarkup(currentRequest.position, undefined, attributes)
     .setMeta(externalLinkPreviewResolverPluginKey, {
@@ -174,6 +178,10 @@ const applyResolvedMetadata = (
       token: request.token,
     } satisfies ExternalLinkPreviewResolverMeta)
     .setMeta("addToHistory", false);
+
+  if (preservePreviewSelection) {
+    transaction.setSelection(NodeSelection.create(transaction.doc, currentRequest.position));
+  }
 
   view.dispatch(transaction);
 };

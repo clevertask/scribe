@@ -1,13 +1,10 @@
-import { Button, Flex, Popover, Text } from "@radix-ui/themes";
 import { NodeViewWrapper, type NodeViewProps, useEditorState } from "@tiptap/react";
-import ExternalLinkDisplayOptions from "../../../Menu/ExternalLinkDisplayOptions";
-import { getPopupMountTarget } from "../getPopupMountTarget";
+import { showLinkBubbleMenu } from "../../../Menu/linkBubbleMenuPlugin";
 import {
   getExternalLinkPreviewHostname,
   getExternalLinkPreviewTitle,
   normalizeExternalLinkPreviewAttributes,
 } from "./attributes";
-import { getExternalLinkPreviewResolutionStatus } from "./resolver";
 import type { ExternalLinkPreviewDisplay } from "./types";
 
 const isSoleTextblockChildAt = (editor: NodeViewProps["editor"], position: number) => {
@@ -43,18 +40,14 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
 
       if (typeof position !== "number") {
         return {
-          canRefresh: false,
           isEditable: currentEditor.isEditable,
           isSoleTextblockContent: false,
-          status: "idle" as const,
         };
       }
 
       return {
-        canRefresh: currentEditor.can().refreshExternalLinkPreview(position),
         isEditable: currentEditor.isEditable,
         isSoleTextblockContent: isSoleTextblockChildAt(currentEditor, position),
-        status: getExternalLinkPreviewResolutionStatus(currentEditor.state, position),
       };
     },
   });
@@ -75,18 +68,6 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
     attributes.display === "card" && previewState.isSoleTextblockContent ? "card" : "compact";
   const title = getExternalLinkPreviewTitle(attributes);
   const siteLabel = attributes.siteName || getExternalLinkPreviewHostname(attributes.href);
-  const popupContainer = getPopupMountTarget(editor);
-  const targetPosition = getPos();
-
-  const refresh = () => {
-    const position = getPos();
-
-    if (typeof position !== "number") {
-      return;
-    }
-
-    editor.chain().focus().refreshExternalLinkPreview(position).run();
-  };
 
   return (
     <NodeViewWrapper
@@ -102,9 +83,22 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
         href={attributes.href}
         target="_blank"
         rel="noopener noreferrer"
+        aria-haspopup={previewState.isEditable ? "dialog" : undefined}
         onClick={(event) => {
-          if (previewState.isEditable) {
-            event.preventDefault();
+          if (!previewState.isEditable) {
+            return;
+          }
+
+          event.preventDefault();
+
+          const position = getPos();
+
+          if (typeof position !== "number") {
+            return;
+          }
+
+          if (editor.chain().focus().setNodeSelection(position).run()) {
+            showLinkBubbleMenu(editor, "dialog");
           }
         }}
       >
@@ -128,70 +122,6 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
           </span>
         </span>
       </a>
-
-      {previewState.isEditable ? (
-        <Popover.Root>
-          <Popover.Trigger>
-            <Button
-              type="button"
-              className="scribe-external-link-preview__options"
-              color="gray"
-              size="2"
-              variant="soft"
-            >
-              Link options
-            </Button>
-          </Popover.Trigger>
-          <Popover.Content
-            aria-label="Link options"
-            className="scribe-external-link-preview__popover"
-            container={popupContainer}
-            size="2"
-            side="bottom"
-            align="start"
-            style={{ maxWidth: "calc(100vw - 32px)", width: 320 }}
-          >
-            <Flex direction="column" gap="3">
-              <ExternalLinkDisplayOptions
-                currentDisplay={effectiveDisplay}
-                editor={editor}
-                targetPosition={typeof targetPosition === "number" ? targetPosition : undefined}
-              />
-              <Flex align="center" justify="between" gap="2" wrap="wrap">
-                <Text
-                  as="span"
-                  role="status"
-                  aria-live="polite"
-                  size="1"
-                  color={previewState.status === "error" ? "red" : "gray"}
-                >
-                  {previewState.status === "loading"
-                    ? "Loading preview…"
-                    : previewState.status === "error"
-                      ? "Preview unavailable"
-                      : siteLabel}
-                </Text>
-                {previewState.canRefresh ? (
-                  <Button
-                    type="button"
-                    color="gray"
-                    variant="soft"
-                    disabled={previewState.status === "loading"}
-                    onClick={refresh}
-                  >
-                    Refresh preview
-                  </Button>
-                ) : null}
-              </Flex>
-              <Button asChild color="gray" variant="soft">
-                <a href={attributes.href} target="_blank" rel="noopener noreferrer">
-                  Open link
-                </a>
-              </Button>
-            </Flex>
-          </Popover.Content>
-        </Popover.Root>
-      ) : null}
     </NodeViewWrapper>
   );
 };

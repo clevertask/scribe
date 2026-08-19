@@ -71,6 +71,41 @@ const calloutFixture = `
   <p>Content after the callout</p>
 `;
 
+const waitForPreviewResolution = (signal: AbortSignal, delay: number) =>
+  new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(resolve, delay);
+    const handleAbort = () => {
+      window.clearTimeout(timeout);
+      reject(new DOMException("The preview request was cancelled.", "AbortError"));
+    };
+
+    signal.addEventListener("abort", handleAbort, { once: true });
+  });
+
+const getLinkPreviewMetadata = (href: string) => {
+  const url = new URL(href);
+
+  if (url.pathname.includes("lucid-serum")) {
+    return {
+      pageTitle: "Lucid Serum",
+      description: "An ambient preset collection saved for later.",
+      siteName: "Example Sounds",
+      faviconUrl: "/link-preview-assets/example-sounds-icon.svg",
+      imageUrl: "/link-preview-assets/lucid-serum.svg",
+      fetchedAt: "2026-08-19T12:05:00.000Z",
+    };
+  }
+
+  return {
+    pageTitle: "Edward Jacket",
+    description: "A navy wool jacket saved for later.",
+    siteName: "Example Store",
+    faviconUrl: "/link-preview-assets/example-store-icon.svg",
+    imageUrl: "/link-preview-assets/edward-jacket.svg",
+    fetchedAt: "2026-08-19T12:00:00.000Z",
+  };
+};
+
 function App() {
   const searchParams = new URLSearchParams(window.location.search);
   const mobile = searchParams.get("mobile") === "true";
@@ -82,6 +117,7 @@ function App() {
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
   const testNestedScroll = searchParams.get("nestedScroll") === "true";
+  const testSlowLinkPreview = searchParams.get("slowLinkPreview") === "true";
   const testWindowScroll = searchParams.get("windowScroll") === "true";
   const [editable, setEditable] = useState(!testEditableTransition);
   const [serializedHtml, setSerializedHtml] = useState("");
@@ -94,16 +130,13 @@ function App() {
 
       setPreviewRequests((requests) => [...requests, href]);
 
-      return {
-        pageTitle: "Edward Jacket",
-        description: "A navy wool jacket saved for later.",
-        siteName: "Example Store",
-        faviconUrl: "/link-preview-assets/example-store-icon.svg",
-        imageUrl: "/link-preview-assets/edward-jacket.svg",
-        fetchedAt: "2026-08-19T12:00:00.000Z",
-      };
+      if (testSlowLinkPreview) {
+        await waitForPreviewResolution(signal, 300);
+      }
+
+      return getLinkPreviewMetadata(href);
     },
-    [],
+    [testSlowLinkPreview],
   );
   const scribe = (
     <div
@@ -155,7 +188,7 @@ function App() {
             {editable ? "Disable editing" : "Enable editing"}
           </button>
         ) : null}
-        {showCalloutFixture || showTableFixture ? (
+        {showCalloutFixture || showExternalLinkPreviewFixture || showTableFixture ? (
           <button type="button">Outside focus target</button>
         ) : null}
         {testNestedScroll ? (

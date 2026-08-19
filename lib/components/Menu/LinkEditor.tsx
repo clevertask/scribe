@@ -10,27 +10,42 @@ import {
   useId,
   useState,
 } from "react";
+import type { ExternalLinkPreviewResolutionStatus } from "../Scribe/extension/external-link-preview/types";
 import ExternalLinkDisplayOptions from "./ExternalLinkDisplayOptions";
 import type { ExternalLinkDisplay } from "./ExternalLinkDisplayOptions";
 import { normalizeLinkUrl } from "./linkUrl";
 
 export interface LinkEditorProps {
+  canRefreshPreview?: boolean;
+  currentDisplay?: ExternalLinkDisplay;
   editor: Editor;
   existingHref: string;
   inputRef?: RefObject<HTMLInputElement | null>;
   onClose: () => void;
+  onRefreshPreview?: () => void;
   onValueChange: (value: string) => void;
+  previewStatus?: ExternalLinkPreviewResolutionStatus;
+  previewStatusLabel?: string;
+  resetToken?: number;
   selectTextblockEndAfterSave?: boolean;
+  targetPosition?: number;
   value: string;
 }
 
 const LinkEditor: FC<LinkEditorProps> = ({
+  canRefreshPreview = false,
+  currentDisplay = "plain",
   editor,
   existingHref,
   inputRef,
   onClose,
+  onRefreshPreview,
   onValueChange,
+  previewStatus = "idle",
+  previewStatusLabel,
+  resetToken,
   selectTextblockEndAfterSave = false,
+  targetPosition,
   value,
 }) => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -44,7 +59,7 @@ const LinkEditor: FC<LinkEditorProps> = ({
 
   useEffect(() => {
     setErrorMessage(null);
-  }, [existingHref]);
+  }, [existingHref, resetToken]);
 
   const handleValueChange = useCallback(
     (nextValue: string) => {
@@ -58,10 +73,30 @@ const LinkEditor: FC<LinkEditorProps> = ({
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
 
-      const href = normalizeLinkUrl(value);
+      const href =
+        currentDisplay !== "plain" && value === existingHref
+          ? existingHref
+          : normalizeLinkUrl(value);
 
       if (!href) {
         setErrorMessage("Enter a valid web address or root-relative path.");
+        return;
+      }
+
+      if (currentDisplay !== "plain") {
+        const canUpdate = editor.can().updateExternalLinkPreview({ href }, targetPosition);
+        const didUpdate =
+          canUpdate &&
+          editor.chain().focus().updateExternalLinkPreview({ href }, targetPosition).run();
+
+        if (!didUpdate) {
+          setErrorMessage(
+            "This URL can't be used as a preview. Choose Plain link to keep this destination.",
+          );
+          return;
+        }
+
+        handleClose();
         return;
       }
 
@@ -78,7 +113,15 @@ const LinkEditor: FC<LinkEditorProps> = ({
 
       handleClose();
     },
-    [editor, handleClose, selectTextblockEndAfterSave, value],
+    [
+      currentDisplay,
+      editor,
+      existingHref,
+      handleClose,
+      selectTextblockEndAfterSave,
+      targetPosition,
+      value,
+    ],
   );
 
   const handleRemove = useCallback(() => {
@@ -93,6 +136,12 @@ const LinkEditor: FC<LinkEditorProps> = ({
   }, [editor, handleClose]);
 
   const hasPendingHrefChange = value !== existingHref;
+  const isRefreshDisabled = previewStatus === "loading" || hasPendingHrefChange;
+  const handleRefresh = useCallback(() => {
+    if (!isRefreshDisabled) {
+      onRefreshPreview?.();
+    }
+  }, [isRefreshDisabled, onRefreshPreview]);
   const handlePendingDisplayChange = useCallback(
     (display: ExternalLinkDisplay) => {
       const href = normalizeLinkUrl(value);
@@ -102,22 +151,43 @@ const LinkEditor: FC<LinkEditorProps> = ({
         return false;
       }
 
-      const didChangeDisplay = editor
-        .chain()
-        .focus()
-        .extendMarkRange("link")
-        .setLink({ href })
-        .setExternalLinkDisplay(display)
-        .run();
+      let didChangeDisplay = false;
+
+      if (currentDisplay === "plain") {
+        didChangeDisplay = editor
+          .chain()
+          .focus()
+          .extendMarkRange("link")
+          .setLink({ href })
+          .setExternalLinkDisplay(display)
+          .run();
+      } else if (display === "plain") {
+        didChangeDisplay = editor.commands.convertExternalLinkPreviewToPlain(href, targetPosition);
+      } else {
+        const canUpdate = editor.can().updateExternalLinkPreview({ href }, targetPosition);
+
+        didChangeDisplay =
+          canUpdate &&
+          editor
+            .chain()
+            .focus()
+            .updateExternalLinkPreview({ href }, targetPosition)
+            .setExternalLinkDisplay(display, targetPosition)
+            .run();
+      }
 
       if (!didChangeDisplay) {
-        setErrorMessage("This link can't use Compact or Preview card.");
+        setErrorMessage(
+          display === "plain"
+            ? "Scribe could not update this link."
+            : "This link can't use Compact or Preview card.",
+        );
         return false;
       }
 
       return true;
     },
-    [editor, value],
+    [currentDisplay, editor, targetPosition, value],
   );
 
   const handleKeyDown = useCallback(
@@ -166,21 +236,53 @@ const LinkEditor: FC<LinkEditorProps> = ({
           </Text>
         ) : null}
         <ExternalLinkDisplayOptions
-          currentDisplay="plain"
+          currentDisplay={currentDisplay}
           editor={editor}
           executeDisplayChange={hasPendingHrefChange ? handlePendingDisplayChange : undefined}
           onDisplayChange={handleClose}
+          targetPosition={targetPosition}
         />
+        {currentDisplay !== "plain" ? (
+          <Flex align="center" justify="between" gap="2" wrap="wrap">
+            <Text
+              as="span"
+              role="status"
+              aria-live="polite"
+              size="1"
+              color={previewStatus === "error" ? "red" : "gray"}
+            >
+              {previewStatus === "loading"
+                ? "Loading preview…"
+                : previewStatus === "error"
+                  ? "Preview unavailable"
+                  : previewStatusLabel}
+            </Text>
+            {canRefreshPreview && onRefreshPreview ? (
+              <Button
+                type="button"
+                color="gray"
+                variant="soft"
+                aria-disabled={isRefreshDisabled}
+                data-disabled={isRefreshDisabled ? "" : undefined}
+                onClick={handleRefresh}
+              >
+                Refresh preview
+              </Button>
+            ) : null}
+          </Flex>
+        ) : null}
         <Flex justify="between" gap="3" wrap="wrap">
-          <Button
-            type="button"
-            color="red"
-            variant="soft"
-            disabled={!existingHref}
-            onClick={handleRemove}
-          >
-            Remove link
-          </Button>
+          {currentDisplay === "plain" ? (
+            <Button
+              type="button"
+              color="red"
+              variant="soft"
+              disabled={!existingHref}
+              onClick={handleRemove}
+            >
+              Remove link
+            </Button>
+          ) : null}
           <Flex gap="2" justify="end" style={{ marginLeft: "auto" }} wrap="wrap">
             {openHref ? (
               <Button asChild variant="soft" color="gray">

@@ -1,6 +1,6 @@
 import { Theme } from "@radix-ui/themes";
 import type { Editor } from "@tiptap/react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { createRef, StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScribeEditor, Scribe, type ScribeRef } from "../lib/main";
@@ -48,7 +48,7 @@ const getEditor = (scribeRef: React.RefObject<ScribeRef | null>) => {
 };
 
 describe("Scribe editor lifecycle", () => {
-  it("keeps NodeView controls synchronized across repeated editable transitions", async () => {
+  it("keeps the preview menu affordance synchronized across editable transitions", async () => {
     const scribeRef = createRef<ScribeRef>();
     const previewContent =
       '<p><span data-type="external-link-preview" data-href="https://example.com/reference" data-link-text="Reference" data-display="compact"><a data-link-preview-target href="https://example.com/reference">Reference</a></span></p>';
@@ -65,23 +65,23 @@ describe("Scribe editor lifecycle", () => {
       </Theme>
     );
     const { rerender } = render(renderEditor(true));
+    const getPreviewTarget = () =>
+      getEditor(scribeRef).view.dom.querySelector<HTMLAnchorElement>("[data-link-preview-target]");
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Link options", exact: true })).toBeInTheDocument();
+      expect(getPreviewTarget()).toHaveAttribute("aria-haspopup", "dialog");
     });
 
     rerender(renderEditor(false));
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole("button", { name: "Link options", exact: true }),
-      ).not.toBeInTheDocument();
+      expect(getPreviewTarget()).not.toHaveAttribute("aria-haspopup");
     });
 
     rerender(renderEditor(true));
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Link options", exact: true })).toBeInTheDocument();
+      expect(getPreviewTarget()).toHaveAttribute("aria-haspopup", "dialog");
     });
     expect(getEditor(scribeRef).isEditable).toBe(true);
   });
