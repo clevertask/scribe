@@ -146,6 +146,8 @@ export interface ScribeProps {
    * callback references when the component can re-render.
    *
    * A caller-owned `externalEditor` must register the extension itself.
+   *
+   * @experimental The link-preview API and built-in UI may change while this feature is tested.
    */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   /** @experimental Enables Scribe's app-owned table-of-contents API. */

@@ -49,6 +49,7 @@ const hasUrlCredentials = (value: string) => {
   return value.slice(authorityStart, authorityEnd).includes("@");
 };
 
+/** @experimental Part of Scribe's evolving external-link-preview contract. */
 export const EXTERNAL_LINK_PREVIEW_NODE_NAME = "externalLinkPreview";
 export const EXTERNAL_LINK_PREVIEW_SELECTOR = 'span[data-type="external-link-preview"]';
 export const EXTERNAL_LINK_PREVIEW_TARGET_SELECTOR = "a[data-link-preview-target]";

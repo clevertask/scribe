@@ -67,6 +67,8 @@ const validateMediaUrl = (key: "faviconUrl" | "imageUrl", value: unknown) => {
 /**
  * Backend-agnostic enhanced external links. Consumers own metadata fetching through
  * the optional resolver; Scribe owns only presentation, conversion, and persistence.
+ *
+ * @experimental The link-preview API and built-in UI may change while this feature is tested.
  */
 export const ExternalLinkPreview = Node.create<ExternalLinkPreviewOptions>({
   name: EXTERNAL_LINK_PREVIEW_NODE_NAME,

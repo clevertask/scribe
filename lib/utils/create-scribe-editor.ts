@@ -6,6 +6,7 @@ import type { ExternalLinkPreviewOptions } from "../components/Scribe/extension/
 export type CreateEditorOptions = {
   content?: string;
   editable?: boolean;
+  /** @experimental The link-preview API and built-in UI may change while this feature is tested. */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   onContentChange?: (content: {
     htmlContent: string;
