@@ -20,6 +20,7 @@ import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
 import { ScribeTable } from "./resizable-table";
 import { Callout } from "./callout";
+import { ExternalLinkPreview } from "./external-link-preview";
 
 export const initExtensions = (props: ScribeProps) => {
   const {
@@ -36,6 +37,7 @@ export const initExtensions = (props: ScribeProps) => {
       },
       link: false,
     }),
+    ExternalLinkPreview.configure(props.externalLinkPreview),
     Callout,
     TaskList.configure({
       HTMLAttributes: {

@@ -4,6 +4,7 @@ export default Link.configure({
   openOnClick: false,
   enableClickSelection: true,
   autolink: true,
+  linkOnPaste: false,
   defaultProtocol: "https",
   protocols: ["http", "https"],
   isAllowedUri: (url, ctx) => {

@@ -10,6 +10,31 @@ const normalizeHtml = (html: string) => {
   return container.innerHTML;
 };
 
+const EXTERNAL_LINK_PREVIEW_HREF =
+  "https://store.example/products/edward-jacket?utm_source=wishlist&color=navy%20blue";
+
+const createExternalLinkPreviewHtml = (display: "compact" | "card") =>
+  [
+    `<span data-type="external-link-preview" data-display="${display}"`,
+    ` data-link-text="Original product link"`,
+    ` data-page-title="Edward &amp; Sons Jacket"`,
+    ` data-description="A navy wool jacket"`,
+    ` data-site-name="Example Store"`,
+    ` data-favicon-url="/link-preview-assets/favicon-123"`,
+    ` data-image-url="https://images.example/edward-jacket.jpg"`,
+    ` data-fetched-at="2026-08-19T04:56:32.309Z">`,
+    `<a data-link-preview-target href="${EXTERNAL_LINK_PREVIEW_HREF}">Edward &amp; Sons Jacket</a>`,
+    "</span>",
+  ].join("");
+
+const getExternalLinkPreview = (html: string) => {
+  const container = document.createElement("div");
+
+  container.innerHTML = html;
+
+  return container.querySelector('span[data-type="external-link-preview"]');
+};
+
 describe("html2md tables", () => {
   it("serializes a simple headed table as GFM without losing inline content", () => {
     const html = [
@@ -319,5 +344,170 @@ describe("Callout Markdown fallback", () => {
 
   it("does not treat an arbitrary aside as a Scribe Callout", () => {
     expect(html2md("<aside><p>Ordinary note</p></aside>")).toBe("Ordinary note");
+  });
+});
+
+describe("External link preview Markdown fallback", () => {
+  it.each(["compact", "card"] as const)(
+    "preserves a %s preview as inline raw HTML with its metadata",
+    (display) => {
+      const html = `<p>Before ${createExternalLinkPreviewHtml(display)} after</p>`;
+      const markdown = html2md(html);
+      const restored = getExternalLinkPreview(md2html(markdown));
+      const target = restored?.querySelector("a[data-link-preview-target]");
+
+      expect(markdown).toContain('<span data-type="external-link-preview"');
+      expect(markdown).toContain(`data-display="${display}"`);
+      expect(markdown).not.toContain("[Edward & Sons Jacket]");
+      expect(restored).not.toBeNull();
+      expect(restored).toHaveAttribute("data-display", display);
+      expect(restored).toHaveAttribute("data-link-text", "Original product link");
+      expect(restored).toHaveAttribute("data-page-title", "Edward & Sons Jacket");
+      expect(restored).toHaveAttribute("data-description", "A navy wool jacket");
+      expect(restored).toHaveAttribute("data-site-name", "Example Store");
+      expect(restored).toHaveAttribute("data-favicon-url", "/link-preview-assets/favicon-123");
+      expect(restored).toHaveAttribute(
+        "data-image-url",
+        "https://images.example/edward-jacket.jpg",
+      );
+      expect(restored).toHaveAttribute("data-fetched-at", "2026-08-19T04:56:32.309Z");
+      expect(target).toHaveAttribute("href", EXTERNAL_LINK_PREVIEW_HREF);
+      expect(target).toHaveAttribute("target", "_blank");
+      expect(target).toHaveAttribute("rel", "noopener noreferrer");
+      expect(target?.querySelector("[data-link-preview-title]")).toHaveTextContent(
+        "Edward & Sons Jacket",
+      );
+
+      if (display === "card") {
+        expect(target?.querySelector("img[data-link-preview-image]")).toHaveAttribute(
+          "src",
+          "https://images.example/edward-jacket.jpg",
+        );
+        expect(target?.querySelector("[data-link-preview-description]")).toHaveTextContent(
+          "A navy wool jacket",
+        );
+      } else {
+        expect(target?.querySelector("img[data-link-preview-favicon]")).toHaveAttribute(
+          "src",
+          "/link-preview-assets/favicon-123",
+        );
+        expect(target?.querySelector("[data-link-preview-image]")).toBeNull();
+        expect(target?.querySelector("[data-link-preview-description]")).toBeNull();
+      }
+    },
+  );
+
+  it("keeps a Card preview inside a Markdown list item", () => {
+    const markdown = html2md(`<ul><li><p>${createExternalLinkPreviewHtml("card")}</p></li></ul>`);
+    const restoredContainer = document.createElement("div");
+
+    restoredContainer.innerHTML = md2html(markdown);
+
+    const restored = restoredContainer.querySelector('li span[data-type="external-link-preview"]');
+
+    expect(markdown).toMatch(/^\s*-\s+/);
+    expect(restored).toHaveAttribute("data-display", "card");
+    expect(restored?.querySelector("a[data-link-preview-target]")).toHaveAttribute(
+      "href",
+      EXTERNAL_LINK_PREVIEW_HREF,
+    );
+  });
+
+  it("keeps the wrapper strict and removes unsafe imported metadata", () => {
+    const markdown = html2md(
+      [
+        '<p><span data-type="external-link-preview" data-display="gallery"',
+        ' data-link-text="Safe fallback" data-page-title="Safe title"',
+        ' data-favicon-url="javascript:alert(1)"',
+        ' data-image-url="data:image/svg+xml,unsafe"',
+        ' data-fetched-at="not-a-date" class="spoofed" id="unsafe"',
+        ' style="position: fixed" onclick="alert(2)" data-unexpected="unsafe">',
+        `<a data-link-preview-target href="${EXTERNAL_LINK_PREVIEW_HREF}" onfocus="alert(3)">`,
+        "Safe title<script>alert(4)</script></a></span></p>",
+      ].join(""),
+    );
+    const preview = getExternalLinkPreview(markdown);
+
+    expect(preview).toHaveAttribute("data-display", "compact");
+    expect(preview).not.toHaveAttribute("data-favicon-url");
+    expect(preview).not.toHaveAttribute("data-image-url");
+    expect(preview).not.toHaveAttribute("data-fetched-at");
+    expect(preview).not.toHaveAttribute("class");
+    expect(preview).not.toHaveAttribute("id");
+    expect(preview).not.toHaveAttribute("style");
+    expect(preview).not.toHaveAttribute("onclick");
+    expect(preview).not.toHaveAttribute("data-unexpected");
+    expect(markdown).not.toMatch(/javascript:|data:image|on\w+=|<script/i);
+  });
+
+  it("degrades an imported preview with an unsafe destination to text", () => {
+    const unsafePreview = [
+      '<span data-type="external-link-preview" data-display="card"',
+      ' data-link-text="Safe fallback" data-href="javascript:alert(1)">',
+      '<a data-link-preview-target href="https://safe.example/product">Unsafe title</a>',
+      "</span>",
+    ].join("");
+    const markdown = html2md(`<p>${unsafePreview}</p>`);
+    const restoredHtml = md2html(unsafePreview);
+
+    expect(markdown).toContain("Safe fallback");
+    expect(markdown).not.toContain("external-link-preview");
+    expect(markdown).not.toContain("javascript:");
+    expect(restoredHtml).toContain("Safe fallback");
+    expect(restoredHtml).not.toContain("external-link-preview");
+    expect(restoredHtml).not.toContain("javascript:");
+  });
+
+  it("normalizes a preview nested inside a raw Callout", () => {
+    const markdown = html2md(
+      [
+        '<aside data-type="callout" data-variant="warning">',
+        `<p>${createExternalLinkPreviewHtml("card").replace(
+          ' data-image-url="https://images.example/edward-jacket.jpg"',
+          ' data-image-url="javascript:alert(1)" class="spoofed"',
+        )}</p>`,
+        "</aside>",
+      ].join(""),
+    );
+    const container = document.createElement("div");
+
+    container.innerHTML = markdown;
+
+    const preview = container.querySelector('span[data-type="external-link-preview"]');
+
+    expect(markdown).toContain('<aside data-type="callout"');
+    expect(preview).toHaveAttribute("data-display", "card");
+    expect(preview).not.toHaveAttribute("data-image-url");
+    expect(preview).not.toHaveAttribute("class");
+    expect(normalizeHtml(md2html(markdown))).toContain('data-type="external-link-preview"');
+  });
+
+  it("normalizes a preview nested inside a raw-fallback table", () => {
+    const markdown = html2md(
+      [
+        "<table><tbody>",
+        "<tr><th><p>Product</p></th></tr>",
+        `<tr><td><p>${createExternalLinkPreviewHtml("compact").replace(
+          ' data-favicon-url="/link-preview-assets/favicon-123"',
+          ' data-favicon-url="data:image/svg+xml,unsafe" style="position: fixed"',
+        )}</p></td></tr>`,
+        "</tbody></table>",
+      ].join(""),
+    );
+    const container = document.createElement("div");
+
+    container.innerHTML = markdown;
+
+    const preview = container.querySelector('span[data-type="external-link-preview"]');
+
+    expect(markdown).toContain("<table");
+    expect(preview).toHaveAttribute("data-display", "compact");
+    expect(preview).not.toHaveAttribute("data-favicon-url");
+    expect(preview).not.toHaveAttribute("style");
+    expect(normalizeHtml(md2html(markdown))).toContain('data-type="external-link-preview"');
+  });
+
+  it("does not treat an arbitrary span as an external link preview", () => {
+    expect(html2md('<span data-display="card">Ordinary text</span>')).toBe("Ordinary text");
   });
 });

@@ -3,12 +3,12 @@
 import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/styles.css";
 
-import { Scribe } from "@clevertask/scribe";
+import { Scribe, type ExternalLinkPreviewResolver } from "@clevertask/scribe";
 import { Theme } from "@radix-ui/themes";
 import { Extension } from "@tiptap/core";
 import { EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
-import { StrictMode, useState } from "react";
+import { StrictMode, useCallback, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const ConsumerDecoration = Extension.create({
@@ -76,6 +76,8 @@ function App() {
   const mobile = searchParams.get("mobile") === "true";
   const showConsumerDecoration = searchParams.get("consumerDecoration") === "true";
   const showCalloutFixture = searchParams.get("callout") === "true";
+  const showExternalLinkPreviewFixture = searchParams.get("linkPreview") === "true";
+  const showExternalLinkPreviewListFixture = searchParams.get("linkPreviewList") === "true";
   const showTableFixture = searchParams.get("table") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
@@ -83,6 +85,26 @@ function App() {
   const testWindowScroll = searchParams.get("windowScroll") === "true";
   const [editable, setEditable] = useState(!testEditableTransition);
   const [serializedHtml, setSerializedHtml] = useState("");
+  const [previewRequests, setPreviewRequests] = useState<string[]>([]);
+  const resolveExternalLinkPreview = useCallback<ExternalLinkPreviewResolver>(
+    async (href, { signal }) => {
+      if (signal.aborted) {
+        throw new DOMException("The preview request was cancelled.", "AbortError");
+      }
+
+      setPreviewRequests((requests) => [...requests, href]);
+
+      return {
+        pageTitle: "Edward Jacket",
+        description: "A navy wool jacket saved for later.",
+        siteName: "Example Store",
+        faviconUrl: "/link-preview-assets/example-store-icon.svg",
+        imageUrl: "/link-preview-assets/edward-jacket.svg",
+        fetchedAt: "2026-08-19T12:00:00.000Z",
+      };
+    },
+    [],
+  );
   const scribe = (
     <div
       data-testid="scribe-container"
@@ -93,13 +115,23 @@ function App() {
         content={
           showConsumerDecoration
             ? ""
-            : showCalloutFixture
-              ? calloutFixture
-              : showTableFixture
-                ? tableFixture
-                : "<p>Package consumer content</p>"
+            : showExternalLinkPreviewListFixture
+              ? "<ul><li><p></p></li></ul>"
+              : showCalloutFixture
+                ? calloutFixture
+                : showTableFixture
+                  ? tableFixture
+                  : "<p>Package consumer content</p>"
         }
         editable={editable}
+        externalLinkPreview={
+          showExternalLinkPreviewFixture || showExternalLinkPreviewListFixture
+            ? {
+                resolve: resolveExternalLinkPreview,
+                shouldPreview: (href) => new URL(href).hostname !== "clevertask.example",
+              }
+            : undefined
+        }
         extensions={showConsumerDecoration ? [ConsumerDecoration] : undefined}
         mobile={mobile}
         onContentChange={
@@ -139,6 +171,11 @@ function App() {
         {showConsumerDecoration ? (
           <output data-testid="serialized-html" hidden>
             {serializedHtml}
+          </output>
+        ) : null}
+        {showExternalLinkPreviewFixture || showExternalLinkPreviewListFixture ? (
+          <output data-testid="preview-requests" hidden>
+            {JSON.stringify(previewRequests)}
           </output>
         ) : null}
       </main>

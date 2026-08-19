@@ -1,5 +1,6 @@
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { normalizeExternalLinkPreviewsInTree } from "../components/Scribe/extension/external-link-preview/serialization";
 
 const CALLOUT_VARIANTS = new Set(["info", "tip", "warning", "caution"]);
 const SAFE_NESTED_TABLE_STYLE_PROPERTIES = ["width", "min-width", "max-width", "text-align"];
@@ -60,10 +61,19 @@ const normalizeCallouts = (html: string) => {
   return container.innerHTML;
 };
 
+const normalizeExternalLinkPreviews = (html: string) => {
+  const container = document.createElement("div");
+
+  container.innerHTML = html;
+  normalizeExternalLinkPreviewsInTree(container);
+
+  return container.innerHTML;
+};
+
 export const md2html = (md: string) => {
   const sanitizedHtml = DOMPurify.sanitize(marked.parse(md, { async: false }), {
     ADD_ATTR: ["colwidth"],
   });
 
-  return normalizeCallouts(sanitizedHtml);
+  return normalizeExternalLinkPreviews(normalizeCallouts(sanitizedHtml));
 };

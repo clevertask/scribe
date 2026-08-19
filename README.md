@@ -11,6 +11,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - **Markdown Support:** Parse and render Markdown content effortlessly.
 - **Markdown Paste:** Paste plain-text markdown into the editor and have it converted into rich content automatically.
 - **Table Authoring:** Insert, resize, and edit tables with controls that stay next to the active table.
+- **Experimental External Link Previews:** Opt into Compact and Preview card presentations while keeping ordinary links available.
 - **Versatile Integration:** Easily integrate `@clevertask/scribe` into any project requiring rich text editing.
 - **View and Edit:** Seamlessly switch between viewing and editing modes.
 - **Experimental Table of Contents:** Subscribe to heading changes and render an app-owned table of contents outside the editor.
@@ -21,6 +22,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
   - [Installation](#installation)
   - [Usage](#usage)
   - [Table Authoring](#table-authoring)
+  - [External Link Previews](#external-link-previews)
   - [Experimental Table of Contents](#experimental-table-of-contents)
   - [Math Expressions](#math-expressions)
   - [Props](#props)
@@ -119,6 +121,53 @@ Keyboard users can press `Alt + F10` while editing a table to focus its controls
 
 Simple headed tables serialize as GFM Markdown. Tables with merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
 
+## External Link Previews
+
+> [!NOTE]
+> External Link Previews are experimental. Their public API, built-in card presentation, and link-options UI may change as we test them in real document workflows.
+
+External link previews are opt-in. Scribe owns their editor behavior and presentation, while your app owns metadata fetching. Pass a resolver that calls an authenticated app endpoint; Scribe never requests the destination website directly.
+
+That endpoint should validate the destination, block private or reserved network addresses, re-check redirects, and enforce response-size and timeout limits before returning sanitized metadata.
+
+```tsx
+import { Scribe, type ExternalLinkPreviewResolver } from "@clevertask/scribe";
+import { useCallback } from "react";
+
+function DocumentEditor() {
+  const resolveLinkPreview = useCallback<ExternalLinkPreviewResolver>(async (href, { signal }) => {
+    const response = await fetch(`/api/link-previews?url=${encodeURIComponent(href)}`, {
+      credentials: "include",
+      signal,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return response.json();
+  }, []);
+  const shouldPreview = useCallback((href: string) => {
+    return new URL(href).origin !== window.location.origin;
+  }, []);
+
+  return (
+    <Scribe
+      externalLinkPreview={{
+        resolve: resolveLinkPreview,
+        shouldPreview,
+      }}
+    />
+  );
+}
+```
+
+Pasting a standalone external URL into an empty paragraph creates a Compact preview. Pasting a URL over selected text keeps an ordinary labeled link. The link options can switch between Plain link, Compact, and Preview card; a card is available only when the preview has its own line.
+
+The resolver runs only after an explicit paste, conversion, or refresh—not when a saved document opens. It receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
+
+Preview nodes use sanitized raw HTML when content is serialized as Markdown, so their metadata and presentation survive Scribe's current Markdown round trip. A caller-owned `externalEditor` must register `ExternalLinkPreview` itself.
+
 ## Experimental Table of Contents
 
 Scribe can expose table-of-contents data without rendering a table-of-contents block inside the editable document. Enable the experimental API with `enableTableOfContents`, keep the latest items in your app state, and call `scrollToTableOfContentsItem` when a user selects an entry.
@@ -201,6 +250,7 @@ If your content arrives as HTML (for example from a server), use the helper belo
 | `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
 | `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |
+| `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Experimental. Opts into external-link metadata resolution and enhanced Compact/Card presentation. The consumer owns fetching and destination policy.                                                                                                     |
 | `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
 | `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |
 | `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                      |
