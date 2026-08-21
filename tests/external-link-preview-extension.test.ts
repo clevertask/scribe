@@ -43,10 +43,12 @@ const TestInlineAtom = Node.create({
 
 const createEditor = ({
   content = "<p></p>",
+  autoPreviewOnPaste,
   resolve,
   shouldPreview,
 }: {
   content?: Content;
+  autoPreviewOnPaste?: boolean;
   resolve?: ExternalLinkPreviewResolver;
   shouldPreview?: (href: string) => boolean;
 } = {}) => {
@@ -57,7 +59,7 @@ const createEditor = ({
       Link,
       Image.configure({ inline: true }),
       TestInlineAtom,
-      CoreExternalLinkPreview.configure({ resolve, shouldPreview }),
+      CoreExternalLinkPreview.configure({ autoPreviewOnPaste, resolve, shouldPreview }),
     ],
   });
 
@@ -508,11 +510,15 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.getText()).toBe("Before text");
   });
 
-  it("replaces a whitespace-only paragraph with Compact only when a resolver exists", async () => {
+  it("replaces a whitespace-only paragraph with Compact when automatic previews are enabled", async () => {
     const resolver = vi.fn<ExternalLinkPreviewResolver>().mockResolvedValue({
       pageTitle: "Pasted destination",
     });
-    const editor = createEditor({ content: "<p>   </p>", resolve: resolver });
+    const editor = createEditor({
+      content: "<p>   </p>",
+      autoPreviewOnPaste: true,
+      resolve: resolver,
+    });
 
     editor.commands.setTextSelection(2);
     paste(editor, "https://example.com/pasted?query=kept");
@@ -536,6 +542,43 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.getText()).not.toContain("   ");
   });
 
+  it("keeps standalone paste Plain by default and resolves only after explicit conversion", async () => {
+    const href = "https://example.com/explicit-preview?query=kept";
+    const resolver = vi.fn<ExternalLinkPreviewResolver>().mockResolvedValue({
+      pageTitle: "Explicit destination",
+    });
+    const shouldPreview = vi.fn(() => true);
+    const editor = createEditor({ resolve: resolver, shouldPreview });
+
+    editor.commands.setTextSelection(1);
+    paste(editor, href);
+
+    expect(hasNodeType(editor, "externalLinkPreview")).toBe(false);
+    expect(editor.getHTML()).toContain(
+      `<a target="_blank" rel="noopener noreferrer nofollow" href="${href}">${href}</a>`,
+    );
+    expect(resolver).not.toHaveBeenCalled();
+    expect(shouldPreview).not.toHaveBeenCalled();
+
+    editor.commands.setTextSelection(findTextPosition(editor, href));
+    expect(editor.commands.setExternalLinkDisplay("compact")).toBe(true);
+
+    await waitFor(() => expect(resolver).toHaveBeenCalledOnce());
+    expect(resolver).toHaveBeenCalledWith(href, { signal: expect.any(AbortSignal) });
+    expect(shouldPreview).toHaveBeenCalledWith(href);
+    await waitFor(() => {
+      expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+        type: "externalLinkPreview",
+        attrs: {
+          href,
+          linkText: href,
+          display: "compact",
+          pageTitle: "Explicit destination",
+        },
+      });
+    });
+  });
+
   it.each([
     ["image", '<p><img src="https://example.com/product.png"></p>', "image"],
     ["hard break", "<p><br></p>", "hardBreak"],
@@ -543,7 +586,11 @@ describe("ExternalLinkPreview core", () => {
   ])(
     "never replaces a paragraph containing a %s during standalone paste",
     (_label, content, type) => {
-      const editor = createEditor({ content, resolve: async () => null });
+      const editor = createEditor({
+        content,
+        autoPreviewOnPaste: true,
+        resolve: async () => null,
+      });
 
       expect(hasNodeType(editor, type)).toBe(true);
       editor.commands.setTextSelection(2);
@@ -555,7 +602,7 @@ describe("ExternalLinkPreview core", () => {
   );
 
   it("leaves standalone paste on the ordinary Link path when no resolver exists", () => {
-    const editor = createEditor();
+    const editor = createEditor({ autoPreviewOnPaste: true });
 
     editor.commands.setTextSelection(1);
     paste(editor, "https://example.com/ordinary");

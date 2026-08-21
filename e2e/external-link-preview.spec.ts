@@ -27,8 +27,25 @@ const pasteStandalonePreview = async (page: Page) => {
 
   const preview = editor.locator('[data-type="external-link-preview"]');
 
+  await expect(preview).toHaveCount(0);
+
+  const plainLink = editor.getByRole("link", { name: externalUrl, exact: true });
+
+  await expect(plainLink).toHaveAttribute("href", externalUrl);
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
+  await plainLink.click();
+
+  const dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
+
+  await expect(dialog.getByRole("button", { name: "Plain link", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await dialog.getByRole("button", { name: "Compact", exact: true }).click();
+
   await expect(preview).toHaveAttribute("data-display", "compact");
   await expect(preview.locator("[data-link-preview-title]")).toHaveText("Edward Jacket");
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
 
   return { editor, preview };
 };
@@ -57,7 +74,7 @@ const getAnchorGap = async (target: Locator, dialog: Locator) => {
   };
 };
 
-test("a standalone URL uses the shared link dialog for all display choices", async ({
+test("a standalone URL stays Plain until Compact is explicitly selected", async ({
   context,
   page,
 }) => {
@@ -265,8 +282,10 @@ test("preview editing supports Alt+F10 and restores editor focus on Escape", asy
   await grantClipboardAccess(context);
   await page.goto("/?linkPreview=true");
 
-  const { editor } = await pasteStandalonePreview(page);
+  const { editor, preview } = await pasteStandalonePreview(page);
 
+  await editor.press("ArrowLeft");
+  await expect(preview.locator("..")).toHaveClass(/ProseMirror-selectednode/);
   await editor.press("Alt+F10");
 
   const dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
@@ -295,7 +314,21 @@ test("a Preview card remains full-width without overflow inside a narrow list it
   await pasteText(page, externalUrl);
 
   const preview = listItem.locator('[data-type="external-link-preview"]');
-  const dialog = await openPreviewEditor(page, preview);
+
+  await expect(preview).toHaveCount(0);
+
+  const plainLink = listItem.getByRole("link", { name: externalUrl, exact: true });
+
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
+  await plainLink.click();
+
+  let dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
+
+  await dialog.getByRole("button", { name: "Compact", exact: true }).click();
+  await expect(preview).toHaveAttribute("data-display", "compact");
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+
+  dialog = await openPreviewEditor(page, preview);
 
   await dialog
     .getByRole("group", { name: "Display as", exact: true })
