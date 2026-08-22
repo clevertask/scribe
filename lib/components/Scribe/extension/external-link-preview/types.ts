@@ -41,6 +41,11 @@ export type ExternalLinkPreviewResolver = (
 /** @experimental Part of Scribe's evolving external-link-preview contract. */
 export interface ExternalLinkPreviewOptions {
   HTMLAttributes?: Record<string, unknown>;
+  /**
+   * Automatically turn a standalone pasted URL into a Compact preview.
+   * @default false
+   */
+  autoPreviewOnPaste?: boolean;
   resolve?: ExternalLinkPreviewResolver;
   shouldPreview?: (href: string) => boolean;
 }

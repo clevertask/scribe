@@ -79,10 +79,12 @@ const canInsertStandalonePreview = (view: EditorView, type: NodeType) => {
 
 export const createExternalLinkPreviewPastePlugin = ({
   previewType,
+  autoPreviewOnPaste,
   resolveMetadata,
   shouldPreview,
 }: {
   previewType: NodeType;
+  autoPreviewOnPaste: boolean;
   resolveMetadata: boolean;
   shouldPreview?: (href: string) => boolean;
 }) =>
@@ -110,7 +112,12 @@ export const createExternalLinkPreviewPastePlugin = ({
 
         const href = normalizeExternalLinkPreviewHref(clipboardText);
 
-        if (!resolveMetadata || !href || !canInsertStandalonePreview(view, previewType)) {
+        if (
+          !autoPreviewOnPaste ||
+          !resolveMetadata ||
+          !href ||
+          !canInsertStandalonePreview(view, previewType)
+        ) {
           return false;
         }
 

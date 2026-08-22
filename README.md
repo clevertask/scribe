@@ -156,15 +156,17 @@ function DocumentEditor() {
       externalLinkPreview={{
         resolve: resolveLinkPreview,
         shouldPreview,
+        // Defaults to false. Enable only if standalone pastes should fetch immediately.
+        autoPreviewOnPaste: false,
       }}
     />
   );
 }
 ```
 
-Pasting a standalone external URL into an empty paragraph creates a Compact preview. Pasting a URL over selected text keeps an ordinary labeled link. While editing, select a Plain, Compact, or Card link to open its contextual menu. From there you can edit or open the destination, refresh preview metadata, or switch presentation; a Preview card is available only when the link has its own line. Keyboard users can press `Alt + F10` from a selected link to open the same menu and press Escape to return to the document.
+By default, pasting a standalone external URL creates an ordinary link and does not call the resolver. Select the link and choose Compact or Preview card to request metadata. Set `autoPreviewOnPaste: true` if standalone URL pastes should become Compact previews automatically. Pasting a URL over selected text always keeps an ordinary labeled link. While editing, select a Plain, Compact, or Card link to open its contextual menu. From there you can edit or open the destination, refresh preview metadata, or switch presentation; a Preview card is available only when the link has its own line. Keyboard users can press `Alt + F10` from a selected link to open the same menu and press Escape to return to the document.
 
-The resolver runs only after an explicit paste, conversion, destination edit, or refresh—not when a saved document opens. It receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
+The resolver runs only after an explicit conversion, programmatic preview insertion, preview destination edit, refresh, or—when deliberately enabled—an automatic standalone paste. It never runs merely because a saved document opens. It receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
 
 Preview nodes use sanitized raw HTML when content is serialized as Markdown, so their metadata and presentation survive Scribe's current Markdown round trip. A caller-owned `externalEditor` must register `ExternalLinkPreview` itself.
 
@@ -250,7 +252,7 @@ If your content arrives as HTML (for example from a server), use the helper belo
 | `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
 | `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |
-| `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Experimental. Opts into external-link metadata resolution and enhanced Compact/Card presentation. The consumer owns fetching and destination policy.                                                                                                     |
+| `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Experimental. Opts into external-link metadata resolution and enhanced Compact/Card presentation. The consumer owns fetching and destination policy; automatic previews on paste default to disabled.                                                    |
 | `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
 | `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |
 | `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                      |
