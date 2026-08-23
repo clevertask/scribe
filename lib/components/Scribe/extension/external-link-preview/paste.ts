@@ -6,7 +6,6 @@ import {
   normalizeExternalLinkPreviewAttributes,
   normalizeExternalLinkPreviewHref,
 } from "./attributes";
-import { startExternalLinkPreviewResolution } from "./resolver";
 
 const externalLinkPreviewPastePluginKey = new PluginKey("scribeExternalLinkPreviewPaste");
 
@@ -80,12 +79,10 @@ const canInsertStandalonePreview = (view: EditorView, type: NodeType) => {
 export const createExternalLinkPreviewPastePlugin = ({
   previewType,
   autoPreviewOnPaste,
-  resolveMetadata,
   shouldPreview,
 }: {
   previewType: NodeType;
   autoPreviewOnPaste: boolean;
-  resolveMetadata: boolean;
   shouldPreview?: (href: string) => boolean;
 }) =>
   new Plugin({
@@ -112,12 +109,7 @@ export const createExternalLinkPreviewPastePlugin = ({
 
         const href = normalizeExternalLinkPreviewHref(clipboardText);
 
-        if (
-          !autoPreviewOnPaste ||
-          !resolveMetadata ||
-          !href ||
-          !canInsertStandalonePreview(view, previewType)
-        ) {
+        if (!autoPreviewOnPaste || !href || !canInsertStandalonePreview(view, previewType)) {
           return false;
         }
 
@@ -150,10 +142,6 @@ export const createExternalLinkPreviewPastePlugin = ({
         );
 
         transaction.setSelection(NodeSelection.create(transaction.doc, position));
-
-        if (resolveMetadata) {
-          startExternalLinkPreviewResolution(transaction, position, href);
-        }
 
         view.dispatch(transaction.scrollIntoView());
 

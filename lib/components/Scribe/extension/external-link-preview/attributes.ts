@@ -202,6 +202,43 @@ export const getExternalLinkPreviewHostname = (href: string) => {
   }
 };
 
+/** Build a concise, presentation-only label without changing the authored destination. */
+export const getExternalLinkPreviewReadableLabel = (href: string) => {
+  try {
+    const url = new URL(href);
+    const pathname = url.pathname === "/" ? "" : url.pathname;
+
+    return `${url.host}${pathname}`;
+  } catch {
+    return href;
+  }
+};
+
 export const getExternalLinkPreviewTitle = (
-  attributes: Pick<ExternalLinkPreviewAttributes, "href" | "pageTitle" | "siteName">,
-) => attributes.pageTitle || attributes.siteName || getExternalLinkPreviewHostname(attributes.href);
+  attributes: Pick<ExternalLinkPreviewAttributes, "href" | "linkText" | "pageTitle" | "siteName">,
+  display: ExternalLinkPreviewDisplay,
+) => {
+  if (display === "compact") {
+    return attributes.linkText !== attributes.href
+      ? attributes.linkText
+      : getExternalLinkPreviewReadableLabel(attributes.href);
+  }
+
+  return (
+    attributes.pageTitle || attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
+  );
+};
+
+export const hasExternalLinkPreviewMetadata = (
+  attributes: Pick<
+    ExternalLinkPreviewAttributes,
+    "pageTitle" | "description" | "siteName" | "faviconUrl" | "imageUrl"
+  >,
+) =>
+  Boolean(
+    attributes.pageTitle ||
+    attributes.description ||
+    attributes.siteName ||
+    attributes.faviconUrl ||
+    attributes.imageUrl,
+  );

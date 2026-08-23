@@ -5,6 +5,7 @@ import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { normalizeLinkUrl } from "../../../Menu/linkUrl";
 import {
   EXTERNAL_LINK_PREVIEW_NODE_NAME,
+  hasExternalLinkPreviewMetadata,
   normalizeExternalLinkPreviewAttributes,
   normalizeExternalLinkPreviewHref,
 } from "./attributes";
@@ -228,11 +229,13 @@ export const createExternalLinkPreviewCommands = ({
       });
       const type = tr.doc.type.schema.nodes[EXTERNAL_LINK_PREVIEW_NODE_NAME];
       const { selection } = tr;
+      const cardNeedsMetadata =
+        attributes?.display === "card" && !hasExternalLinkPreviewMetadata(attributes);
 
       if (
-        !resolveMetadata ||
         !attributes ||
         !type ||
+        (cardNeedsMetadata && !resolveMetadata) ||
         !canConsumerPreview(attributes.href, shouldPreview) ||
         !selection.$from.sameParent(selection.$to) ||
         !selection.$from.parent.isTextblock ||
@@ -258,7 +261,7 @@ export const createExternalLinkPreviewCommands = ({
       tr.replaceRangeWith(selection.from, selection.to, node);
       setPreviewSelection(tr, position);
 
-      if (resolveMetadata) {
+      if (cardNeedsMetadata) {
         startExternalLinkPreviewResolution(tr, position, attributes.href);
       }
 
@@ -275,6 +278,9 @@ export const createExternalLinkPreviewCommands = ({
       const preview = getSelectedExternalLinkPreview(tr, targetPosition);
 
       if (preview) {
+        const cardNeedsMetadata =
+          display === "card" && !hasExternalLinkPreviewMetadata(preview.attributes);
+
         if (display === "card" && !preview.isSoleTextblockContent) {
           return rejectAtomicChange();
         }
@@ -294,6 +300,10 @@ export const createExternalLinkPreviewCommands = ({
           return rejectAtomicChange();
         }
 
+        if (cardNeedsMetadata && !resolveMetadata) {
+          return rejectAtomicChange();
+        }
+
         if (!dispatch || preview.attributes.display === display) {
           return true;
         }
@@ -303,6 +313,10 @@ export const createExternalLinkPreviewCommands = ({
           display,
         });
         setPreviewSelection(tr, preview.position);
+
+        if (cardNeedsMetadata) {
+          startExternalLinkPreviewResolution(tr, preview.position, preview.attributes.href);
+        }
 
         return true;
       }
@@ -316,7 +330,7 @@ export const createExternalLinkPreviewCommands = ({
       if (
         !link ||
         display === "plain" ||
-        !resolveMetadata ||
+        (display === "card" && !resolveMetadata) ||
         (display === "card" && !link.isSoleTextblockContent) ||
         !canConsumerPreview(link.href, shouldPreview)
       ) {
@@ -341,7 +355,7 @@ export const createExternalLinkPreviewCommands = ({
       tr.replaceWith(link.from, link.to, node);
       setPreviewSelection(tr, link.from);
 
-      if (resolveMetadata) {
+      if (display === "card") {
         startExternalLinkPreviewResolution(tr, link.from, attributes.href);
       }
 
@@ -387,6 +401,7 @@ export const createExternalLinkPreviewCommands = ({
 
       if (
         !preview ||
+        preview.attributes.display !== "card" ||
         !resolveMetadata ||
         !canConsumerPreview(preview.attributes.href, shouldPreview)
       ) {
@@ -469,7 +484,7 @@ export const createExternalLinkPreviewCommands = ({
       tr.setNodeMarkup(preview.position, undefined, attributes);
       setPreviewSelection(tr, preview.position);
 
-      if (hrefChanged && resolveMetadata) {
+      if (hrefChanged && preview.attributes.display === "card" && resolveMetadata) {
         startExternalLinkPreviewResolution(tr, preview.position, attributes.href);
       }
 

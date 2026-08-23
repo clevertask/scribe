@@ -207,7 +207,6 @@ export const ExternalLinkPreview = Node.create<ExternalLinkPreviewOptions>({
       createExternalLinkPreviewPastePlugin({
         previewType: this.type,
         autoPreviewOnPaste: this.options.autoPreviewOnPaste === true,
-        resolveMetadata: Boolean(this.options.resolve),
         shouldPreview: this.options.shouldPreview,
       }),
       createExternalLinkPreviewPolicyPlugin(this.options.shouldPreview),

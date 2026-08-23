@@ -44,8 +44,10 @@ const pasteStandalonePreview = async (page: Page) => {
   await dialog.getByRole("button", { name: "Compact", exact: true }).click();
 
   await expect(preview).toHaveAttribute("data-display", "compact");
-  await expect(preview.locator("[data-link-preview-title]")).toHaveText("Edward Jacket");
-  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText(
+    "store.example/products/edward-jacket",
+  );
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
 
   return { editor, preview };
 };
@@ -85,7 +87,7 @@ test("a standalone URL stays Plain until Compact is explicitly selected", async 
   const target = preview.locator("a[data-link-preview-target]");
 
   await expect(target).toHaveAttribute("href", externalUrl);
-  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
   await expect(editor).not.toContainText(externalUrl);
   await expect(preview.getByRole("button", { name: "Link options", exact: true })).toHaveCount(0);
 
@@ -99,6 +101,8 @@ test("a standalone URL stays Plain until Compact is explicitly selected", async 
   await displayGroup.getByRole("button", { name: "Preview card", exact: true }).click();
 
   await expect(preview).toHaveAttribute("data-display", "card");
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText("Edward Jacket");
   await expect(preview.locator("[data-link-preview-image]")).toHaveAttribute(
     "src",
     "/link-preview-assets/edward-jacket.svg",
@@ -120,7 +124,48 @@ test("a standalone URL stays Plain until Compact is explicitly selected", async 
   );
 });
 
-test("the shared link dialog edits a preview URL and refreshes its metadata", async ({
+test("Compact works without a metadata resolver and restores the exact Plain URL", async ({
+  context,
+  page,
+}) => {
+  await grantClipboardAccess(context);
+  await page.goto("/");
+
+  const editor = page.getByRole("textbox", { name: "Document content", exact: true });
+
+  await editor.click();
+  await editor.press("ControlOrMeta+A");
+  await editor.press("Backspace");
+  await pasteText(page, externalUrl);
+
+  const plainLink = editor.getByRole("link", { name: externalUrl, exact: true });
+
+  await plainLink.click();
+
+  let dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
+
+  await expect(dialog.getByRole("button", { name: "Compact", exact: true })).toBeEnabled();
+  await expect(dialog.getByRole("button", { name: "Preview card", exact: true })).toBeDisabled();
+  await dialog.getByRole("button", { name: "Compact", exact: true }).click();
+
+  const preview = editor.locator('[data-type="external-link-preview"]');
+
+  await expect(preview.locator("a[data-link-preview-target]")).toHaveAttribute("href", externalUrl);
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText(
+    "store.example/products/edward-jacket",
+  );
+
+  dialog = await openPreviewEditor(page, preview);
+  await dialog.getByRole("button", { name: "Plain link", exact: true }).click();
+
+  await expect(preview).toHaveCount(0);
+  await expect(editor.getByRole("link", { name: externalUrl, exact: true })).toHaveAttribute(
+    "href",
+    externalUrl,
+  );
+});
+
+test("the shared link dialog edits a Compact URL without fetching metadata", async ({
   context,
   page,
 }) => {
@@ -138,10 +183,10 @@ test("the shared link dialog edits a preview URL and refreshes its metadata", as
     "href",
     updatedExternalUrl,
   );
-  await expect(preview.locator("[data-link-preview-title]")).toHaveText("Lucid Serum");
-  await expect(page.getByTestId("preview-requests")).toHaveText(
-    JSON.stringify([externalUrl, updatedExternalUrl]),
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText(
+    "sounds.example/presets/lucid-serum",
   );
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
 });
 
 test("the shared link dialog rejects a URL outside the consumer preview policy", async ({
@@ -162,7 +207,7 @@ test("the shared link dialog rejects a URL outside the consumer preview policy",
   await expect(dialog).toBeVisible();
   await expect(urlInput).toHaveValue(policyRejectedUrl);
   await expect(preview.locator("a[data-link-preview-target]")).toHaveAttribute("href", externalUrl);
-  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
 
   await page.getByRole("button", { name: "Outside focus target", exact: true }).click();
   await expect(dialog).toHaveCount(0);
@@ -180,7 +225,13 @@ test("refresh exposes loading status and resolves without another document gestu
   await page.goto("/?linkPreview=true&slowLinkPreview=true");
 
   const { preview } = await pasteStandalonePreview(page);
-  const dialog = await openPreviewEditor(page, preview);
+  let dialog = await openPreviewEditor(page, preview);
+
+  await dialog.getByRole("button", { name: "Preview card", exact: true }).click();
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText("Edward Jacket");
+
+  dialog = await openPreviewEditor(page, preview);
   const refresh = dialog.getByRole("button", { name: "Refresh preview", exact: true });
   const status = dialog.getByRole("status");
 
@@ -233,6 +284,8 @@ test("a full-line plain link discovers Compact and Preview card in the same dial
   let preview = editor.locator('[data-type="external-link-preview"]');
 
   await expect(preview).toHaveAttribute("data-display", "compact");
+  await expect(preview.locator("[data-link-preview-title]")).toHaveText("Package consumer content");
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
   dialog = await openPreviewEditor(page, preview);
   await dialog
     .getByRole("group", { name: "Display as", exact: true })
@@ -253,6 +306,7 @@ test("a full-line plain link discovers Compact and Preview card in the same dial
   preview = editor.locator('[data-type="external-link-preview"]');
   await expect(preview).toHaveAttribute("data-display", "card");
   await expect(preview.locator("[data-link-preview-title]")).toHaveText("Edward Jacket");
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
 });
 
 test("pasting a URL over selected text keeps an ordinary labeled link", async ({
@@ -326,7 +380,7 @@ test("a Preview card remains full-width without overflow inside a narrow list it
 
   await dialog.getByRole("button", { name: "Compact", exact: true }).click();
   await expect(preview).toHaveAttribute("data-display", "compact");
-  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
+  await expect(page.getByTestId("preview-requests")).toHaveText("[]");
 
   dialog = await openPreviewEditor(page, preview);
 
@@ -336,6 +390,7 @@ test("a Preview card remains full-width without overflow inside a narrow list it
     .click();
 
   await expect(preview).toHaveAttribute("data-display", "card");
+  await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
   await expect(
     listItem.locator("p > .node-externalLinkPreview > [data-type='external-link-preview']"),
   ).toHaveCount(1);

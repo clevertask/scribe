@@ -97,7 +97,7 @@ export const rebuildExternalLinkPreviewElement = (
 
   main.setAttribute("data-link-preview-main", "");
 
-  if (attributes.faviconUrl) {
+  if (attributes.display === "card" && attributes.faviconUrl) {
     const favicon = document.createElement("img");
 
     favicon.setAttribute("data-link-preview-favicon", "");
@@ -113,10 +113,17 @@ export const rebuildExternalLinkPreviewElement = (
 
   copy.setAttribute("data-link-preview-copy", "");
   copy.append(
-    createTextSpan(document, "data-link-preview-title", getExternalLinkPreviewTitle(attributes)),
+    createTextSpan(
+      document,
+      "data-link-preview-title",
+      getExternalLinkPreviewTitle(attributes, attributes.display),
+    ),
   );
 
-  const siteLabel = attributes.siteName || getExternalLinkPreviewHostname(attributes.href);
+  const siteLabel =
+    attributes.display === "card"
+      ? attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
+      : null;
 
   if (siteLabel) {
     copy.append(createTextSpan(document, "data-link-preview-site", siteLabel));

@@ -33,7 +33,7 @@ const DISPLAY_OPTIONS: Array<{
     label: "Plain link",
   },
   {
-    description: "Show the page title and site icon.",
+    description: "Show a concise label without fetching metadata.",
     display: "compact",
     label: "Compact",
   },
@@ -111,7 +111,7 @@ const ExternalLinkDisplayOptions = ({
           const descriptionId = `${displayOptionsId}-${option.display}-description`;
           const description =
             option.display === "card" && !isAvailable
-              ? "Preview card needs its own line."
+              ? "Preview cards require metadata support and their own line."
               : option.description;
 
           return (

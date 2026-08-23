@@ -12,6 +12,7 @@ import {
   type ExternalLinkPreviewResolver,
 } from "../lib/components/Scribe/extension/external-link-preview";
 import {
+  getExternalLinkPreviewReadableLabel,
   normalizeExternalLinkPreviewHref,
   normalizeExternalLinkPreviewMediaUrl,
 } from "../lib/components/Scribe/extension/external-link-preview/attributes";
@@ -192,7 +193,6 @@ describe("ExternalLinkPreview core", () => {
     const href = "https://example.com/inline?query=preserved";
     const editor = createEditor({
       content: `<p>Before <a href="${href}">inline destination</a> after.</p>`,
-      resolve: async () => null,
     });
 
     editor.commands.setTextSelection(findTextPosition(editor, "inline destination"));
@@ -208,6 +208,7 @@ describe("ExternalLinkPreview core", () => {
     ]);
     expect(editor.can().setExternalLinkDisplay("card")).toBe(false);
     expect(editor.commands.setExternalLinkDisplay("card")).toBe(false);
+    expect(editor.getHTML()).toContain(">inline destination</span>");
 
     expect(editor.commands.setExternalLinkDisplay("plain")).toBe(true);
     expect(editor.getText()).toBe("Before inline destination after.");
@@ -263,17 +264,69 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.getJSON()).toEqual(before);
   });
 
-  it("does not offer enhanced modes for an ordinary link without a configured resolver", () => {
+  it("offers local Compact links without a configured resolver and preserves the exact URL", () => {
+    const href = "https://example.com/opt-in/products/jacket?utm_source=wishlist#details";
     const editor = createEditor({
-      content: '<p>Before <a href="https://example.com/opt-in">ordinary link</a> after.</p>',
+      content: `<p>Before <a href="${href}">${href}</a> after.</p>`,
     });
 
-    editor.commands.setTextSelection(findTextPosition(editor, "ordinary link"));
+    editor.commands.setTextSelection(findTextPosition(editor, href));
 
-    expect(editor.can().setExternalLinkDisplay("compact")).toBe(false);
-    expect(editor.commands.setExternalLinkDisplay("compact")).toBe(false);
+    expect(editor.can().setExternalLinkDisplay("compact")).toBe(true);
+    expect(editor.commands.setExternalLinkDisplay("compact")).toBe(true);
     expect(editor.can().setExternalLinkDisplay("card")).toBe(false);
-    expect(editor.getHTML()).not.toContain("external-link-preview");
+    expect(editor.getJSON().content?.[0].content?.[1]).toMatchObject({
+      type: "externalLinkPreview",
+      attrs: { display: "compact", href, linkText: href },
+    });
+
+    const rendered = document.createElement("div");
+
+    rendered.innerHTML = editor.getHTML();
+    expect(rendered.querySelector("[data-link-preview-title]")).toHaveTextContent(
+      "example.com/opt-in/products/jacket",
+    );
+    expect(rendered.querySelector("a[data-link-preview-target]")).toHaveAttribute("href", href);
+
+    expect(editor.commands.setExternalLinkDisplay("plain")).toBe(true);
+    expect(editor.getJSON().content?.[0].content?.[1]).toMatchObject({
+      type: "text",
+      text: href,
+      marks: [{ type: "link", attrs: { href } }],
+    });
+  });
+
+  it("keeps programmatic Compact local while requiring metadata support for Card", () => {
+    const compactEditor = createEditor();
+    const href = "https://example.com/programmatic?utm_source=test";
+
+    expect(compactEditor.can().insertExternalLinkPreview({ href })).toBe(true);
+    expect(compactEditor.commands.insertExternalLinkPreview({ href })).toBe(true);
+    expect(compactEditor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: "externalLinkPreview",
+      attrs: { display: "compact", href, linkText: href },
+    });
+
+    const emptyCardEditor = createEditor();
+
+    expect(emptyCardEditor.can().insertExternalLinkPreview({ href, display: "card" })).toBe(false);
+    expect(emptyCardEditor.commands.insertExternalLinkPreview({ href, display: "card" })).toBe(
+      false,
+    );
+
+    const storedCardEditor = createEditor();
+
+    expect(
+      storedCardEditor.commands.insertExternalLinkPreview({
+        href,
+        display: "card",
+        pageTitle: "Stored title",
+      }),
+    ).toBe(true);
+    expect(storedCardEditor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: "externalLinkPreview",
+      attrs: { display: "card", href, pageTitle: "Stored title" },
+    });
   });
 
   it("does not partially save a policy-rejected pending URL before conversion", () => {
@@ -376,6 +429,7 @@ describe("ExternalLinkPreview core", () => {
     expect(
       editor.commands.insertExternalLinkPreview({
         href: "https://shop.example/product?tracking=preserved",
+        display: "card",
       }),
     ).toBe(true);
 
@@ -430,6 +484,7 @@ describe("ExternalLinkPreview core", () => {
         imageUrl: null,
       },
     });
+    expect(editor.can().refreshExternalLinkPreview()).toBe(false);
   });
 
   it("converts policy-rejected previews from initial HTML to ordinary links", async () => {
@@ -510,7 +565,7 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.getText()).toBe("Before text");
   });
 
-  it("replaces a whitespace-only paragraph with Compact when automatic previews are enabled", async () => {
+  it("replaces a whitespace-only paragraph with local Compact when automatic previews are enabled", () => {
     const resolver = vi.fn<ExternalLinkPreviewResolver>().mockResolvedValue({
       pageTitle: "Pasted destination",
     });
@@ -523,7 +578,7 @@ describe("ExternalLinkPreview core", () => {
     editor.commands.setTextSelection(2);
     paste(editor, "https://example.com/pasted?query=kept");
 
-    await waitFor(() => expect(resolver).toHaveBeenCalledOnce());
+    expect(resolver).not.toHaveBeenCalled();
     expect(editor.getJSON().content).toMatchObject([
       {
         type: "paragraph",
@@ -542,7 +597,7 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.getText()).not.toContain("   ");
   });
 
-  it("keeps standalone paste Plain by default and resolves only after explicit conversion", async () => {
+  it("keeps standalone paste Plain by default and resolves only after choosing Card", async () => {
     const href = "https://example.com/explicit-preview?query=kept";
     const resolver = vi.fn<ExternalLinkPreviewResolver>().mockResolvedValue({
       pageTitle: "Explicit destination",
@@ -563,20 +618,34 @@ describe("ExternalLinkPreview core", () => {
     editor.commands.setTextSelection(findTextPosition(editor, href));
     expect(editor.commands.setExternalLinkDisplay("compact")).toBe(true);
 
+    expect(resolver).not.toHaveBeenCalled();
+    expect(shouldPreview).toHaveBeenCalledWith(href);
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: "externalLinkPreview",
+      attrs: {
+        href,
+        linkText: href,
+        display: "compact",
+        pageTitle: null,
+      },
+    });
+
+    const rendered = document.createElement("div");
+
+    rendered.innerHTML = editor.getHTML();
+    expect(rendered.querySelector("[data-link-preview-title]")).toHaveTextContent(
+      "example.com/explicit-preview",
+    );
+
+    expect(editor.commands.setExternalLinkDisplay("card")).toBe(true);
+    expect(editor.can().refreshExternalLinkPreview()).toBe(true);
     await waitFor(() => expect(resolver).toHaveBeenCalledOnce());
     expect(resolver).toHaveBeenCalledWith(href, { signal: expect.any(AbortSignal) });
-    expect(shouldPreview).toHaveBeenCalledWith(href);
-    await waitFor(() => {
-      expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
-        type: "externalLinkPreview",
-        attrs: {
-          href,
-          linkText: href,
-          display: "compact",
-          pageTitle: "Explicit destination",
-        },
-      });
-    });
+    await waitFor(() =>
+      expect(editor.getJSON().content?.[0].content?.[0].attrs?.pageTitle).toBe(
+        "Explicit destination",
+      ),
+    );
   });
 
   it.each([
@@ -601,16 +670,20 @@ describe("ExternalLinkPreview core", () => {
     },
   );
 
-  it("leaves standalone paste on the ordinary Link path when no resolver exists", () => {
+  it("allows automatic local Compact paste when no resolver exists", () => {
     const editor = createEditor({ autoPreviewOnPaste: true });
 
     editor.commands.setTextSelection(1);
     paste(editor, "https://example.com/ordinary");
 
-    expect(editor.getJSON().content?.[0].content?.[0]?.type).not.toBe("externalLinkPreview");
-    expect(editor.getHTML()).toContain(
-      '<a target="_blank" rel="noopener noreferrer nofollow" href="https://example.com/ordinary">https://example.com/ordinary</a>',
-    );
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      type: "externalLinkPreview",
+      attrs: {
+        display: "compact",
+        href: "https://example.com/ordinary",
+        linkText: "https://example.com/ordinary",
+      },
+    });
   });
 
   it("rejects Card when an enhanced link has adjacent text", () => {
@@ -634,7 +707,7 @@ describe("ExternalLinkPreview core", () => {
       '<ul><li><p><span data-type="external-link-preview" data-href="https://example.com/target" data-link-text="Target" data-display="compact"><a data-link-preview-target href="https://example.com/target">Target</a></span></p></li></ul><p>Elsewhere</p>',
     ],
   ])("checks and applies Card at an explicit %s target", (_label, content) => {
-    const editor = createEditor({ content });
+    const editor = createEditor({ content, resolve: async () => null });
     const previewPosition = findNodePosition(editor, "externalLinkPreview");
 
     editor.commands.setTextSelection(findTextPosition(editor, "Elsewhere"));
@@ -651,7 +724,7 @@ describe("ExternalLinkPreview core", () => {
     });
     const editor = createEditor({
       content:
-        '<p><span data-type="external-link-preview" data-href="https://example.com/refresh-target" data-link-text="Refresh target" data-display="compact"><a data-link-preview-target href="https://example.com/refresh-target">Refresh target</a></span></p><p>Elsewhere</p>',
+        '<p><span data-type="external-link-preview" data-href="https://example.com/refresh-target" data-link-text="Refresh target" data-display="card"><a data-link-preview-target href="https://example.com/refresh-target">Refresh target</a></span></p><p>Elsewhere</p>',
       resolve: resolver,
     });
     const previewPosition = findNodePosition(editor, "externalLinkPreview");
@@ -691,7 +764,7 @@ describe("ExternalLinkPreview core", () => {
                 attrs: {
                   href: oldHref,
                   linkText: "Saved product",
-                  display: "compact",
+                  display: "card",
                   pageTitle: "Old product",
                   description: "Old description",
                   siteName: "Old shop",
@@ -735,6 +808,36 @@ describe("ExternalLinkPreview core", () => {
     await waitFor(() => {
       expect(editor.state.doc.nodeAt(previewPosition)?.attrs.pageTitle).toBe("New product");
     });
+  });
+
+  it("updates Compact locally without resolving or changing the exact destination", () => {
+    const oldHref = "https://shop.example/products/original?utm_source=wishlist";
+    const newHref =
+      "https://shop.example/products/replacement?utm_source=wishlist&color=navy#details";
+    const resolver = vi.fn<ExternalLinkPreviewResolver>();
+    const editor = createEditor({
+      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="${oldHref}" data-display="compact"><a data-link-preview-target href="${oldHref}">${oldHref}</a></span></p>`,
+      resolve: resolver,
+    });
+    const previewPosition = findNodePosition(editor, "externalLinkPreview");
+
+    expect(editor.commands.updateExternalLinkPreview({ href: newHref }, previewPosition)).toBe(
+      true,
+    );
+    expect(resolver).not.toHaveBeenCalled();
+    expect(editor.state.doc.nodeAt(previewPosition)?.attrs).toMatchObject({
+      display: "compact",
+      href: newHref,
+      linkText: newHref,
+    });
+
+    const rendered = document.createElement("div");
+
+    rendered.innerHTML = editor.getHTML();
+    expect(rendered.querySelector("[data-link-preview-title]")).toHaveTextContent(
+      "shop.example/products/replacement",
+    );
+    expect(rendered.querySelector("a[data-link-preview-target]")).toHaveAttribute("href", newHref);
   });
 
   it("rejects an explicit preview URL update without dispatching earlier chained changes", () => {
@@ -787,7 +890,7 @@ describe("ExternalLinkPreview core", () => {
     const oldHref = "https://shop.example/original";
     const newHref = "https://shop.example/replacement";
     const editor = createEditor({
-      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="Product" data-display="compact" data-page-title="Original product"><a data-link-preview-target href="${oldHref}">Product</a></span></p>`,
+      content: `<p><span data-type="external-link-preview" data-href="${oldHref}" data-link-text="Product" data-display="card" data-page-title="Original product"><a data-link-preview-target href="${oldHref}">Product</a></span></p>`,
       resolve: resolver,
     });
     const previewPosition = findNodePosition(editor, "externalLinkPreview");
@@ -842,8 +945,8 @@ describe("ExternalLinkPreview core", () => {
     expect(editor.commands.undo()).toBe(false);
   });
 
-  it.each(["remove", "destroy"] as const)(
-    "aborts a pending resolver when the preview is %s",
+  it.each(["remove", "switch to Compact", "destroy"] as const)(
+    "aborts a pending Card resolver when the preview is %s",
     async (action) => {
       const deferred = createDeferred<ExternalLinkPreviewMetadata | null>();
       let signal: AbortSignal | undefined;
@@ -853,11 +956,16 @@ describe("ExternalLinkPreview core", () => {
       });
       const editor = createEditor({ resolve: resolver });
 
-      editor.commands.insertExternalLinkPreview({ href: "https://example.com/pending" });
+      editor.commands.insertExternalLinkPreview({
+        href: "https://example.com/pending",
+        display: "card",
+      });
       await waitFor(() => expect(signal).toBeDefined());
 
       if (action === "remove") {
         editor.commands.deleteSelection();
+      } else if (action === "switch to Compact") {
+        editor.commands.setExternalLinkDisplay("compact");
       } else {
         editor.destroy();
         editors.delete(editor);
@@ -874,7 +982,10 @@ describe("ExternalLinkPreview core", () => {
       .mockResolvedValueOnce({ pageTitle: "Recovered preview" });
     const editor = createEditor({ resolve: resolver });
 
-    editor.commands.insertExternalLinkPreview({ href: "https://example.com/retry" });
+    editor.commands.insertExternalLinkPreview({
+      href: "https://example.com/retry",
+      display: "card",
+    });
 
     await waitFor(() => {
       expect(getExternalLinkPreviewResolutionStatus(editor.state, 1)).toBe("error");
@@ -907,7 +1018,10 @@ describe("ExternalLinkPreview core", () => {
     });
     const editor = createEditor({ resolve: resolver });
 
-    editor.commands.insertExternalLinkPreview({ href: "https://first.example/product" });
+    editor.commands.insertExternalLinkPreview({
+      href: "https://first.example/product",
+      display: "card",
+    });
     await waitFor(() => expect(deferredRequests).toHaveLength(1));
 
     expect(
@@ -945,7 +1059,10 @@ describe("ExternalLinkPreview core", () => {
       .mockResolvedValueOnce({ description: null });
     const editor = createEditor({ resolve: resolver });
 
-    editor.commands.insertExternalLinkPreview({ href: "https://example.com/metadata" });
+    editor.commands.insertExternalLinkPreview({
+      href: "https://example.com/metadata",
+      display: "card",
+    });
     await waitFor(() => expect(resolver).toHaveBeenCalledTimes(1));
     await waitFor(() => {
       expect(editor.getJSON().content?.[0].content?.[0].attrs?.description).toBe(
@@ -999,5 +1116,16 @@ describe("ExternalLinkPreview core", () => {
       normalizeExternalLinkPreviewMediaUrl("https://user:pass@cdn.example.com/product.png"),
     ).toBeNull();
     expect(normalizeExternalLinkPreviewMediaUrl("https:\\cdn.example.com\\product.png")).toBeNull();
+  });
+
+  it.each([
+    ["https://example.com/", "example.com"],
+    [
+      "https://www.example.com:8443/products/navy%20jacket/?utm_source=wishlist#details",
+      "www.example.com:8443/products/navy%20jacket/",
+    ],
+    ["https://xn--bcher-kva.example/%E2%9C%93?q=books", "xn--bcher-kva.example/%E2%9C%93"],
+  ])("derives the local Compact label for %s", (href, expectedLabel) => {
+    expect(getExternalLinkPreviewReadableLabel(href)).toBe(expectedLabel);
   });
 });
