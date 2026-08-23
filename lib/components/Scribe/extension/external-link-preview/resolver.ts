@@ -32,7 +32,9 @@ export const externalLinkPreviewResolverPluginKey = new PluginKey<ExternalLinkPr
 );
 
 const isMatchingPreviewNode = (node: ProseMirrorNode | null | undefined, href: string) =>
-  node?.type.name === EXTERNAL_LINK_PREVIEW_NODE_NAME && node.attrs.href === href;
+  node?.type.name === EXTERNAL_LINK_PREVIEW_NODE_NAME &&
+  node.attrs.display === "card" &&
+  node.attrs.href === href;
 
 const getRequestByToken = (state: ExternalLinkPreviewResolverState, token: number) =>
   Array.from(state.requests.values()).find((request) => request.token === token);

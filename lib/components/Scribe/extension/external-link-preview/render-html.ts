@@ -6,9 +6,16 @@ import type { ExternalLinkPreviewAttributes } from "./types";
 
 const createStaticMainContent = (attributes: ExternalLinkPreviewAttributes): DOMOutputSpec => {
   const copyChildren: DOMOutputSpec[] = [
-    ["span", { "data-link-preview-title": "" }, getExternalLinkPreviewTitle(attributes)],
+    [
+      "span",
+      { "data-link-preview-title": "" },
+      getExternalLinkPreviewTitle(attributes, attributes.display),
+    ],
   ];
-  const siteLabel = attributes.siteName || getExternalLinkPreviewHostname(attributes.href);
+  const siteLabel =
+    attributes.display === "card"
+      ? attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
+      : null;
 
   if (siteLabel) {
     copyChildren.push(["span", { "data-link-preview-site": "" }, siteLabel]);
@@ -19,7 +26,7 @@ const createStaticMainContent = (attributes: ExternalLinkPreviewAttributes): DOM
   }
 
   const mainChildren: DOMOutputSpec[] = [
-    attributes.faviconUrl
+    attributes.display === "card" && attributes.faviconUrl
       ? ["img", { "data-link-preview-favicon": "", src: attributes.faviconUrl, alt: "" }]
       : ["span", { "data-link-preview-favicon-fallback": "", "aria-hidden": "true" }, "↗"],
     ["span", { "data-link-preview-copy": "" }, ...copyChildren] as DOMOutputSpec,

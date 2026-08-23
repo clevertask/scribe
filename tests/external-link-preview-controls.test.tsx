@@ -128,10 +128,12 @@ describe("external link display options", () => {
     expect(compactOption).toHaveAttribute("aria-pressed", "false");
     expect(cardOption).toHaveAttribute("aria-pressed", "false");
     expect(plainOption).toHaveAccessibleDescription("Show a regular text link.");
-    expect(compactOption).toHaveAccessibleDescription("Show the page title and site icon.");
+    expect(compactOption).toHaveAccessibleDescription(
+      "Show a concise label without fetching metadata.",
+    );
     expect(cardOption).toHaveAccessibleDescription("Show an image, title, and description.");
     expect(displayGroup).toHaveTextContent("Show a regular text link.");
-    expect(displayGroup).toHaveTextContent("Show the page title and site icon.");
+    expect(displayGroup).toHaveTextContent("Show a concise label without fetching metadata.");
     expect(displayGroup).toHaveTextContent("Show an image, title, and description.");
   });
 
@@ -172,7 +174,9 @@ describe("external link display options", () => {
     const cardOption = screen.getByRole("button", { name: "Preview card", exact: true });
 
     expect(cardOption).toBeDisabled();
-    expect(cardOption).toHaveAccessibleDescription("Preview card needs its own line.");
+    expect(cardOption).toHaveAccessibleDescription(
+      "Preview cards require metadata support and their own line.",
+    );
     expect(screen.getByRole("button", { name: "Compact", exact: true })).toBeEnabled();
   });
 
@@ -412,7 +416,7 @@ describe("external link display options", () => {
       <Theme>
         <LinkEditor
           canRefreshPreview
-          currentDisplay="compact"
+          currentDisplay="card"
           editor={editor}
           existingHref="https://example.com/product"
           onClose={vi.fn()}

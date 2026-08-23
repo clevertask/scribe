@@ -66,8 +66,11 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
 
   const effectiveDisplay: ExternalLinkPreviewDisplay =
     attributes.display === "card" && previewState.isSoleTextblockContent ? "card" : "compact";
-  const title = getExternalLinkPreviewTitle(attributes);
-  const siteLabel = attributes.siteName || getExternalLinkPreviewHostname(attributes.href);
+  const title = getExternalLinkPreviewTitle(attributes, effectiveDisplay);
+  const siteLabel =
+    effectiveDisplay === "card"
+      ? attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
+      : null;
 
   return (
     <NodeViewWrapper
@@ -106,7 +109,7 @@ export const ExternalLinkPreviewNodeView = ({ editor, getPos, node }: NodeViewPr
           <img data-link-preview-image="" src={attributes.imageUrl} alt="" />
         ) : null}
         <span data-link-preview-main="">
-          {attributes.faviconUrl ? (
+          {effectiveDisplay === "card" && attributes.faviconUrl ? (
             <img data-link-preview-favicon="" src={attributes.faviconUrl} alt="" />
           ) : (
             <span data-link-preview-favicon-fallback="" aria-hidden="true">

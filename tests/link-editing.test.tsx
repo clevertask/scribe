@@ -392,7 +392,7 @@ describe("link editing", () => {
     expect(editor.state.selection.from).toBe(findPreviewPosition(editor));
   });
 
-  it("saves an allowed preview URL and keeps a rejected update in the dialog", async () => {
+  it("saves an allowed Compact URL locally and keeps a rejected update in the dialog", async () => {
     const resolve = vi.fn(async (href: string) => ({
       pageTitle: href.includes("updated") ? "Updated Jacket" : "Edward Jacket",
       siteName: "Example Store",
@@ -416,12 +416,7 @@ describe("link editing", () => {
         "https://updated.example/products/jacket",
       );
     });
-    await waitFor(() => {
-      expect(resolve).toHaveBeenCalledWith(
-        "https://updated.example/products/jacket",
-        expect.objectContaining({ signal: expect.any(AbortSignal) }),
-      );
-    });
+    expect(resolve).not.toHaveBeenCalled();
 
     fireEvent.click(await findRenderedPreviewTarget(editor));
     urlInput = await screen.findByRole("textbox", { name: "URL" });
@@ -446,11 +441,9 @@ describe("link editing", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
-  it("converts a preview to Plain and reopens the ordinary link for Compact", async () => {
-    const resolve = vi.fn(async () => ({ pageTitle: "Edward Jacket" }));
+  it("converts a preview to Plain and reopens the ordinary link for local Compact", async () => {
     const { editor } = renderScribe({
       content: PREVIEW_CONTENT,
-      externalLinkPreview: { resolve },
     });
 
     fireEvent.click(await findRenderedPreviewTarget(editor));
@@ -473,10 +466,7 @@ describe("link editing", () => {
     await waitFor(() => {
       expect(editor.view.dom.querySelector('[data-type="external-link-preview"]')).not.toBeNull();
     });
-    expect(resolve).toHaveBeenCalledWith(
-      PREVIEW_HREF,
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(editor.view.dom.querySelector("[data-link-preview-title]")).toHaveTextContent("Jacket");
   });
 
   it("resets an abandoned URL draft whenever the same link menu reopens", async () => {
@@ -553,7 +543,7 @@ describe("link editing", () => {
         }),
     );
     const { editor } = renderScribe({
-      content: PREVIEW_CONTENT,
+      content: PREVIEW_CONTENT.replace('data-display="compact"', 'data-display="card"'),
       externalLinkPreview: { resolve },
     });
 

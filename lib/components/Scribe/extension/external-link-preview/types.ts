@@ -42,10 +42,12 @@ export type ExternalLinkPreviewResolver = (
 export interface ExternalLinkPreviewOptions {
   HTMLAttributes?: Record<string, unknown>;
   /**
-   * Automatically turn a standalone pasted URL into a Compact preview.
+   * Automatically turn a standalone pasted URL into a local Compact preview.
+   * This does not request metadata.
    * @default false
    */
   autoPreviewOnPaste?: boolean;
+  /** Resolve metadata when a Preview card needs enrichment. */
   resolve?: ExternalLinkPreviewResolver;
   shouldPreview?: (href: string) => boolean;
 }
