@@ -20,6 +20,7 @@ const renderScribe = (
   scribeRef: React.RefObject<ScribeRef | null>,
   options: {
     content?: string;
+    enableUndoRedo?: boolean;
     key?: string;
   } = {},
 ) => {
@@ -29,6 +30,7 @@ const renderScribe = (
         key={options.key}
         ref={scribeRef}
         content={options.content ?? "<p>Lifecycle content</p>"}
+        enableUndoRedo={options.enableUndoRedo}
         showBarMenu={false}
       />
     </Theme>
@@ -48,6 +50,70 @@ const getEditor = (scribeRef: React.RefObject<ScribeRef | null>) => {
 };
 
 describe("Scribe editor lifecycle", () => {
+  it("keeps built-in undo and redo enabled by default", () => {
+    const scribeRef = createRef<ScribeRef>();
+
+    renderScribe(scribeRef, { content: "<p>Original</p>" });
+    const editor = getEditor(scribeRef);
+
+    expect(editor.extensionManager.extensions.map(({ name }) => name)).toContain("undoRedo");
+
+    act(() => {
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.insertContent(" updated");
+    });
+    expect(editor.getText()).toBe("Original updated");
+
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getText()).toBe("Original");
+
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.getText()).toBe("Original updated");
+  });
+
+  it("lets a consumer disable Scribe's built-in undo and redo", () => {
+    const scribeRef = createRef<ScribeRef>();
+
+    renderScribe(scribeRef, { enableUndoRedo: false });
+
+    expect(getEditor(scribeRef).extensionManager.extensions.map(({ name }) => name)).not.toContain(
+      "undoRedo",
+    );
+  });
+
+  it("lets createScribeEditor disable Scribe's built-in undo and redo", () => {
+    const editor = createScribeEditor({ enableUndoRedo: false });
+    externalEditors.add(editor);
+
+    expect(editor.extensionManager.extensions.map(({ name }) => name)).not.toContain("undoRedo");
+  });
+
+  it("leaves undo and redo configuration on a caller-owned editor unchanged", () => {
+    const externalEditor = createScribeEditor({ editable: true });
+    const scribeRef = createRef<ScribeRef>();
+    externalEditors.add(externalEditor);
+
+    render(
+      <Theme>
+        <Scribe
+          ref={scribeRef}
+          enableUndoRedo={false}
+          externalEditor={externalEditor}
+          showBarMenu={false}
+        />
+      </Theme>,
+    );
+
+    expect(getEditor(scribeRef)).toBe(externalEditor);
+    expect(externalEditor.extensionManager.extensions.map(({ name }) => name)).toContain(
+      "undoRedo",
+    );
+  });
+
   it("keeps the preview menu affordance synchronized across editable transitions", async () => {
     const scribeRef = createRef<ScribeRef>();
     const previewContent =

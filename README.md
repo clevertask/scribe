@@ -243,6 +243,18 @@ Block: $$\sum_{i=1}^{n} x_i$$
 
 If your content arrives as HTML (for example from a server), use the helper below to convert legacy delimiters into the HTML nodes that the math extension understands.
 
+## External Undo and Redo Ownership
+
+Scribe enables its built-in undo and redo history by default. Set `enableUndoRedo={false}` when a different extension owns history, such as Tiptap Collaboration:
+
+```tsx
+<Scribe enableUndoRedo={false} extensions={[Collaboration.configure({ document: ydoc })]} />
+```
+
+Scribe reads this option when it creates the editor. Remount Scribe to change it. If you pass an `externalEditor`, configure history on that editor instead. Do not add another ordinary history extension through `extensions` when collaboration owns undo and redo.
+
+The `createScribeEditor` helper accepts the same `enableUndoRedo` option.
+
 ## Props
 
 | Prop                      | Type                                                               | Default                    | Description                                                                                                                                                                                                                                              |
@@ -254,6 +266,7 @@ If your content arrives as HTML (for example from a server), use the helper belo
 | `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
 | `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |
+| `enableUndoRedo`          | `boolean`                                                          | `true`                     | Enables Scribe's built-in undo and redo history. Set it to `false` when another extension owns history. This creation-time option does not configure a caller-owned `externalEditor`.                                                                    |
 | `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Experimental. Opts into external-link metadata resolution and enhanced Compact/Card presentation. The consumer owns fetching and destination policy; automatic previews on paste default to disabled.                                                    |
 | `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
 | `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |

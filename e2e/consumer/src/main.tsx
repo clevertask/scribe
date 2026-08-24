@@ -3,7 +3,7 @@
 import "@radix-ui/themes/styles.css";
 import "@clevertask/scribe/styles.css";
 
-import { Scribe, type ExternalLinkPreviewResolver } from "@clevertask/scribe";
+import { Scribe, type ExternalLinkPreviewResolver, type ScribeRef } from "@clevertask/scribe";
 import { Theme } from "@radix-ui/themes";
 import { Extension } from "@tiptap/core";
 import { EditorState, Plugin } from "@tiptap/pm/state";
@@ -108,6 +108,7 @@ const getLinkPreviewMetadata = (href: string) => {
 
 function App() {
   const searchParams = new URLSearchParams(window.location.search);
+  const disableUndoRedo = searchParams.get("disableUndoRedo") === "true";
   const mobile = searchParams.get("mobile") === "true";
   const showConsumerDecoration = searchParams.get("consumerDecoration") === "true";
   const showCalloutFixture = searchParams.get("callout") === "true";
@@ -120,8 +121,14 @@ function App() {
   const testSlowLinkPreview = searchParams.get("slowLinkPreview") === "true";
   const testWindowScroll = searchParams.get("windowScroll") === "true";
   const [editable, setEditable] = useState(!testEditableTransition);
+  const [extensionNames, setExtensionNames] = useState<string[]>([]);
   const [serializedHtml, setSerializedHtml] = useState("");
   const [previewRequests, setPreviewRequests] = useState<string[]>([]);
+  const captureScribeRef = useCallback((scribe: ScribeRef | null) => {
+    if (scribe) {
+      setExtensionNames(scribe.editor.extensionManager.extensions.map(({ name }) => name));
+    }
+  }, []);
   const resolveExternalLinkPreview = useCallback<ExternalLinkPreviewResolver>(
     async (href, { signal }) => {
       if (signal.aborted) {
@@ -144,6 +151,7 @@ function App() {
       style={testNarrowEditor ? { maxWidth: "18rem" } : undefined}
     >
       <Scribe
+        ref={captureScribeRef}
         ariaLabel="Document content"
         content={
           showConsumerDecoration
@@ -157,6 +165,7 @@ function App() {
                   : "<p>Package consumer content</p>"
         }
         editable={editable}
+        {...(disableUndoRedo ? { enableUndoRedo: false } : {})}
         externalLinkPreview={
           showExternalLinkPreviewFixture || showExternalLinkPreviewListFixture
             ? {
@@ -206,6 +215,9 @@ function App() {
             {serializedHtml}
           </output>
         ) : null}
+        <output data-ready={extensionNames.length > 0} data-testid="extension-names" hidden>
+          {JSON.stringify(extensionNames)}
+        </output>
         {showExternalLinkPreviewFixture || showExternalLinkPreviewListFixture ? (
           <output data-testid="preview-requests" hidden>
             {JSON.stringify(previewRequests)}
