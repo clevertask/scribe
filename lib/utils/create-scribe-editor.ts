@@ -6,6 +6,11 @@ import type { ExternalLinkPreviewOptions } from "../components/Scribe/extension/
 export type CreateEditorOptions = {
   content?: string;
   editable?: boolean;
+  /**
+   * Enables Scribe's built-in undo and redo history. Disable this when another
+   * extension owns history for the editor.
+   */
+  enableUndoRedo?: boolean;
   /** @experimental The link-preview API and built-in UI may change while this feature is tested. */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   onContentChange?: (content: {
@@ -18,13 +23,14 @@ export type CreateEditorOptions = {
 export function createScribeEditor({
   content = "",
   editable = false,
+  enableUndoRedo,
   externalLinkPreview,
   onContentChange,
 }: CreateEditorOptions): Editor {
   return new Editor({
     content,
     editable,
-    extensions: initExtensions({ externalLinkPreview }),
+    extensions: initExtensions({ enableUndoRedo, externalLinkPreview }),
     onUpdate({ editor }) {
       if (onContentChange) {
         onContentChange({

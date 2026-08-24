@@ -150,6 +150,14 @@ export interface ScribeProps {
    * @experimental The link-preview API and built-in UI may change while this feature is tested.
    */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
+  /**
+   * Enables Scribe's built-in undo and redo history. Disable this when another
+   * extension, such as Tiptap Collaboration, owns history for the editor.
+   *
+   * Scribe reads this option when it creates the editor. It does not configure
+   * a caller-owned `externalEditor`.
+   */
+  enableUndoRedo?: boolean;
   /** @experimental Enables Scribe's app-owned table-of-contents API. */
   enableTableOfContents?: boolean;
   /** @experimental Receives the current table-of-contents items when they change. */

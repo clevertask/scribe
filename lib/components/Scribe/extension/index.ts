@@ -36,6 +36,7 @@ export const initExtensions = (props: ScribeProps) => {
         color: "#ebf6fe",
       },
       link: false,
+      ...(props.enableUndoRedo === false ? { undoRedo: false } : {}),
     }),
     ExternalLinkPreview.configure(props.externalLinkPreview),
     Callout,
