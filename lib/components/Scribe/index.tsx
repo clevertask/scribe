@@ -221,6 +221,8 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
     attributes: Record<string, string>;
   } | null>(null);
 
+  // Keep the callback-backed editor attributes current without recreating the editor.
+  // oxlint-disable-next-line react/refs
   accessibilityPropsRef.current = { ariaLabel, editable };
   const didSetInitialContentInEditorOptionsRef = useRef(
     initialContentWasApplied && content !== undefined,
@@ -528,6 +530,8 @@ const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
   const editorAttributes = editorProps?.editorProps?.attributes;
   const accessibilityPropsRef = useRef({ ariaLabel, editable });
 
+  // Keep the callback-backed editor attributes current without recreating the editor.
+  // oxlint-disable-next-line react/refs
   accessibilityPropsRef.current = { ariaLabel, editable };
 
   const accessibleEditorAttributes =
