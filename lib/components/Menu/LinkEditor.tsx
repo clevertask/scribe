@@ -58,6 +58,8 @@ const LinkEditor: FC<LinkEditorProps> = ({
   }, [onClose]);
 
   useEffect(() => {
+    // Reset validation when the dialog moves to a different link or reset cycle.
+    // oxlint-disable-next-line react/set-state-in-effect
     setErrorMessage(null);
   }, [existingHref, resetToken]);
 

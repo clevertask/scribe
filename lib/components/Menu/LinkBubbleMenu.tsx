@@ -86,6 +86,8 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
   });
 
   useEffect(() => {
+    // Mirror the selected link when the editor moves to a different link range.
+    // oxlint-disable-next-line react/set-state-in-effect
     setLinkValue(linkState.context?.href ?? "");
   }, [linkState.context?.from, linkState.context?.href, linkState.context?.to]);
 

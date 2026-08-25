@@ -38,7 +38,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 ## Installation
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.1
+npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.2
 ```
 
 Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
