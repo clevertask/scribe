@@ -20,6 +20,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 
 - [@clevertask/scribe](#clevertaskscribe)
   - [Installation](#installation)
+  - [Headless schema](#headless-schema)
   - [Usage](#usage)
   - [Table Authoring](#table-authoring)
   - [External Link Previews](#external-link-previews)
@@ -43,6 +44,33 @@ npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.2
 
 Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
 installed version prevents identity conflicts between built-in and custom plugins.
+
+## Headless schema
+
+Use the schema subpath when a server or migration tool must parse Scribe content without loading
+the React editor or Scribe's stylesheet:
+
+```bash
+npm install --save-exact @clevertask/scribe @tiptap/core@3.30.2 @tiptap/html@3.30.2 @tiptap/pm@3.30.2
+```
+
+```ts
+import { createScribeSchemaExtensions } from "@clevertask/scribe/schema";
+import { generateJSON } from "@tiptap/html";
+
+const extensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+const document = generateJSON(storedHtml, extensions);
+```
+
+The returned extensions define Scribe's persistent nodes and marks without loading Scribe's React
+editor UI. Use them with Tiptap's server-side HTML utilities; this is not a headless interactive
+editor. Scribe's menus, placeholders, suggestions, and table-of-contents behavior are not part of
+this entry point. Consumer-owned nodes must be appended to the list. For example, an application
+that stores its own resource-reference node must provide that extension before parsing or rendering
+content containing those references.
+
+Pin Scribe and Tiptap to the exact versions used by the writing clients. This entry point makes the
+schema reusable; it does not make different schema versions interchangeable.
 
 ## Usage
 

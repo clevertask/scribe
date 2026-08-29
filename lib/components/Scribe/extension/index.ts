@@ -1,26 +1,15 @@
 import type { ScribeProps } from "..";
-import Link from "./extension-link";
 import MarkdownPaste from "./extension-markdown-paste";
 import Focus from "@tiptap/extension-focus";
-import Image from "@tiptap/extension-image";
-import { TableKit } from "@tiptap/extension-table";
-import StarterKit from "@tiptap/starter-kit";
 import { SlashCommand } from "./slashCommand";
-import TaskItem from "@tiptap/extension-task-item";
-import TaskList from "@tiptap/extension-task-list";
-import Highlight from "@tiptap/extension-highlight";
 import SelectedText from "./extension-selectedText";
 import renderItems from "./slashCommand/renderItems";
 import Placeholder from "@tiptap/extension-placeholder";
 import { getSlashCommandContext, getSuggestionItems } from "./slashCommand/items";
-import { Mathematics } from "@tiptap/extension-mathematics";
-import Typography from "@tiptap/extension-typography";
-import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
-import { ScribeTable } from "./resizable-table";
-import { Callout } from "./callout";
 import { ExternalLinkPreview } from "./external-link-preview";
+import { createScribeSchemaExtensionSet } from "../../../schema-extensions";
 
 export const initExtensions = (props: ScribeProps) => {
   const {
@@ -28,28 +17,18 @@ export const initExtensions = (props: ScribeProps) => {
     render: renderSlashCommandItems,
     ...slashSuggestion
   } = props.slashCommand ?? {};
+  const schemaExtensions = createScribeSchemaExtensionSet({
+    enableUndoRedo: props.enableUndoRedo,
+  });
 
   return [
-    StarterKit.configure({
-      dropcursor: {
-        width: 4,
-        color: "#ebf6fe",
-      },
-      link: false,
-      ...(props.enableUndoRedo === false ? { undoRedo: false } : {}),
-    }),
+    schemaExtensions.starterKit,
     ExternalLinkPreview.configure(props.externalLinkPreview),
-    Callout,
-    TaskList.configure({
-      HTMLAttributes: {
-        class: "scribe-task-list",
-      },
-    }),
-    TaskItem.configure({
-      nested: true,
-    }),
-    TableKit.configure({ table: false }),
-    ScribeTable,
+    schemaExtensions.callout,
+    schemaExtensions.taskList,
+    schemaExtensions.taskItem,
+    schemaExtensions.tableKit,
+    schemaExtensions.table,
     Placeholder.configure({
       showOnlyWhenEditable: true,
       includeChildren: true,
@@ -88,23 +67,13 @@ export const initExtensions = (props: ScribeProps) => {
         render: renderSlashCommandItems ?? renderItems,
       },
     }),
-    Highlight,
+    schemaExtensions.highlight,
     SelectedText,
-    Link,
-    Image.configure({
-      inline: true,
-      HTMLAttributes: {
-        class: "scribe-image-node",
-      },
-      allowBase64: true,
-    }),
-    Emoji.configure({
-      emojis: gitHubEmojis,
-      enableEmoticons: true,
-      suggestion: suggestion(),
-    }),
-    Mathematics,
-    Typography,
+    schemaExtensions.link,
+    schemaExtensions.image,
+    schemaExtensions.emoji.configure({ suggestion: suggestion() }),
+    schemaExtensions.mathematics,
+    schemaExtensions.typography,
     ...(props.enableTableOfContents
       ? [
           ScribeTableOfContents.configure({

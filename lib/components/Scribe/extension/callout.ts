@@ -188,7 +188,7 @@ export const Callout = Node.create<CalloutOptions>({
             child.hasAttribute("data-callout-content"),
           );
 
-          return generatedContent instanceof HTMLElement ? generatedContent : element;
+          return generatedContent ?? element;
         },
       },
     ];
