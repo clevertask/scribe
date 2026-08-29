@@ -37,6 +37,11 @@
       "import": "./dist/main.js",
       "default": "./dist/main.js"
     },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.js",
+      "default": "./dist/schema.js"
+    },
     "./styles.css": "./dist/main.css",
     "./dist/main.css": "./dist/main.css"
   },
@@ -52,7 +57,7 @@
     "e2e:install": "playwright install --with-deps chromium",
     "e2e:prepare": "pnpm run build && node scripts/prepare-package-consumer.mjs",
     "e2e:serve": "pnpm --dir e2e/consumer exec vite --force --strictPort --host 127.0.0.1 --port 5174",
-    "build": "vite build && npm run build:style && tsc -p tsconfig.types.json --noCheck",
+    "build": "vite build && npm run build:style && tsc -p tsconfig.types.json --noCheck && node scripts/verify-headless-schema-build.mjs",
     "build:style": "mkdir -p ./dist && cp ./lib/styles/main.css ./dist/main.css",
     "lint": "oxlint . --report-unused-disable-directives --deny-warnings",
     "preview": "vite preview",
@@ -116,6 +121,7 @@
     "@tiptap/extension-typography": "3.30.2",
     "@tiptap/extension-underline": "3.30.2",
     "@tiptap/extensions": "3.30.2",
+    "@tiptap/html": "3.30.2",
     "@tiptap/pm": "3.30.2",
     "@tiptap/starter-kit": "3.30.2",
     "@types/lodash": "^4.17.25",
