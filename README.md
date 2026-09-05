@@ -39,7 +39,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 ## Installation
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.2
+npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.5
 ```
 
 Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
@@ -51,7 +51,7 @@ Use the schema subpath when a server or migration tool must parse Scribe content
 the React editor or Scribe's stylesheet:
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/core@3.30.2 @tiptap/html@3.30.2 @tiptap/pm@3.30.2
+npm install --save-exact @clevertask/scribe @tiptap/core@3.30.5 @tiptap/html@3.30.5 @tiptap/pm@3.30.5
 ```
 
 ```ts
