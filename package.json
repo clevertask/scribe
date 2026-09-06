@@ -50,6 +50,8 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
+    "check:tiptap-contract": "node scripts/sync-tiptap-contract.mjs --check",
+    "dependency-update:post": "node scripts/sync-tiptap-contract.mjs --write",
     "dev": "vite",
     "e2e": "pnpm run e2e:prepare && playwright test && pnpm run e2e:build-consumer",
     "e2e:build-consumer": "pnpm --dir e2e/consumer exec vite build",
@@ -63,8 +65,9 @@
     "preview": "vite preview",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "test": "vitest run --config vitest.config.ts",
-    "validate:deps": "pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run e2e:install && pnpm run e2e",
+    "test": "node scripts/sync-tiptap-contract.test.mjs && vitest run --config vitest.config.ts",
+    "test:tiptap-contract": "node scripts/sync-tiptap-contract.test.mjs",
+    "validate:deps": "pnpm run check:tiptap-contract && pnpm run fmt:check && pnpm run lint && pnpm run test && pnpm run e2e:install && pnpm run e2e",
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
