@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { generateJSON } from "@tiptap/html";
+import { getSchema } from "@tiptap/core";
 
 assert.equal(typeof globalThis.document, "undefined");
 
@@ -20,6 +21,13 @@ const extensions = schemaModule.createScribeSchemaExtensions({ enableUndoRedo: f
 if (!Array.isArray(extensions) || extensions.length === 0) {
   throw new Error("The built headless schema entry returned no extensions.");
 }
+
+const schema = getSchema(extensions);
+
+assert.equal(schema.marks.code.spec.excludes, "code");
+assert.equal(schema.marks.code.excludes(schema.marks.code), true);
+assert.equal(schema.marks.code.excludes(schema.marks.bold), false);
+assert.equal(schema.marks.code.excludes(schema.marks.link), false);
 
 const parsed = generateJSON(
   [
@@ -44,3 +52,25 @@ visit(parsed);
 assert.ok(parsedTypes.includes("callout"));
 assert.ok(parsedTypes.includes("table"));
 assert.ok(parsedTypes.includes("inlineMath"));
+
+const overlapFixture = generateJSON(
+  [
+    "<p>",
+    "<strong><code>boldCode</code></strong> ",
+    '<a href="https://example.com/api"><code>linkedCode</code></a>',
+    "</p>",
+  ].join(""),
+  extensions,
+);
+const overlapMarks = new Map();
+const collectOverlapMarks = (node) => {
+  if (node.type === "text") {
+    overlapMarks.set(node.text, (node.marks ?? []).map((mark) => mark.type).sort());
+  }
+
+  node.content?.forEach(collectOverlapMarks);
+};
+
+collectOverlapMarks(overlapFixture);
+assert.deepEqual(overlapMarks.get("boldCode"), ["bold", "code"]);
+assert.deepEqual(overlapMarks.get("linkedCode"), ["code", "link"]);

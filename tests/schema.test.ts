@@ -1,4 +1,4 @@
-import { generateJSON, getSchema, type JSONContent } from "@tiptap/core";
+import { generateHTML, generateJSON, getSchema, type JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { initExtensions } from "../lib/components/Scribe/extension";
 import { createScribeSchemaExtensions } from "../lib/schema";
@@ -11,6 +11,12 @@ const collectNodes = (content: JSONContent, type: string): JSONContent[] => {
   }
 
   return matches;
+};
+
+const collectMarkTypes = (content: JSONContent, text: string): string[] => {
+  const textNode = collectNodes(content, "text").find((node) => node.text === text);
+
+  return (textNode?.marks ?? []).map((mark) => mark.type).sort();
 };
 
 describe("headless Scribe schema", () => {
@@ -32,6 +38,9 @@ describe("headless Scribe schema", () => {
         Object.keys(interactiveSchema.marks[markName].spec.attrs ?? {}),
       );
     }
+
+    expect(headlessSchema.marks.code.spec.excludes).toBe("code");
+    expect(interactiveSchema.marks.code.spec.excludes).toBe("code");
   });
 
   it("parses representative Scribe HTML without mounting an editor", () => {
@@ -94,5 +103,65 @@ describe("headless Scribe schema", () => {
     expect(textNodes.find((node) => node.text === "inlineCode")?.marks).toContainEqual({
       type: "code",
     });
+  });
+
+  it("preserves inline code combined with other text marks", () => {
+    const html = [
+      "<p>",
+      "<strong><code>boldCode</code></strong> ",
+      "<code><strong>codeAroundBold</strong></code> ",
+      "<em><code>italicCode</code></em> ",
+      "<s><code>strikeCode</code></s> ",
+      "<u><code>underlinedCode</code></u> ",
+      "<mark><code>highlightedCode</code></mark> ",
+      '<a href="https://example.com/api"><code>linkedCode</code></a> ',
+      '<code><a href="https://example.com/nested">codeAroundLink</a></code> ',
+      '<a href="https://example.com/reference"><strong><code>linkedBoldCode</code></strong></a> ',
+      '<a href="https://example.com/mixed">before <code>mixedLinkedCode</code> after</a> ',
+      "<code>plainCode</code>",
+      "</p>",
+      "<pre><code>const answer = 42;</code></pre>",
+    ].join("");
+
+    for (const extensions of [
+      createScribeSchemaExtensions({ enableUndoRedo: false }),
+      initExtensions({ enableUndoRedo: false }),
+    ]) {
+      const schema = getSchema(extensions);
+      const content = generateJSON(html, extensions);
+
+      expect(schema.marks.code.spec.excludes).toBe("code");
+      expect(schema.marks.code.excludes(schema.marks.code)).toBe(true);
+      for (const markName of ["bold", "highlight", "italic", "link", "strike", "underline"]) {
+        expect(schema.marks.code.excludes(schema.marks[markName])).toBe(false);
+        expect(schema.marks[markName].excludes(schema.marks.code)).toBe(false);
+      }
+      expect(collectMarkTypes(content, "boldCode")).toEqual(["bold", "code"]);
+      expect(collectMarkTypes(content, "codeAroundBold")).toEqual(["bold", "code"]);
+      expect(collectMarkTypes(content, "italicCode")).toEqual(["code", "italic"]);
+      expect(collectMarkTypes(content, "strikeCode")).toEqual(["code", "strike"]);
+      expect(collectMarkTypes(content, "underlinedCode")).toEqual(["code", "underline"]);
+      expect(collectMarkTypes(content, "highlightedCode")).toEqual(["code", "highlight"]);
+      expect(collectMarkTypes(content, "linkedCode")).toEqual(["code", "link"]);
+      expect(collectMarkTypes(content, "codeAroundLink")).toEqual(["code", "link"]);
+      expect(collectMarkTypes(content, "linkedBoldCode")).toEqual(["bold", "code", "link"]);
+      expect(collectMarkTypes(content, "before ")).toEqual(["link"]);
+      expect(collectMarkTypes(content, "mixedLinkedCode")).toEqual(["code", "link"]);
+      expect(collectMarkTypes(content, " after")).toEqual(["link"]);
+      expect(collectMarkTypes(content, "plainCode")).toEqual(["code"]);
+      expect(collectNodes(content, "codeBlock")[0]?.content?.[0]).toMatchObject({
+        text: "const answer = 42;",
+        type: "text",
+      });
+      expect(collectNodes(content, "codeBlock")[0]?.content?.[0]?.marks).toBeUndefined();
+
+      const parsedDocument = schema.nodeFromJSON(content);
+      expect(() => parsedDocument.check()).not.toThrow();
+
+      const renderedHtml = generateHTML(content, extensions);
+      const reparsedDocument = schema.nodeFromJSON(generateJSON(renderedHtml, extensions));
+
+      expect(reparsedDocument.eq(parsedDocument)).toBe(true);
+    }
   });
 });

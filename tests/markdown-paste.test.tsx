@@ -1,5 +1,5 @@
 import { Theme } from "@radix-ui/themes";
-import { Extension } from "@tiptap/core";
+import { Extension, type JSONContent } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/react";
@@ -60,6 +60,22 @@ const paste = ({ editor, html = "", text }: { editor: Editor; html?: string; tex
   });
 
   return getData;
+};
+
+const getTextMarkTypes = (content: JSONContent, text: string): string[] | undefined => {
+  if (content.type === "text" && content.text === text) {
+    return (content.marks ?? []).map((mark) => mark.type).sort();
+  }
+
+  for (const child of content.content ?? []) {
+    const markTypes = getTextMarkTypes(child, text);
+
+    if (markTypes) {
+      return markTypes;
+    }
+  }
+
+  return undefined;
 };
 
 describe("Markdown paste", () => {
@@ -134,5 +150,19 @@ describe("Markdown paste", () => {
 
     expect(transformPastedHTML).toHaveBeenCalledOnce();
     expect(editor.getText()).toBe("Transformed HTML");
+  });
+
+  it("preserves marks combined with inline code in pasted Markdown", () => {
+    const editor = renderScribe();
+
+    paste({
+      editor,
+      text: "**`boldCode`** and [`linkedCode`](https://example.com/api)",
+    });
+
+    expect(getTextMarkTypes(editor.getJSON(), "boldCode")).toEqual(["bold", "code"]);
+    expect(getTextMarkTypes(editor.getJSON(), "linkedCode")).toEqual(["code", "link"]);
+    expect(editor.view.dom.querySelectorAll("code")).toHaveLength(2);
+    expect(editor.view.dom.querySelector("a code, code a")).toHaveTextContent("linkedCode");
   });
 });
