@@ -23,6 +23,7 @@ export const initExtensions = (props: ScribeProps) => {
 
   return [
     schemaExtensions.starterKit,
+    schemaExtensions.code,
     ExternalLinkPreview.configure(props.externalLinkPreview),
     schemaExtensions.callout,
     schemaExtensions.taskList,

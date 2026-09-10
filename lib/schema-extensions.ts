@@ -1,4 +1,5 @@
 import type { AnyExtension } from "@tiptap/core";
+import Code from "@tiptap/extension-code";
 import Emoji, { gitHubEmojis } from "@tiptap/extension-emoji";
 import Highlight from "@tiptap/extension-highlight";
 import Image from "@tiptap/extension-image";
@@ -16,6 +17,7 @@ import type { ScribeSchemaExtensionOptions } from "./schema";
 
 type ScribeSchemaExtensionSet = {
   starterKit: AnyExtension;
+  code: AnyExtension;
   externalLinkPreview: AnyExtension;
   callout: AnyExtension;
   taskList: AnyExtension;
@@ -30,6 +32,10 @@ type ScribeSchemaExtensionSet = {
   typography: AnyExtension;
 };
 
+const ScribeCode = Code.extend({
+  excludes: "code",
+});
+
 export const createScribeSchemaExtensionSet = ({
   enableUndoRedo,
 }: ScribeSchemaExtensionOptions = {}): ScribeSchemaExtensionSet => ({
@@ -38,9 +44,11 @@ export const createScribeSchemaExtensionSet = ({
       width: 4,
       color: "#ebf6fe",
     },
+    code: false,
     link: false,
     ...(enableUndoRedo === false ? { undoRedo: false } : {}),
   }),
+  code: ScribeCode,
   externalLinkPreview: ExternalLinkPreviewSchema,
   callout: Callout,
   taskList: TaskList.configure({

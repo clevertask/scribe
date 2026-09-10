@@ -72,6 +72,9 @@ content containing those references.
 Pin Scribe and Tiptap to the exact versions used by the writing clients. This entry point makes the
 schema reusable; it does not make different schema versions interchangeable.
 
+Scribe preserves inline code together with other text marks, such as bold and links. This applies
+only to inline code; code-block text remains unmarked.
+
 ## Usage
 
 ### Basic usage
