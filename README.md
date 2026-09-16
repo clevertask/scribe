@@ -39,7 +39,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 ## Installation
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/pm@3.30.5
+npm install --save-exact @clevertask/scribe @tiptap/pm@3.31.3
 ```
 
 Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
@@ -51,7 +51,7 @@ Use the schema subpath when a server or migration tool must parse Scribe content
 the React editor or Scribe's stylesheet:
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/core@3.30.5 @tiptap/html@3.30.5 @tiptap/pm@3.30.5
+npm install --save-exact @clevertask/scribe @tiptap/core@3.31.3 @tiptap/html@3.31.3 @tiptap/pm@3.31.3
 ```
 
 ```ts
@@ -74,6 +74,33 @@ schema reusable; it does not make different schema versions interchangeable.
 
 Scribe preserves inline code together with other text marks, such as bold and links. This applies
 only to inline code; code-block text remains unmarked.
+
+Servers can also inspect Scribe's document-node capabilities through the same headless entry:
+
+```ts
+import {
+  createScribeDocumentNodeCapabilityManifest,
+  createScribeSchemaExtensions,
+} from "@clevertask/scribe/schema";
+import { getSchema } from "@tiptap/core";
+
+const extensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+const capabilities = createScribeDocumentNodeCapabilityManifest(getSchema(extensions));
+
+capabilities.paragraph.potentialOperations; // [{ type: "replace_content" }]
+capabilities.callout.potentialOperations; // [{ type: "set_attributes", attributes: ["variant"] }]
+capabilities.tableCell.potentialOperations; // []
+```
+
+These are structural possibilities, not application permissions. An application must still check
+authorization, the current node and its ancestors, protected descendants, revision visibility,
+parser support, and size limits before it offers or performs a write.
+
+If an application appends a consumer-owned node to the Scribe schema, it must also pass an exact
+capability declaration to `createScribeDocumentNodeCapabilityManifest`. Use
+`defineScribeDocumentNodeCapability` to type that declaration. Manifest creation fails when a node
+is missing, duplicated, or no longer matches the schema. A custom node can declare no potential
+operations and remain explicitly read-only.
 
 ## Usage
 
