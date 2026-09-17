@@ -1,6 +1,21 @@
 import type { Extensions } from "@tiptap/core";
 import { createScribeSchemaExtensionSet } from "./schema-extensions";
 
+export {
+  createScribeDocumentNodeCapabilityManifest,
+  defineScribeDocumentNodeCapability,
+  SCRIBE_DOCUMENT_NODE_CAPABILITY_ROLES,
+  SCRIBE_DOCUMENT_NODE_CONTENT_KINDS,
+} from "./document-node-capabilities.js";
+export type {
+  ScribeDocumentNodeAttributeShape,
+  ScribeDocumentNodeCapability,
+  ScribeDocumentNodeCapabilityManifest,
+  ScribeDocumentNodeCapabilityRole,
+  ScribeDocumentNodeContentKind,
+  ScribeDocumentNodePotentialOperation,
+} from "./document-node-capabilities.js";
+
 export type ScribeSchemaExtensionOptions = {
   /**
    * Enables Scribe's built-in undo and redo history. Schema-only consumers can
