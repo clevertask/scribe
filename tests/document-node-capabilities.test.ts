@@ -88,6 +88,17 @@ describe("Scribe document node capabilities", () => {
       potentialOperations: [{ attributes: ["variant"], type: "set_attributes" }],
       role: "container",
     });
+    expect(manifest.taskItem).toEqual({
+      attributes: {
+        checked: { kind: "boolean" },
+      },
+      content: { expression: "paragraph block*", kind: "structured" },
+      label: "Task item",
+      nodeType: "taskItem",
+      potentialOperations: [{ attributes: ["checked"], type: "set_attributes" }],
+      role: "list_item",
+    });
+    expect(manifest.taskList.potentialOperations).toEqual([]);
 
     expect(manifest.heading.potentialOperations).toEqual([]);
     expect(manifest.table.potentialOperations).toEqual([]);
@@ -129,6 +140,8 @@ describe("Scribe document node capabilities", () => {
     expect(Object.isFrozen(firstManifest.callout.attributes.variant)).toBe(true);
     expect(Object.isFrozen(firstManifest.callout.potentialOperations)).toBe(true);
     expect(Object.isFrozen(firstManifest.callout.potentialOperations[0]?.attributes)).toBe(true);
+    expect(Object.isFrozen(firstManifest.taskItem.potentialOperations)).toBe(true);
+    expect(Object.isFrozen(firstManifest.taskItem.potentialOperations[0]?.attributes)).toBe(true);
     expect(() => {
       (
         firstManifest.callout.content as unknown as {

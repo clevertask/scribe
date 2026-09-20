@@ -114,6 +114,9 @@ assert.deepEqual(capabilities.paragraph.potentialOperations, [{ type: "replace_c
 assert.deepEqual(capabilities.callout.potentialOperations, [
   { attributes: ["variant"], type: "set_attributes" },
 ]);
+assert.deepEqual(capabilities.taskItem.potentialOperations, [
+  { attributes: ["checked"], type: "set_attributes" },
+]);
 assert.deepEqual(capabilities.tableCell.potentialOperations, []);
 assert.deepEqual(capabilities.externalLinkPreview.potentialOperations, []);
 

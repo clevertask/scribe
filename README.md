@@ -89,8 +89,13 @@ const capabilities = createScribeDocumentNodeCapabilityManifest(getSchema(extens
 
 capabilities.paragraph.potentialOperations; // [{ type: "replace_content" }]
 capabilities.callout.potentialOperations; // [{ type: "set_attributes", attributes: ["variant"] }]
+capabilities.taskItem.potentialOperations; // [{ type: "set_attributes", attributes: ["checked"] }]
 capabilities.tableCell.potentialOperations; // []
 ```
+
+The manifest intentionally keeps structural list changes application-owned. A consumer can use
+the task-item attribute capability while defining its own bounded policy for adding or moving
+task-list items.
 
 These are structural possibilities, not application permissions. An application must still check
 authorization, the current node and its ancestors, protected descendants, revision visibility,

@@ -194,7 +194,7 @@ const builtInCapabilities = [
     content: { expression: "paragraph block*", kind: "structured" },
     label: "Task item",
     nodeType: "taskItem",
-    potentialOperations: noOperations,
+    potentialOperations: [{ attributes: ["checked"], type: "set_attributes" }],
     role: "list_item",
   }),
   defineScribeDocumentNodeCapability({
