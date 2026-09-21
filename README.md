@@ -107,6 +107,47 @@ capability declaration to `createScribeDocumentNodeCapabilityManifest`. Use
 is missing, duplicated, or no longer matches the schema. A custom node can declare no potential
 operations and remain explicitly read-only.
 
+### Headless table transforms
+
+The same headless entry can insert or delete an exact logical table row or column and can merge or
+split cells without mounting an editor or accessing the DOM:
+
+```ts
+import { applyScribeTableTransform, createScribeSchemaExtensions } from "@clevertask/scribe/schema";
+import { getSchema } from "@tiptap/core";
+
+const schema = getSchema(createScribeSchemaExtensions({ enableUndoRedo: false }));
+const document = schema.nodeFromJSON(storedDocument);
+const tablePosition = 42; // ProseMirror position immediately before the table node.
+const result = applyScribeTableTransform(document, tablePosition, {
+  type: "insert_row",
+  index: 1,
+});
+
+persist(result.document);
+```
+
+Rows and columns use zero-based logical coordinates from ProseMirror's table grid, not physical
+child indexes. An insertion index may equal the current row or column count; deletion indexes must
+name an existing logical row or column. Merge rectangles use half-open bounds: `topRow` and
+`leftColumn` are included, while `bottomRowExclusive` and `rightColumnExclusive` are excluded. A
+split's `row` and `column` must identify the merged cell's top-left logical coordinate. Existing
+rowspans and colspans can therefore affect more than one physical cell even though the requested
+logical boundary remains exact. The returned `before` and `after` geometry reports logical rows,
+logical columns, and physical cell count.
+
+`applyScribeTableTransform` is an immutable, exact-snapshot operation: it returns a new ProseMirror
+document and leaves its input unchanged. It does not rebase coordinates or detect that another
+writer changed the stored document after the input snapshot was read. On a concurrent change,
+discard the candidate, read the latest document, resolve the intended table and coordinates again,
+and rerun the transform. Invalid coordinates, malformed or nested tables, and operations that do
+not apply throw `ScribeTableTransformError`.
+
+This API owns only schema-valid table geometry. The host application owns authorization, protected
+node rules, revision and conflict checks, destructive previews, payload limits, Yjs conversion and
+persistence, and durable readback. In CleverTask, those checks belong to the collaboration and API
+layers rather than Scribe.
+
 ## Usage
 
 ### Basic usage
@@ -183,6 +224,13 @@ Type `/table` to insert a 3 × 3 table with a header row. Selecting a table cell
 Keyboard users can press `Alt + F10` while editing a table to focus its controls, use the arrow, Home, and End keys to move between actions, and press Escape to return to the active cell.
 
 Simple headed tables serialize as GFM Markdown. Tables with merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
+
+Scribe's `insertTable` command and `/table` action do not create a table while the selection is
+already inside another table. Existing documents containing nested tables remain loadable so old
+content is not destroyed. This guard covers Scribe-owned authoring paths only: arbitrary consumer
+calls to `insertContent`, Markdown table paste, and rich-HTML table paste remain trusted integration
+points. Applications that require a hard no-nested-table guarantee must validate or filter those
+paths too.
 
 ## External Link Previews
 

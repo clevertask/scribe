@@ -1,6 +1,9 @@
 import { Editor, Range } from "@tiptap/core";
 import { ReactNode } from "react";
 import { CalloutIcon } from "../../../../icons/CalloutIcon";
+import { selectionHasTableAncestor } from "../resizable-table";
+
+const TABLE_SLASH_COMMAND_TITLE = "Table";
 
 export enum SuggestionItemType {
   BASIC_BLOCKS = "Basic",
@@ -217,7 +220,7 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) => 
       icon: <CalloutIcon className="slash-menu-icon-with-strokes" variant="info" />,
     },
     {
-      title: "Table",
+      title: TABLE_SLASH_COMMAND_TITLE,
       description: "Insert a 3 × 3 table",
       type: SuggestionItemType.ADVANCED_BLOCKS,
       command: ({ editor, range }) =>
@@ -292,7 +295,12 @@ export const getSuggestionItems = (props: { query: string; editor: Editor }) => 
     },
   ];
 
+  const selectionIsInsideTable = selectionHasTableAncestor(props.editor.state.selection);
   const filteredItems = suggestionItems.filter((item) => {
+    if (selectionIsInsideTable && item.title === TABLE_SLASH_COMMAND_TITLE) {
+      return false;
+    }
+
     if (typeof query === "string" && query.length > 0) {
       const search = query.toLowerCase();
 
