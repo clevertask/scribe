@@ -1,5 +1,20 @@
 import { Table } from "@tiptap/extension-table";
+import type { ResolvedPos } from "@tiptap/pm/model";
+import type { Selection } from "@tiptap/pm/state";
 import { columnResizing, columnResizingPluginKey, tableEditing } from "@tiptap/pm/tables";
+
+const positionHasTableAncestor = ($position: ResolvedPos) => {
+  for (let depth = $position.depth; depth > 0; depth -= 1) {
+    if ($position.node(depth).type.spec.tableRole === "table") {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+export const selectionHasTableAncestor = (selection: Selection) =>
+  positionHasTableAncestor(selection.$from) || positionHasTableAncestor(selection.$to);
 
 /**
  * Tiptap only registers its column-resizing plugin when the editor is editable
@@ -8,6 +23,23 @@ import { columnResizing, columnResizingPluginKey, tableEditing } from "@tiptap/p
  * the current `view.editable` value.
  */
 export const ScribeTable = Table.extend({
+  addCommands() {
+    const parentCommands = this.parent?.();
+
+    return {
+      ...parentCommands,
+      insertTable:
+        (options = {}) =>
+        (props) => {
+          if (selectionHasTableAncestor(props.state.selection)) {
+            return false;
+          }
+
+          return parentCommands?.insertTable?.(options)(props) ?? false;
+        },
+    };
+  },
+
   onUpdate() {
     if (this.editor.isEditable) {
       return;

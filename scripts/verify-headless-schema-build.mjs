@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { generateJSON } from "@tiptap/html";
 import { getSchema } from "@tiptap/core";
+import { TableMap } from "@tiptap/pm/tables";
 
 assert.equal(typeof globalThis.document, "undefined");
 
@@ -100,6 +101,14 @@ if (typeof schemaModule.createScribeDocumentNodeCapabilityManifest !== "function
   throw new Error("The built headless schema entry does not export its node capability factory.");
 }
 
+if (typeof schemaModule.applyScribeTableTransform !== "function") {
+  throw new Error("The built headless schema entry does not export its table transform function.");
+}
+
+if (typeof schemaModule.ScribeTableTransformError !== "function") {
+  throw new Error("The built headless schema entry does not export its table transform error.");
+}
+
 const extensions = schemaModule.createScribeSchemaExtensions({ enableUndoRedo: false });
 
 if (!Array.isArray(extensions) || extensions.length === 0) {
@@ -119,6 +128,47 @@ assert.deepEqual(capabilities.taskItem.potentialOperations, [
 ]);
 assert.deepEqual(capabilities.tableCell.potentialOperations, []);
 assert.deepEqual(capabilities.externalLinkPreview.potentialOperations, []);
+
+const tableDocument = schema.nodeFromJSON({
+  type: "doc",
+  content: [
+    {
+      type: "table",
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            { type: "tableCell", content: [{ type: "paragraph" }] },
+            { type: "tableCell", content: [{ type: "paragraph" }] },
+          ],
+        },
+      ],
+    },
+  ],
+});
+let tablePosition;
+tableDocument.descendants((node, position) => {
+  if (node.type.spec.tableRole === "table") {
+    tablePosition = position;
+    return false;
+  }
+  return true;
+});
+assert.equal(typeof tablePosition, "number");
+
+const tableTransform = schemaModule.applyScribeTableTransform(tableDocument, tablePosition, {
+  type: "insert_row",
+  index: 1,
+});
+const originalTable = tableDocument.nodeAt(tablePosition);
+const transformedTable = tableTransform.document.nodeAt(tableTransform.tablePosition);
+
+assert.ok(originalTable);
+assert.ok(transformedTable);
+assert.equal(TableMap.get(originalTable).height, 1);
+assert.equal(TableMap.get(transformedTable).height, 2);
+assert.deepEqual(tableTransform.before, { rows: 1, columns: 2, physicalCells: 2 });
+assert.deepEqual(tableTransform.after, { rows: 2, columns: 2, physicalCells: 4 });
 
 assert.equal(schema.marks.code.spec.excludes, "code");
 assert.equal(schema.marks.code.excludes(schema.marks.code), true);

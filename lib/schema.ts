@@ -1,6 +1,8 @@
 import type { Extensions } from "@tiptap/core";
 import { createScribeSchemaExtensionSet } from "./schema-extensions";
 
+export * from "./table-transforms.js";
+
 export {
   createScribeDocumentNodeCapabilityManifest,
   defineScribeDocumentNodeCapability,

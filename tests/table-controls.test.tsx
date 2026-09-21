@@ -9,6 +9,7 @@ import { createRef } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { Scribe, type ScribeRef } from "../lib/main";
 import { getSelectionTableContext } from "../lib/components/Menu/tableBubbleMenuPlugin";
+import { selectionHasTableAncestor } from "../lib/components/Scribe/extension/resizable-table";
 import { getSuggestionItems } from "../lib/components/Scribe/extension/slashCommand/items";
 
 const TABLE_CONTENT = `
@@ -88,6 +89,18 @@ const findTable = (editor: Editor) => {
   return table;
 };
 
+const countTables = (editor: Editor) => {
+  let count = 0;
+
+  editor.state.doc.descendants((node) => {
+    if (node.type.name === "table") {
+      count += 1;
+    }
+  });
+
+  return count;
+};
+
 const selectText = (editor: Editor, text: string) => {
   act(() => {
     editor.commands.setTextSelection(findTextPosition(editor, text));
@@ -120,6 +133,57 @@ describe("Scribe table controls", () => {
     expect(table?.childCount).toBe(3);
     expect(table?.firstChild?.childCount).toBe(3);
     table?.firstChild?.forEach((cell) => expect(cell.type.name).toBe("tableHeader"));
+  });
+
+  it("hides the Table slash command inside a table and keeps it available outside", () => {
+    const editor = renderScribe(TABLE_CONTENT);
+
+    selectText(editor, "Cell 1");
+
+    expect(
+      getSuggestionItems({ query: "table", editor }).some((item) => item.title === "Table"),
+    ).toBe(false);
+
+    selectText(editor, "Before");
+
+    expect(
+      getSuggestionItems({ query: "table", editor }).some((item) => item.title === "Table"),
+    ).toBe(true);
+  });
+
+  it("rejects direct table insertion inside a table and permits it outside", () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    const initialDocument = editor.getJSON();
+
+    selectText(editor, "Cell 1");
+
+    expect(editor.can().insertTable()).toBe(false);
+    expect(editor.commands.insertTable()).toBe(false);
+    expect(editor.getJSON()).toEqual(initialDocument);
+    expect(countTables(editor)).toBe(1);
+
+    selectText(editor, "Before");
+
+    expect(editor.can().insertTable()).toBe(true);
+    expect(editor.commands.insertTable()).toBe(true);
+    expect(countTables(editor)).toBe(2);
+  });
+
+  it("detects a table ancestor at either selection endpoint", () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    const beforePosition = findTextPosition(editor, "Before");
+    const headerPosition = findTextPosition(editor, "Header 1");
+    const cellPosition = findTextPosition(editor, "Cell 6");
+    const afterPosition = findTextPosition(editor, "After");
+
+    for (const [from, to] of [
+      [beforePosition, headerPosition],
+      [cellPosition, afterPosition],
+    ]) {
+      const selection = TextSelection.create(editor.state.doc, from, to);
+
+      expect(selectionHasTableAncestor(selection)).toBe(true);
+    }
   });
 
   it("shows table-scoped actions and applies row, column, header, and delete commands", async () => {
