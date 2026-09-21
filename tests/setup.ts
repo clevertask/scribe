@@ -17,30 +17,38 @@ Object.defineProperty(globalThis, "ResizeObserver", {
   value: ResizeObserverStub,
 });
 
-Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
-  configurable: true,
-  value: () => null,
-});
+if (typeof HTMLCanvasElement !== "undefined") {
+  Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+    configurable: true,
+    value: () => null,
+  });
+}
 
-Object.defineProperty(window, "scrollBy", {
-  configurable: true,
-  value: () => undefined,
-});
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "scrollBy", {
+    configurable: true,
+    value: () => undefined,
+  });
+}
 
-Object.defineProperty(Element.prototype, "scrollIntoView", {
-  configurable: true,
-  value: () => undefined,
-});
+if (typeof Element !== "undefined") {
+  Object.defineProperty(Element.prototype, "scrollIntoView", {
+    configurable: true,
+    value: () => undefined,
+  });
+}
 
 const createRect = () => new DOMRect(0, 0, 120, 24);
 
-Object.defineProperties(Range.prototype, {
-  getBoundingClientRect: {
-    configurable: true,
-    value: createRect,
-  },
-  getClientRects: {
-    configurable: true,
-    value: () => [createRect()],
-  },
-});
+if (typeof Range !== "undefined") {
+  Object.defineProperties(Range.prototype, {
+    getBoundingClientRect: {
+      configurable: true,
+      value: createRect,
+    },
+    getClientRects: {
+      configurable: true,
+      value: () => [createRect()],
+    },
+  });
+}
