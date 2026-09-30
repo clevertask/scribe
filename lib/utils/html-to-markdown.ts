@@ -137,7 +137,13 @@ const getCellAlignment = (cell: HTMLTableCellElement): TableAlignment | undefine
 };
 
 const getSimpleTableRows = (table: HTMLTableElement) => {
-  if (table.caption || table.tFoot || hasResizableWidths(table)) {
+  if (
+    table.caption ||
+    table.tFoot ||
+    hasResizableWidths(table) ||
+    ["fit", "scroll"].includes(table.getAttribute("data-table-layout") ?? "") ||
+    table.getAttribute("data-table-limit-height") === "true"
+  ) {
     return null;
   }
 

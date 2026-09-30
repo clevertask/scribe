@@ -1,6 +1,7 @@
 import type { Schema } from "@tiptap/pm/model";
 import { CALLOUT_VARIANTS } from "./components/Scribe/extension/callout";
 import { EXTERNAL_LINK_PREVIEW_DISPLAYS } from "./components/Scribe/extension/external-link-preview/types";
+import { SCRIBE_TABLE_LAYOUTS } from "./components/Scribe/extension/table-layout";
 
 export const SCRIBE_DOCUMENT_NODE_CAPABILITY_ROLES = [
   "document",
@@ -208,7 +209,10 @@ const builtInCapabilities = [
     role: "container",
   }),
   defineScribeDocumentNodeCapability({
-    attributes: noAttributes,
+    attributes: {
+      tableLayout: { kind: "enum", values: SCRIBE_TABLE_LAYOUTS },
+      limitHeight: { kind: "boolean" },
+    },
     content: { expression: "tableRow+", kind: "structured" },
     label: "Table",
     nodeType: "table",

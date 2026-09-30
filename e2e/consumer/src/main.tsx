@@ -8,7 +8,7 @@ import { Theme } from "@radix-ui/themes";
 import { Extension } from "@tiptap/core";
 import { EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
-import { StrictMode, useCallback, useState } from "react";
+import { StrictMode, useCallback, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const ConsumerDecoration = Extension.create({
@@ -60,6 +60,16 @@ const tableFixture = `
     </tbody>
   </table>
   <p>Content after the table</p>
+`;
+
+const tableLayoutFixture = `
+  <p>Table layout example</p>
+  <table><tbody>
+    <tr><th colwidth="180"><p>Project</p></th><th><p>Owner</p></th><th><p>Status</p></th></tr>
+    ${Array.from({ length: 20 }, (_, index) => `<tr><td colwidth="180"><p>Project ${index + 1}</p></td><td><p>Owner ${index + 1}</p></td><td><p>Planned ${index + 1}</p></td></tr>`).join("")}
+  </tbody></table>
+  <p>Independent table below</p>
+  ${tableFixture}
 `;
 
 const calloutFixture = `
@@ -115,6 +125,7 @@ function App() {
   const showExternalLinkPreviewFixture = searchParams.get("linkPreview") === "true";
   const showExternalLinkPreviewListFixture = searchParams.get("linkPreviewList") === "true";
   const showTableFixture = searchParams.get("table") === "true";
+  const showTableLayoutFixture = searchParams.get("tableLayoutFixture") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
   const testNestedScroll = searchParams.get("nestedScroll") === "true";
@@ -123,8 +134,12 @@ function App() {
   const [editable, setEditable] = useState(!testEditableTransition);
   const [extensionNames, setExtensionNames] = useState<string[]>([]);
   const [serializedHtml, setSerializedHtml] = useState("");
+  const [reloadedTableHtml, setReloadedTableHtml] = useState<string>();
+  const [tableReloadCount, setTableReloadCount] = useState(0);
+  const scribeRef = useRef<ScribeRef | null>(null);
   const [previewRequests, setPreviewRequests] = useState<string[]>([]);
   const captureScribeRef = useCallback((scribe: ScribeRef | null) => {
+    scribeRef.current = scribe;
     if (scribe) {
       setExtensionNames(scribe.editor.extensionManager.extensions.map(({ name }) => name));
     }
@@ -151,18 +166,22 @@ function App() {
       style={testNarrowEditor ? { maxWidth: "18rem" } : undefined}
     >
       <Scribe
+        key={tableReloadCount}
         ref={captureScribeRef}
         ariaLabel="Document content"
         content={
-          showConsumerDecoration
-            ? ""
-            : showExternalLinkPreviewListFixture
-              ? "<ul><li><p></p></li></ul>"
-              : showCalloutFixture
-                ? calloutFixture
-                : showTableFixture
-                  ? tableFixture
-                  : "<p>Package consumer content</p>"
+          reloadedTableHtml ??
+          (showTableLayoutFixture
+            ? tableLayoutFixture
+            : showConsumerDecoration
+              ? ""
+              : showExternalLinkPreviewListFixture
+                ? "<ul><li><p></p></li></ul>"
+                : showCalloutFixture
+                  ? calloutFixture
+                  : showTableFixture
+                    ? tableFixture
+                    : "<p>Package consumer content</p>")
         }
         editable={editable}
         {...(disableUndoRedo ? { enableUndoRedo: false } : {})}
@@ -177,7 +196,7 @@ function App() {
         extensions={showConsumerDecoration ? [ConsumerDecoration] : undefined}
         mobile={mobile}
         onContentChange={
-          showConsumerDecoration
+          showConsumerDecoration || showTableLayoutFixture
             ? ({ htmlContent }) => {
                 setSerializedHtml(htmlContent);
               }
@@ -197,6 +216,21 @@ function App() {
             {editable ? "Disable editing" : "Enable editing"}
           </button>
         ) : null}
+        {showTableLayoutFixture ? (
+          <button
+            type="button"
+            onClick={() => {
+              const savedHtml = scribeRef.current?.editor.getHTML();
+              if (savedHtml !== undefined) {
+                setSerializedHtml(savedHtml);
+                setReloadedTableHtml(savedHtml);
+                setTableReloadCount((count) => count + 1);
+              }
+            }}
+          >
+            Reload saved table content
+          </button>
+        ) : null}
         {showCalloutFixture || showExternalLinkPreviewFixture || showTableFixture ? (
           <button type="button">Outside focus target</button>
         ) : null}
@@ -210,7 +244,7 @@ function App() {
           scribe
         )}
         {testWindowScroll ? <div aria-hidden style={{ height: "50rem" }} /> : null}
-        {showConsumerDecoration ? (
+        {showConsumerDecoration || showTableLayoutFixture ? (
           <output data-testid="serialized-html" hidden>
             {serializedHtml}
           </output>

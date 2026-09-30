@@ -343,6 +343,89 @@ describe("Scribe table controls", () => {
     expect(screen.queryByRole("toolbar", { name: "Table controls" })).not.toBeInTheDocument();
   });
 
+  it("offers explicit layout and height choices for the active table", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    selectText(editor, "Cell 1");
+    const toolbar = await screen.findByRole("toolbar", { name: "Table controls" });
+    const layoutTrigger = within(toolbar).getByRole("button", { name: "Table layout" });
+    fireEvent.pointerDown(layoutTrigger, { button: 0, ctrlKey: false });
+
+    expect(await screen.findByRole("menuitemradio", { name: "Auto", exact: true })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemcheckbox", { name: "Limit height" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Scroll horizontally" }));
+    await waitFor(() => {
+      expect(findTable(editor)?.node.attrs.tableLayout).toBe("scroll");
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+
+    fireEvent.pointerDown(layoutTrigger, { button: 0, ctrlKey: false });
+    expect(
+      await screen.findByRole("menuitemradio", { name: "Scroll horizontally" }),
+    ).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Limit height" }));
+    await waitFor(() => {
+      expect(findTable(editor)?.node.attrs).toMatchObject({
+        tableLayout: "scroll",
+        limitHeight: true,
+      });
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+  });
+
+  it("reads checked options from each table after moving the selection", async () => {
+    const editor = renderScribe(`
+      <table data-table-layout="fit" data-table-limit-height="true"><tbody><tr><td><p>Fit table</p></td></tr></tbody></table>
+      <p>Between tables</p>
+      <table data-table-layout="scroll"><tbody><tr><td><p>Scroll table</p></td></tr></tbody></table>
+    `);
+    selectText(editor, "Fit table");
+    const toolbar = await screen.findByRole("toolbar", { name: "Table controls" });
+    fireEvent.pointerDown(within(toolbar).getByRole("button", { name: "Table layout" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(await screen.findByRole("menuitemradio", { name: "Fit to width" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(screen.getByRole("menuitemcheckbox", { name: "Limit height" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+
+    selectText(editor, "Scroll table");
+    const nextToolbar = await screen.findByRole("toolbar", { name: "Table controls" });
+    fireEvent.pointerDown(within(nextToolbar).getByRole("button", { name: "Table layout" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    expect(
+      await screen.findByRole("menuitemradio", { name: "Scroll horizontally" }),
+    ).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("menuitemradio", { name: "Fit to width" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    expect(screen.getByRole("menuitemcheckbox", { name: "Limit height" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    selectText(editor, "Between tables");
+    await waitFor(() =>
+      expect(screen.queryByRole("toolbar", { name: "Table controls" })).not.toBeInTheDocument(),
+    );
+  });
+
   it("supports caller-owned editors without table extensions", () => {
     const externalEditor = new CoreEditor({
       content: "<p>Minimal external editor</p>",

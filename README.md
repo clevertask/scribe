@@ -221,9 +221,13 @@ function App() {
 
 Type `/table` to insert a 3 × 3 table with a header row. Selecting a table cell opens nearby controls for adding or deleting rows and columns, toggling the header row, and deleting the table. Drag a column boundary to resize it.
 
+The **Table layout** menu stores each table's explicit layout choice. **Auto** keeps the existing sizing behavior. **Fit to width** wraps the table into the available editor width and temporarily disables column resizing. **Scroll horizontally** retains authored column widths, gives columns without a saved width a readable 128px minimum, and scrolls inside the editor when the table needs more room. Switching layouts retains the table's saved column widths.
+
+**Limit height** is an independent option that caps the table at 360px and enables vertical scrolling. Override `--scribe-table-max-height` on the editor's container to change the cap. Layout and height choices apply in both editing and read-only views, and remain intact when content is saved and loaded as JSON, HTML, or Markdown. Hosts can also use `editor.commands.setTableLayout("scroll")` (accepts `"auto"`, `"fit"`, or `"scroll"`) and `editor.commands.setTableHeightLimit(true)` (accepts a boolean) while the selection is inside the table.
+
 Keyboard users can press `Alt + F10` while editing a table to focus its controls, use the arrow, Home, and End keys to move between actions, and press Escape to return to the active cell.
 
-Simple headed tables serialize as GFM Markdown. Tables with merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
+Simple headed tables serialize as GFM Markdown. Tables with explicit layout or height options, merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
 
 Scribe's `insertTable` command and `/table` action do not create a table while the selection is
 already inside another table. Existing documents containing nested tables remain loadable so old
