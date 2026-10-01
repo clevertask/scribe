@@ -139,6 +139,7 @@ function App() {
   const disableUndoRedo = searchParams.get("disableUndoRedo") === "true";
   const mobile = searchParams.get("mobile") === "true";
   const showConsumerDecoration = searchParams.get("consumerDecoration") === "true";
+  const captureContent = searchParams.get("captureContent") === "true";
   const showCalloutFixture = searchParams.get("callout") === "true";
   const showExternalLinkPreviewFixture = searchParams.get("linkPreview") === "true";
   const showExternalLinkPreviewListFixture = searchParams.get("linkPreviewList") === "true";
@@ -218,7 +219,10 @@ function App() {
         extensions={showConsumerDecoration ? [ConsumerDecoration] : undefined}
         mobile={mobile}
         onContentChange={
-          showConsumerDecoration || showTableLayoutFixture || showTableStickyHeaderFixture
+          captureContent ||
+          showConsumerDecoration ||
+          showTableLayoutFixture ||
+          showTableStickyHeaderFixture
             ? ({ htmlContent }) => {
                 setSerializedHtml(htmlContent);
               }
@@ -266,7 +270,10 @@ function App() {
           scribe
         )}
         {testWindowScroll ? <div aria-hidden style={{ height: "50rem" }} /> : null}
-        {showConsumerDecoration || showTableLayoutFixture || showTableStickyHeaderFixture ? (
+        {captureContent ||
+        showConsumerDecoration ||
+        showTableLayoutFixture ||
+        showTableStickyHeaderFixture ? (
           <output data-testid="serialized-html" hidden>
             {serializedHtml}
           </output>

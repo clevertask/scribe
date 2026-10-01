@@ -66,9 +66,8 @@ const getTableMenuGap = async (tableWrapper: Locator, tableControls: Locator) =>
 };
 
 test("Slash insertion exposes table-local editing commands", async ({ page }) => {
-  await page.goto("/");
-
-  const { table } = await insertTableFromSlashMenu(page);
+  await page.goto("/?captureContent=true");
+  const { editor, table } = await insertTableFromSlashMenu(page);
 
   await table.locator("td").first().click();
 
@@ -95,6 +94,40 @@ test("Slash insertion exposes table-local editing commands", async ({ page }) =>
     ).toBeVisible();
   }
 
+  await expect(table).toHaveAttribute("data-table-sticky-header-row", "true");
+  await expect(table).toHaveAttribute("data-table-limit-height", "false");
+  const savedHtml = page.getByTestId("serialized-html");
+  await expect(savedHtml).toContainText('data-table-sticky-header-row="true"');
+  const layoutTrigger = tableControls.getByRole("button", { name: "Table layout", exact: true });
+  const layoutMenu = page.getByRole("menu", { name: "Table layout", exact: true });
+  await expect(layoutMenu).toBeHidden();
+  await expect(editor).toBeFocused();
+  await expect(layoutTrigger).toHaveAttribute("aria-expanded", "false");
+  await layoutTrigger.click();
+  await expect(layoutMenu).toBeVisible();
+  const stickyOption = page.getByRole("menuitemcheckbox", {
+    name: "Sticky header row",
+    exact: true,
+  });
+  await expect(stickyOption).toHaveAttribute("aria-checked", "true");
+  await expect(stickyOption).toBeEnabled();
+  await expect(
+    page.getByRole("menuitemcheckbox", { name: "Limit height", exact: true }),
+  ).toHaveAttribute("aria-checked", "false");
+  await stickyOption.click();
+  await expect(layoutMenu).toBeHidden();
+  await expect(editor).toBeFocused();
+  await expect(table).toHaveAttribute("data-table-sticky-header-row", "false");
+  await expect(savedHtml).not.toContainText('data-table-sticky-header-row="true"');
+  await expect(layoutTrigger).toHaveAttribute("aria-expanded", "false");
+  await layoutTrigger.click();
+  await expect(layoutMenu).toBeVisible();
+  await expect(stickyOption).toHaveAttribute("aria-checked", "false");
+  await expect(stickyOption).toBeEnabled();
+  await page.keyboard.press("Escape");
+  await expect(layoutMenu).toBeHidden();
+  await expect(editor).toBeFocused();
+
   await tableControls.getByRole("button", { name: "Add row above", exact: true }).click();
   await expect(table.locator("tr")).toHaveCount(4);
 
@@ -106,6 +139,8 @@ test("Slash insertion exposes table-local editing commands", async ({ page }) =>
 
   await tableControls.getByRole("button", { name: "Delete column", exact: true }).click();
   await expect(table.locator("tr").first().locator("th, td")).toHaveCount(3);
+  await expect(table).toHaveAttribute("data-table-sticky-header-row", "false");
+  await expect(savedHtml).not.toContainText('data-table-sticky-header-row="true"');
 
   await tableControls.getByRole("button", { name: "Toggle header row", exact: true }).click();
   await expect(table.locator("th")).toHaveCount(0);

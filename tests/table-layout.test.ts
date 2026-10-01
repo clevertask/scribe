@@ -57,6 +57,124 @@ const collectTables = (document: JSONContent): JSONContent[] => [
   ...(document.content ?? []).flatMap(collectTables),
 ];
 
+describe("new table sticky header default", () => {
+  it.each([
+    { name: "default options", options: undefined, rows: 3, columns: 3 },
+    {
+      name: "an explicit header row",
+      options: { rows: 2, cols: 2, withHeaderRow: true },
+      rows: 2,
+      columns: 2,
+    },
+  ])("creates a sticky header with $name", ({ options, rows, columns }) => {
+    const editor = createEditor("<p>Before</p><p>After</p>");
+    selectText(editor, "Before");
+    expect(editor.commands.insertTable(options)).toBe(true);
+    const table = tableNodes(editor.state.doc)[0].node;
+    expect(table.childCount).toBe(rows);
+    expect(table.firstChild?.childCount).toBe(columns);
+    table.firstChild?.forEach((cell) => expect(cell.type.name).toBe("tableHeader"));
+    expect(table.attrs).toMatchObject({ stickyHeaderRow: true, limitHeight: false });
+    expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+      "data-table-sticky-header-active",
+      "true",
+    );
+    const savedHtml = editor.getHTML();
+    expect(savedHtml).toContain('data-table-sticky-header-row="true"');
+    const restoredEditor = createEditor(savedHtml, false);
+    expect(tableNodes(restoredEditor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+    expect(restoredEditor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+      "data-table-sticky-header-active",
+      "true",
+    );
+  });
+
+  it("leaves newly inserted headerless tables off", () => {
+    const editor = createEditor("<p>Before</p><p>After</p>");
+    selectText(editor, "Before");
+    expect(editor.commands.insertTable({ rows: 2, cols: 2, withHeaderRow: false })).toBe(true);
+    const table = tableNodes(editor.state.doc)[0].node;
+    table.firstChild?.forEach((cell) => expect(cell.type.name).toBe("tableCell"));
+    expect(table.attrs.stickyHeaderRow).toBe(false);
+    expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+      "data-table-sticky-header-active",
+      "false",
+    );
+  });
+
+  it("checks insertion without mutation and undoes or redoes the table and default together", () => {
+    const editor = createEditor("<p>Before</p><p>After</p>");
+    selectText(editor, "Before");
+    const original = editor.getJSON();
+    const initialState = editor.state;
+    const onTransaction = vi.fn();
+    editor.on("transaction", onTransaction);
+    expect(editor.can().insertTable()).toBe(true);
+    expect(onTransaction).not.toHaveBeenCalled();
+    expect(editor.state).toBe(initialState);
+    expect(editor.getJSON()).toEqual(original);
+    expect(undoDepth(editor.state)).toBe(0);
+    expect(redoDepth(editor.state)).toBe(0);
+
+    expect(editor.commands.insertTable()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+    expect(undoDepth(editor.state)).toBe(1);
+    expect(editor.commands.undo()).toBe(true);
+    expect(editor.getJSON()).toEqual(original);
+    expect(editor.commands.redo()).toBe(true);
+    expect(tableNodes(editor.state.doc)).toHaveLength(1);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+    expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+      "data-table-sticky-header-active",
+      "true",
+    );
+  });
+
+  it("preserves opting out after creation through JSON, HTML, and Markdown", () => {
+    const editor = createEditor("<p>Before</p><p>After</p>");
+    selectText(editor, "Before");
+    editor.commands.insertTable();
+    expect(editor.commands.setTableStickyHeaderRow(false)).toBe(true);
+    const json = editor.getJSON();
+    expect(collectTables(json)[0].attrs?.stickyHeaderRow).toBe(false);
+    const html = editor.getHTML();
+    expect(html).not.toContain("data-table-sticky-header-row");
+    const markdown = html2md(html);
+    expect(markdown).not.toContain("<table");
+    for (const content of [html, md2html(markdown)]) {
+      const restored = createEditor(content, false);
+      expect(tableNodes(restored.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+      expect(restored.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+        "data-table-sticky-header-active",
+        "false",
+      );
+    }
+    const restoredJsonEditor = createEditor();
+    restoredJsonEditor.commands.setContent(json);
+    expect(tableNodes(restoredJsonEditor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+  });
+
+  it.each([undefined, false])(
+    "keeps legacy JSON with preference %s off when loaded",
+    (stickyHeaderRow) => {
+      const json = generateJSON(tableHtml(), createScribeSchemaExtensions());
+      const table = collectTables(json)[0];
+      if (stickyHeaderRow === undefined) {
+        delete table.attrs!.stickyHeaderRow;
+      } else {
+        table.attrs!.stickyHeaderRow = stickyHeaderRow;
+      }
+      const editor = createEditor("<p>Load content</p>");
+      editor.commands.setContent(json);
+      expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+      expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+        "data-table-sticky-header-active",
+        "false",
+      );
+    },
+  );
+});
+
 describe("explicit table layout", () => {
   it("changes only the selected table and retains authored widths, rich content, and surrounding blocks", () => {
     const editor = createEditor();

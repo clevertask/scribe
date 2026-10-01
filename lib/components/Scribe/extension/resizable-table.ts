@@ -27,7 +27,7 @@ declare module "@tiptap/core" {
   }
 }
 
-const selectedTable = (state: EditorState) => {
+const selectedTable = (state: Pick<EditorState, "selection">) => {
   if (
     state.selection instanceof NodeSelection &&
     state.selection.node.type.spec.tableRole === "table"
@@ -193,7 +193,20 @@ export const ScribeTable = Table.extend({
             return false;
           }
 
-          return parentCommands?.insertTable?.(options)(props) ?? false;
+          const inserted = parentCommands?.insertTable?.(options)(props) ?? false;
+
+          if (inserted && props.dispatch) {
+            // Default new headed tables without changing imported or saved choices.
+            const table = selectedTable(props.tr);
+            if (table && tableHasHeaderRow(table.node)) {
+              props.tr.setNodeMarkup(table.position, undefined, {
+                ...table.node.attrs,
+                stickyHeaderRow: true,
+              });
+            }
+          }
+
+          return inserted;
         },
     };
   },

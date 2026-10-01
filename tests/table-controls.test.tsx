@@ -129,7 +129,7 @@ const closeTableLayout = async () => {
 };
 
 describe("Scribe table controls", () => {
-  it("inserts a three-by-three table with a header row from the slash command", () => {
+  it("inserts a headed table with sticky headers by default and preserves an explicit opt-out", async () => {
     const editor = renderScribe("<p>/table</p>");
     const tableItem = getSuggestionItems({ query: "table", editor }).find(
       (item) => item.title === "Table",
@@ -153,6 +153,37 @@ describe("Scribe table controls", () => {
     expect(table?.childCount).toBe(3);
     expect(table?.firstChild?.childCount).toBe(3);
     table?.firstChild?.forEach((cell) => expect(cell.type.name).toBe("tableHeader"));
+    expect(table?.attrs).toMatchObject({ stickyHeaderRow: true, limitHeight: false });
+    await openTableLayout();
+    const stickyOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
+    expect(stickyOption).toHaveAttribute("aria-checked", "true");
+    expect(stickyOption).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByRole("menuitemcheckbox", { name: "Limit height" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+    fireEvent.click(stickyOption);
+    await waitFor(() => {
+      expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(false);
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+
+    const savedHtml = editor.getHTML();
+    const cellPosition = editor.state.selection.from;
+    expect(savedHtml).not.toContain('data-table-sticky-header-row="true"');
+    act(() => {
+      editor.commands.setContent(savedHtml);
+      editor.commands.setTextSelection(cellPosition);
+      editor.view.focus();
+    });
+    await openTableLayout();
+    const restoredOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
+    expect(restoredOption).toHaveAttribute("aria-checked", "false");
+    expect(restoredOption).not.toHaveAttribute("aria-disabled");
+    expect(findTable(editor)?.node.attrs).toMatchObject({
+      stickyHeaderRow: false,
+      limitHeight: false,
+    });
   });
 
   it("hides the Table slash command inside a table and keeps it available outside", () => {
