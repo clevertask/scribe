@@ -128,11 +128,13 @@ describe("headless Scribe schema", () => {
       const schema = getSchema(headlessExtensions);
       const parsed = schema.nodeFromJSON(content);
       expect(() => parsed.check()).not.toThrow();
-      expect(
-        schema
-          .nodeFromJSON(generateJSON(generateHTML(content, headlessExtensions), headlessExtensions))
-          .eq(parsed),
-      ).toBe(true);
+      const renderedHtml = generateHTML(content, headlessExtensions);
+      if (table.attrs?.stickyHeaderRow) {
+        expect(renderedHtml).toContain('data-table-sticky-header-active="true"');
+      }
+      expect(schema.nodeFromJSON(generateJSON(renderedHtml, headlessExtensions)).eq(parsed)).toBe(
+        true,
+      );
     }
   });
 

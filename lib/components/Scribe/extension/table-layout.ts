@@ -27,7 +27,7 @@ export const tableHasHeaderRow = (table: ProseMirrorNode) => {
 };
 
 export const tableHasStickyHeader = (node: ProseMirrorNode) =>
-  node.attrs.stickyHeaderRow === true && node.attrs.limitHeight === true && tableHasHeaderRow(node);
+  node.attrs.stickyHeaderRow === true && tableHasHeaderRow(node);
 
 export const tableLayoutAttributes = (node: ProseMirrorNode) => ({
   "data-table-layout": normalizeTableLayout(node.attrs.tableLayout),
@@ -80,6 +80,10 @@ export class ScribeTableView extends TableView {
     for (const [name, value] of Object.entries(tableLayoutAttributes(this.node))) {
       this.dom.setAttribute(name, value);
       this.table.setAttribute(name, value);
+    }
+
+    if (!tableHasStickyHeader(this.node) || this.node.attrs.limitHeight === true) {
+      this.dom.style.removeProperty("--scribe-table-sticky-header-top");
     }
 
     // Rebuild column presentation from authored widths so changing modes never

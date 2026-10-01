@@ -39,8 +39,7 @@ const TableLayoutOptions: FC<TableLayoutOptionsProps> = ({
 }) => {
   const returnFocusToEditor = useRef(false);
   const stickyHeaderHelpId = useId();
-  const stickyHeaderHelp =
-    !limitHeight || !hasHeaderRow ? "Requires Limit height and a header row." : undefined;
+  const stickyHeaderHelp = !hasHeaderRow ? "Requires a header row." : undefined;
 
   return (
     <DropdownMenu.Root

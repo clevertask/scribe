@@ -402,29 +402,46 @@ describe("Scribe table controls", () => {
     });
   });
 
-  it("only enables sticky headers after Limit height is explicitly enabled", async () => {
+  it("toggles sticky headers independently of Limit height", async () => {
     const editor = renderScribe(TABLE_CONTENT);
     selectText(editor, "Cell 1");
     await openTableLayout();
 
     const stickyOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
-    expect(stickyOption).toHaveAttribute("aria-disabled", "true");
-    expect(stickyOption).toHaveAccessibleDescription("Requires Limit height and a header row.");
+    expect(stickyOption).not.toHaveAttribute("aria-disabled");
+    expect(stickyOption).not.toHaveAttribute("aria-describedby");
     fireEvent.click(stickyOption);
-    expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(false);
-    expect(screen.getByRole("menu")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(findTable(editor)?.node.attrs).toMatchObject({
+        limitHeight: false,
+        stickyHeaderRow: true,
+      });
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+
+    await openTableLayout();
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Limit height" }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    await openTableLayout();
+    const enabledOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
+    expect(enabledOption).toHaveAttribute("aria-checked", "true");
+    expect(enabledOption).not.toHaveAttribute("aria-disabled");
+    expect(findTable(editor)?.node.attrs).toMatchObject({
+      limitHeight: true,
+      stickyHeaderRow: true,
+    });
 
     fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Limit height" }));
     await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
     await openTableLayout();
-
-    const enabledOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
-    expect(enabledOption).not.toHaveAttribute("aria-disabled");
-    fireEvent.click(enabledOption);
+    const unlimitedOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
+    expect(unlimitedOption).toHaveAttribute("aria-checked", "true");
+    expect(unlimitedOption).not.toHaveAttribute("aria-disabled");
+    fireEvent.click(unlimitedOption);
     await waitFor(() => {
       expect(findTable(editor)?.node.attrs).toMatchObject({
-        limitHeight: true,
-        stickyHeaderRow: true,
+        limitHeight: false,
+        stickyHeaderRow: false,
       });
       expect(editor.view.hasFocus()).toBe(true);
     });
@@ -432,7 +449,7 @@ describe("Scribe table controls", () => {
 
   it("requires a real top header row and keeps mixed rows unchanged", async () => {
     const editor = renderScribe(`
-      <table data-table-limit-height="true"><tbody>
+      <table><tbody>
         <tr><th>Partial heading</th><td>Ordinary first-row cell</td></tr>
         <tr><td>Body cell</td><td>Other body cell</td></tr>
       </tbody></table>
@@ -442,18 +459,16 @@ describe("Scribe table controls", () => {
 
     const stickyOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
     expect(stickyOption).toHaveAttribute("aria-disabled", "true");
+    expect(stickyOption).toHaveAccessibleDescription("Requires a header row.");
     fireEvent.click(stickyOption);
     expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(false);
     expect(findTable(editor)?.node.firstChild?.child(0).type.name).toBe("tableHeader");
     expect(findTable(editor)?.node.firstChild?.child(1).type.name).toBe("tableCell");
   });
 
-  it("retains a checked sticky preference when height or header prerequisites disappear", async () => {
+  it("retains a checked sticky preference when the header row is removed and restored", async () => {
     const editor = renderScribe(
-      TABLE_CONTENT.replace(
-        "<table>",
-        '<table data-table-limit-height="true" data-table-sticky-header-row="true">',
-      ),
+      TABLE_CONTENT.replace("<table>", '<table data-table-sticky-header-row="true">'),
     );
     selectText(editor, "Header 1");
     await openTableLayout();
@@ -462,19 +477,7 @@ describe("Scribe table controls", () => {
       "true",
     );
 
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Limit height" }));
-    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
-    await openTableLayout();
-    const heightDisabledOption = screen.getByRole("menuitemcheckbox", {
-      name: "Sticky header row",
-    });
-    expect(heightDisabledOption).toHaveAttribute("aria-checked", "true");
-    expect(heightDisabledOption).toHaveAttribute("aria-disabled", "true");
-    fireEvent.click(heightDisabledOption);
-    expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(true);
-
-    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: "Limit height" }));
-    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    await closeTableLayout();
     const toolbar = await screen.findByRole("toolbar", { name: "Table controls" });
     fireEvent.click(within(toolbar).getByRole("button", { name: "Toggle header row" }));
     await openTableLayout();
@@ -483,6 +486,8 @@ describe("Scribe table controls", () => {
     });
     expect(headerDisabledOption).toHaveAttribute("aria-checked", "true");
     expect(headerDisabledOption).toHaveAttribute("aria-disabled", "true");
+    expect(headerDisabledOption).toHaveAccessibleDescription("Requires a header row.");
+    fireEvent.click(headerDisabledOption);
     expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(true);
     await closeTableLayout();
 
@@ -491,12 +496,11 @@ describe("Scribe table controls", () => {
     const restoredOption = screen.getByRole("menuitemcheckbox", { name: "Sticky header row" });
     expect(restoredOption).toHaveAttribute("aria-checked", "true");
     expect(restoredOption).not.toHaveAttribute("aria-disabled");
+    expect(findTable(editor)?.node.attrs.limitHeight).toBe(false);
   });
 
   it("supports keyboard toggling sticky headers and returns focus to the active cell", async () => {
-    const editor = renderScribe(
-      TABLE_CONTENT.replace("<table>", '<table data-table-limit-height="true">'),
-    );
+    const editor = renderScribe(TABLE_CONTENT);
     selectText(editor, "Cell 1");
     const selectionBefore = editor.state.selection.toJSON();
     const toolbar = await screen.findByRole("toolbar", { name: "Table controls" });
@@ -526,7 +530,7 @@ describe("Scribe table controls", () => {
 
   it("reads and changes only the selected table's sticky preference", async () => {
     const editor = renderScribe(`
-      <table data-table-limit-height="true" data-table-sticky-header-row="true"><tbody>
+      <table data-table-sticky-header-row="true"><tbody>
         <tr><th>First heading</th></tr><tr><td>First body</td></tr>
       </tbody></table>
       <p>Between tables</p>
@@ -556,9 +560,7 @@ describe("Scribe table controls", () => {
   });
 
   it("disables the sticky option if the editor becomes read-only", async () => {
-    const editor = renderScribe(
-      TABLE_CONTENT.replace("<table>", '<table data-table-limit-height="true">'),
-    );
+    const editor = renderScribe(TABLE_CONTENT);
     selectText(editor, "Cell 1");
     await openTableLayout();
     act(() => editor.setEditable(false));

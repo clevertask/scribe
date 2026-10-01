@@ -1,7 +1,7 @@
 import { mergeAttributes } from "@tiptap/core";
 import { Table } from "@tiptap/extension-table";
 import type { ResolvedPos } from "@tiptap/pm/model";
-import { NodeSelection, Plugin, type EditorState, type Selection } from "@tiptap/pm/state";
+import { NodeSelection, type EditorState, type Selection } from "@tiptap/pm/state";
 import { columnResizing, columnResizingPluginKey, tableEditing } from "@tiptap/pm/tables";
 import {
   normalizeTableLayout,
@@ -13,7 +13,7 @@ import {
   tableLayoutAttributes,
   type ScribeTableLayout,
 } from "./table-layout";
-import { scrollSelectionBelowStickyHeader } from "./table-sticky-header";
+import { createStickyTableHeaderPlugin } from "./table-sticky-header";
 
 export type { ScribeTableLayout } from "./table-layout";
 
@@ -172,7 +172,7 @@ export const ScribeTable = Table.extend({
             !editor.isEditable ||
             !table ||
             typeof sticky !== "boolean" ||
-            (sticky && (table.node.attrs.limitHeight !== true || !tableHasHeaderRow(table.node)))
+            (sticky && !tableHasHeaderRow(table.node))
           ) {
             return false;
           }
@@ -263,11 +263,7 @@ export const ScribeTable = Table.extend({
       tableEditing({
         allowTableNodeSelection: this.options.allowTableNodeSelection,
       }),
-      new Plugin({
-        props: {
-          handleScrollToSelection: scrollSelectionBelowStickyHeader,
-        },
-      }),
+      createStickyTableHeaderPlugin(),
     ];
   },
 

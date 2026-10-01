@@ -220,7 +220,6 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
           currentEditor.isEditable &&
           hasTableStickyHeaderCommand &&
           hasHeaderRow &&
-          limitHeight &&
           can.setTableStickyHeaderRow(!stickyHeaderRow),
         tableLayout: (tableContext?.node.attrs.tableLayout ?? "auto") as ScribeTableLayout,
         limitHeight,

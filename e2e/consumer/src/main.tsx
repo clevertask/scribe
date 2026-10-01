@@ -72,9 +72,9 @@ const tableLayoutFixture = `
   ${tableFixture}
 `;
 
-const tableStickyHeaderFixture = `
+const tableStickyHeaderFixture = (limitHeight: boolean) => `
   <p>Sticky header example</p>
-  <table data-table-layout="scroll" data-table-limit-height="true"><tbody>
+  <table data-table-layout="scroll" data-table-limit-height="${limitHeight}"><tbody>
     <tr><th colwidth="180"><p>Sticky project</p></th><th colwidth="180"><p>Owner</p><p>Accountable person</p></th><th colwidth="180"><p>Stage</p></th></tr>
     ${Array.from({ length: 20 }, (_, index) => `<tr><td colwidth="180"><p>Sticky project ${index + 1}</p></td><td colwidth="180"><p><strong>Owner ${index + 1}</strong></p></td><td colwidth="180"><p>Stage ${index + 1}</p></td></tr>`).join("")}
   </tbody></table>
@@ -145,6 +145,7 @@ function App() {
   const showTableFixture = searchParams.get("table") === "true";
   const showTableLayoutFixture = searchParams.get("tableLayoutFixture") === "true";
   const showTableStickyHeaderFixture = searchParams.get("tableStickyHeaderFixture") === "true";
+  const testUncappedStickyHeader = searchParams.get("uncappedStickyHeader") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
   const testNestedScroll = searchParams.get("nestedScroll") === "true";
@@ -191,7 +192,7 @@ function App() {
         content={
           reloadedTableHtml ??
           (showTableStickyHeaderFixture
-            ? tableStickyHeaderFixture
+            ? tableStickyHeaderFixture(!testUncappedStickyHeader)
             : showTableLayoutFixture
               ? tableLayoutFixture
               : showConsumerDecoration

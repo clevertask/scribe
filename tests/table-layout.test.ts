@@ -189,31 +189,35 @@ describe("explicit table layout", () => {
 });
 
 describe("sticky table header preference", () => {
-  it("enables only on a height-limited table whose entire first row contains header cells", () => {
-    const headerless = headerlessTableHtml('data-table-limit-height="true"');
-    const mixedHeader = tableHtml('data-table-limit-height="true"').replace(
-      "<th><p>Notes</p></th>",
-      "<td><p>Notes</p></td>",
-    );
-    for (const content of [tableHtml(), headerless, mixedHeader]) {
-      const editor = createEditor(content);
-      selectText(editor, "First cell");
-      const original = editor.getJSON();
-      expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
-      expect(editor.commands.setTableStickyHeaderRow(true)).toBe(false);
-      expect(editor.getJSON()).toEqual(original);
-    }
+  it.each([false, true])(
+    "enables with Limit height %s only when the entire first row contains header cells",
+    (limitHeight) => {
+      const attributes = `data-table-limit-height="${limitHeight}"`;
+      const headerless = headerlessTableHtml(attributes);
+      const mixedHeader = tableHtml(attributes).replace(
+        "<th><p>Notes</p></th>",
+        "<td><p>Notes</p></td>",
+      );
+      for (const content of [headerless, mixedHeader]) {
+        const editor = createEditor(content);
+        selectText(editor, "First cell");
+        const original = editor.getJSON();
+        expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+        expect(editor.commands.setTableStickyHeaderRow(true)).toBe(false);
+        expect(editor.getJSON()).toEqual(original);
+      }
 
-    const editor = createEditor(tableHtml('data-table-limit-height="true"'));
-    selectText(editor, "First cell");
-    expect(editor.can().setTableStickyHeaderRow(true)).toBe(true);
-    expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
-    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
-  });
+      const editor = createEditor(tableHtml(attributes));
+      selectText(editor, "First cell");
+      expect(editor.can().setTableStickyHeaderRow(true)).toBe(true);
+      expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
+      expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+    },
+  );
 
   it("changes the selected table without changing its content or a sibling table", () => {
     const editor = createEditor(
-      `<p>Before</p>${tableHtml('data-table-limit-height="true"', "First", true)}<p>Between</p>${tableHtml('data-table-limit-height="true"', "Second")}<p>After</p>`,
+      `<p>Before</p>${tableHtml("", "First", true)}<p>Between</p>${tableHtml('data-table-limit-height="true"', "Second")}<p>After</p>`,
     );
     const original = editor.state.doc;
     const [first, second] = tableNodes(original);
@@ -237,7 +241,7 @@ describe("sticky table header preference", () => {
   });
 
   it("checks availability without dispatching or adding undo history, and supports undo and redo", () => {
-    const editor = createEditor(`${tableHtml('data-table-limit-height="true"')}<p>After</p>`);
+    const editor = createEditor(`${tableHtml()}<p>After</p>`);
     selectText(editor, "First cell");
     const initialState = editor.state;
     const onTransaction = vi.fn();
@@ -260,7 +264,7 @@ describe("sticky table header preference", () => {
 
   it("rejects changes outside a table and in read-only mode while retaining a saved preference", () => {
     const editor = createEditor(
-      `<p>Before</p>${tableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"')}<p>After</p>`,
+      `<p>Before</p>${tableHtml('data-table-sticky-header-row="true"')}<p>After</p>`,
     );
     const original = editor.getJSON();
     selectText(editor, "Before");
@@ -278,8 +282,8 @@ describe("sticky table header preference", () => {
     );
   });
 
-  it("retains the preference when the header or height limit is removed and reactivates when restored", () => {
-    const editor = createEditor(tableHtml('data-table-limit-height="true"'));
+  it("stays active when the height limit changes and retains the preference while a header row is removed", () => {
+    const editor = createEditor(tableHtml());
     selectText(editor, "First cell");
     editor.commands.setTableStickyHeaderRow(true);
     const assertSticky = (active: boolean) => {
@@ -290,30 +294,31 @@ describe("sticky table header preference", () => {
       );
     };
     assertSticky(true);
-    expect(editor.commands.toggleHeaderRow()).toBe(true);
-    assertSticky(false);
-    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
-    assertSticky(false);
-    expect(editor.commands.toggleHeaderRow()).toBe(true);
-    assertSticky(false);
     expect(editor.commands.setTableHeightLimit(true)).toBe(true);
     assertSticky(true);
     expect(editor.commands.setTableHeightLimit(false)).toBe(true);
+    assertSticky(true);
+    expect(editor.commands.toggleHeaderRow()).toBe(true);
     assertSticky(false);
     expect(editor.commands.setTableHeightLimit(true)).toBe(true);
+    assertSticky(false);
+    expect(editor.commands.toggleHeaderRow()).toBe(true);
+    assertSticky(true);
+    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
     assertSticky(true);
   });
 
   it.each([
-    ["no height limit", tableHtml('data-table-sticky-header-row="true"')],
+    ["no height limit", tableHtml('data-table-sticky-header-row="true"'), true],
     [
       "no header row",
       headerlessTableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"'),
+      false,
     ],
-  ])("can disable a saved preference with %s", (_description, content) => {
+  ] as const)("can disable a saved preference with %s", (_description, content, canEnable) => {
     const editor = createEditor(content);
     selectText(editor, "First cell");
-    expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(canEnable);
     expect(editor.can().setTableStickyHeaderRow(false)).toBe(true);
     expect(editor.commands.setTableStickyHeaderRow(false)).toBe(true);
     expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
@@ -329,7 +334,7 @@ describe("sticky table header preference", () => {
       ),
       true,
     ],
-    ["inactive without a height limit", tableHtml('data-table-sticky-header-row="true"'), false],
+    ["active without a height limit", tableHtml('data-table-sticky-header-row="true"'), true],
     [
       "inactive without a header row",
       headerlessTableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"'),
