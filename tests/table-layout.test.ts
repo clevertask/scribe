@@ -1,8 +1,9 @@
 import { generateHTML, generateJSON, getSchema, type JSONContent } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { redoDepth, undoDepth } from "@tiptap/pm/history";
 import { CellSelection } from "@tiptap/pm/tables";
 import type { Editor } from "@tiptap/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScribeEditor } from "../lib/main";
 import { createScribeSchemaExtensions } from "../lib/schema";
 import { html2md } from "../lib/utils/html-to-markdown";
@@ -14,6 +15,8 @@ const tableHtml = (attributes = "", prefix = "First", widths = false) => `
     <tr><td ${widths ? 'colwidth="180"' : ""}><p>${prefix} cell</p></td><td><p><strong>Keep formatting</strong></p></td></tr>
   </tbody></table>
 `;
+const headerlessTableHtml = (attributes: string) =>
+  tableHtml(attributes).replaceAll("<th", "<td").replaceAll("</th>", "</td>");
 const siblingTables = `<p>Before</p>${tableHtml("", "First", true)}<p>Between</p>${tableHtml("", "Second")}<p>After</p>`;
 const editors = new Set<Editor>();
 
@@ -131,9 +134,11 @@ describe("explicit table layout", () => {
     expect(tableNodes(editor.state.doc)[0].node.attrs).toMatchObject({
       tableLayout: "auto",
       limitHeight: false,
+      stickyHeaderRow: false,
     });
     expect(editor.getHTML()).not.toContain("data-table-layout");
     expect(editor.getHTML()).not.toContain("data-table-limit-height");
+    expect(editor.getHTML()).not.toContain("data-table-sticky-header");
     expect(html2md(editor.getHTML())).toContain("| First heading | Notes |");
     expect(html2md(editor.getHTML())).not.toContain("<table");
   });
@@ -181,4 +186,196 @@ describe("explicit table layout", () => {
     expect(editor.getHTML()).not.toContain("data-table-layout");
     expect(editor.getHTML()).not.toContain("data-table-limit-height");
   });
+});
+
+describe("sticky table header preference", () => {
+  it("enables only on a height-limited table whose entire first row contains header cells", () => {
+    const headerless = headerlessTableHtml('data-table-limit-height="true"');
+    const mixedHeader = tableHtml('data-table-limit-height="true"').replace(
+      "<th><p>Notes</p></th>",
+      "<td><p>Notes</p></td>",
+    );
+    for (const content of [tableHtml(), headerless, mixedHeader]) {
+      const editor = createEditor(content);
+      selectText(editor, "First cell");
+      const original = editor.getJSON();
+      expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+      expect(editor.commands.setTableStickyHeaderRow(true)).toBe(false);
+      expect(editor.getJSON()).toEqual(original);
+    }
+
+    const editor = createEditor(tableHtml('data-table-limit-height="true"'));
+    selectText(editor, "First cell");
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(true);
+    expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+  });
+
+  it("changes the selected table without changing its content or a sibling table", () => {
+    const editor = createEditor(
+      `<p>Before</p>${tableHtml('data-table-limit-height="true"', "First", true)}<p>Between</p>${tableHtml('data-table-limit-height="true"', "Second")}<p>After</p>`,
+    );
+    const original = editor.state.doc;
+    const [first, second] = tableNodes(original);
+    selectText(editor, "First cell");
+    expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
+    const [enabledFirst, unchangedSecond] = tableNodes(editor.state.doc);
+    expect(enabledFirst.node.attrs.stickyHeaderRow).toBe(true);
+    expect(enabledFirst.node.content.eq(first.node.content)).toBe(true);
+    expect(enabledFirst.node.firstChild?.firstChild?.attrs.colwidth).toEqual([180]);
+    expect(unchangedSecond.node).toBe(second.node);
+    expect(editor.state.doc.firstChild).toBe(original.firstChild);
+    expect(editor.state.doc.lastChild).toBe(original.lastChild);
+
+    selectText(editor, "Second cell");
+    expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
+    expect(editor.commands.setTableStickyHeaderRow(false)).toBe(true);
+    const [retainedFirst, disabledSecond] = tableNodes(editor.state.doc);
+    expect(retainedFirst.node).toBe(enabledFirst.node);
+    expect(disabledSecond.node.attrs.stickyHeaderRow).toBe(false);
+    expect(disabledSecond.node.content.eq(second.node.content)).toBe(true);
+  });
+
+  it("checks availability without dispatching or adding undo history, and supports undo and redo", () => {
+    const editor = createEditor(`${tableHtml('data-table-limit-height="true"')}<p>After</p>`);
+    selectText(editor, "First cell");
+    const initialState = editor.state;
+    const onTransaction = vi.fn();
+    editor.on("transaction", onTransaction);
+
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(true);
+    expect(editor.can().setTableStickyHeaderRow(false)).toBe(true);
+    expect(onTransaction).not.toHaveBeenCalled();
+    expect(editor.state).toBe(initialState);
+    expect(undoDepth(editor.state)).toBe(0);
+    expect(redoDepth(editor.state)).toBe(0);
+
+    expect(editor.commands.setTableStickyHeaderRow(true)).toBe(true);
+    expect(undoDepth(editor.state)).toBe(1);
+    expect(editor.commands.undo()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+    expect(editor.commands.redo()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+  });
+
+  it("rejects changes outside a table and in read-only mode while retaining a saved preference", () => {
+    const editor = createEditor(
+      `<p>Before</p>${tableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"')}<p>After</p>`,
+    );
+    const original = editor.getJSON();
+    selectText(editor, "Before");
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+    expect(editor.commands.setTableStickyHeaderRow(false)).toBe(false);
+    selectText(editor, "First cell");
+    editor.setEditable(false);
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+    expect(editor.can().setTableStickyHeaderRow(false)).toBe(false);
+    expect(editor.commands.setTableStickyHeaderRow(false)).toBe(false);
+    expect(editor.getJSON()).toEqual(original);
+    expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+      "data-table-sticky-header-active",
+      "true",
+    );
+  });
+
+  it("retains the preference when the header or height limit is removed and reactivates when restored", () => {
+    const editor = createEditor(tableHtml('data-table-limit-height="true"'));
+    selectText(editor, "First cell");
+    editor.commands.setTableStickyHeaderRow(true);
+    const assertSticky = (active: boolean) => {
+      expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(true);
+      expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+        "data-table-sticky-header-active",
+        String(active),
+      );
+    };
+    assertSticky(true);
+    expect(editor.commands.toggleHeaderRow()).toBe(true);
+    assertSticky(false);
+    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
+    assertSticky(false);
+    expect(editor.commands.toggleHeaderRow()).toBe(true);
+    assertSticky(false);
+    expect(editor.commands.setTableHeightLimit(true)).toBe(true);
+    assertSticky(true);
+    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
+    assertSticky(false);
+    expect(editor.commands.setTableHeightLimit(true)).toBe(true);
+    assertSticky(true);
+  });
+
+  it.each([
+    ["no height limit", tableHtml('data-table-sticky-header-row="true"')],
+    [
+      "no header row",
+      headerlessTableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"'),
+    ],
+  ])("can disable a saved preference with %s", (_description, content) => {
+    const editor = createEditor(content);
+    selectText(editor, "First cell");
+    expect(editor.can().setTableStickyHeaderRow(true)).toBe(false);
+    expect(editor.can().setTableStickyHeaderRow(false)).toBe(true);
+    expect(editor.commands.setTableStickyHeaderRow(false)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+  });
+
+  it.each([
+    [
+      "active",
+      tableHtml(
+        'data-table-limit-height="true" data-table-sticky-header-row="true"',
+        "First",
+        true,
+      ),
+      true,
+    ],
+    ["inactive without a height limit", tableHtml('data-table-sticky-header-row="true"'), false],
+    [
+      "inactive without a header row",
+      headerlessTableHtml('data-table-limit-height="true" data-table-sticky-header-row="true"'),
+      false,
+    ],
+  ])(
+    "round-trips the %s preference through JSON, HTML, Markdown, and read-only rendering",
+    (_description, content, active) => {
+      const editor = createEditor(content);
+      const json = editor.getJSON();
+      const extensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+      const schema = getSchema(extensions);
+      expect(() => schema.nodeFromJSON(json).check()).not.toThrow();
+      const html = generateHTML(json, extensions);
+      expect(html).toContain('data-table-sticky-header-row="true"');
+      expect(collectTables(generateJSON(html, extensions))[0]).toEqual(collectTables(json)[0]);
+      const markdown = html2md(html);
+      expect(markdown).toContain("<table");
+      expect(markdown).toContain('data-table-sticky-header-row="true"');
+      const restored = generateJSON(md2html(markdown), extensions);
+      expect(collectTables(restored)[0]).toEqual(collectTables(json)[0]);
+      expect(collectTables(restored)[0].attrs).not.toHaveProperty("stickyHeaderActive");
+      const readOnlyEditor = createEditor(md2html(markdown), false);
+      expect(readOnlyEditor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+        "data-table-sticky-header-active",
+        String(active),
+      );
+      expect(tableNodes(readOnlyEditor.state.doc)[0].node.content.toJSON()).toEqual(
+        tableNodes(editor.state.doc)[0].node.content.toJSON(),
+      );
+    },
+  );
+
+  it.each(["false", "unknown"])(
+    "treats %s as an unset HTML preference and derives active state from the document",
+    (value) => {
+      const editor = createEditor(
+        tableHtml(
+          `data-table-sticky-header-row="${value}" data-table-limit-height="true" data-table-sticky-header-active="true"`,
+        ),
+      );
+      expect(tableNodes(editor.state.doc)[0].node.attrs.stickyHeaderRow).toBe(false);
+      expect(editor.view.dom.querySelector(".tableWrapper")).toHaveAttribute(
+        "data-table-sticky-header-active",
+        "false",
+      );
+    },
+  );
 });

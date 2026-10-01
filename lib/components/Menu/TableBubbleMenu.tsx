@@ -1,5 +1,4 @@
 import { Flex, IconButton, Separator } from "@radix-ui/themes";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Editor, useEditorState } from "@tiptap/react";
 import {
   BubbleMenu as CoreBubbleMenu,
@@ -17,6 +16,7 @@ import {
 } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import type { ScribeTableLayout } from "../Scribe/extension/resizable-table";
+import { tableHasHeaderRow } from "../Scribe/extension/table-layout";
 import { getSelectionContextualMenuOwner } from "./contextualMenuOwner";
 import { getSelectionTableContext, tableBubbleMenuPluginKey } from "./tableBubbleMenuPlugin";
 import TableLayoutOptions from "./TableLayoutOptions";
@@ -67,8 +67,10 @@ const UNAVAILABLE_TABLE_STATE = {
   hasHeaderRow: false,
   canSetTableLayout: false,
   canSetTableHeightLimit: false,
+  canSetTableStickyHeaderRow: false,
   tableLayout: "auto" as ScribeTableLayout,
   limitHeight: false,
+  stickyHeaderRow: false,
 };
 const SCROLLABLE_OVERFLOW = /auto|overlay|scroll/;
 
@@ -97,24 +99,6 @@ const getScrollableAncestors = (element: HTMLElement) => {
   }
 
   return ancestors;
-};
-
-const tableHasHeaderRow = (table: ProseMirrorNode) => {
-  const firstRow = table.firstChild;
-
-  if (!firstRow || firstRow.childCount === 0) {
-    return false;
-  }
-
-  let hasOnlyHeaderCells = true;
-
-  firstRow.forEach((cell) => {
-    if (cell.type.name !== "tableHeader") {
-      hasOnlyHeaderCells = false;
-    }
-  });
-
-  return hasOnlyHeaderCells;
 };
 
 const TableControlIcon: FC<{ name: TableControlIconName }> = ({ name }) => {
@@ -203,6 +187,10 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
       typeof editor.commands.setTableHeightLimit === "function",
     [editor],
   );
+  const hasTableStickyHeaderCommand = useMemo(
+    () => typeof editor.commands.setTableStickyHeaderRow === "function",
+    [editor],
+  );
   const tableState = useEditorState({
     editor,
     selector: ({ editor: currentEditor }) => {
@@ -212,6 +200,9 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
 
       const tableContext = getSelectionTableContext(currentEditor.state);
       const can = currentEditor.can();
+      const hasHeaderRow = tableContext ? tableHasHeaderRow(tableContext.node) : false;
+      const limitHeight = tableContext?.node.attrs.limitHeight === true;
+      const stickyHeaderRow = tableContext?.node.attrs.stickyHeaderRow === true;
 
       return {
         canAddColumnAfter: can.addColumnAfter(),
@@ -222,11 +213,18 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         canDeleteRow: can.deleteRow(),
         canDeleteTable: can.deleteTable(),
         canToggleHeaderRow: can.toggleHeaderRow(),
-        hasHeaderRow: tableContext ? tableHasHeaderRow(tableContext.node) : false,
+        hasHeaderRow,
         canSetTableLayout: hasTableLayoutCommands && can.setTableLayout("auto"),
         canSetTableHeightLimit: hasTableLayoutCommands && can.setTableHeightLimit(true),
+        canSetTableStickyHeaderRow:
+          currentEditor.isEditable &&
+          hasTableStickyHeaderCommand &&
+          hasHeaderRow &&
+          limitHeight &&
+          can.setTableStickyHeaderRow(!stickyHeaderRow),
         tableLayout: (tableContext?.node.attrs.tableLayout ?? "auto") as ScribeTableLayout,
-        limitHeight: tableContext?.node.attrs.limitHeight === true,
+        limitHeight,
+        stickyHeaderRow,
       };
     },
   });
@@ -522,8 +520,12 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
                   editor={editor}
                   layout={tableState.tableLayout}
                   limitHeight={tableState.limitHeight}
+                  stickyHeaderRow={tableState.stickyHeaderRow}
+                  hasHeaderRow={tableState.hasHeaderRow}
                   canSetLayout={tableState.canSetTableLayout}
                   canSetHeightLimit={tableState.canSetTableHeightLimit}
+                  hasStickyHeaderCommand={hasTableStickyHeaderCommand}
+                  canSetStickyHeaderRow={tableState.canSetTableStickyHeaderRow}
                   open={layoutMenuOpen}
                   onOpenChange={setLayoutMenuOpen}
                 />

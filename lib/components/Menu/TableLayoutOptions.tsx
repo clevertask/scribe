@@ -1,6 +1,6 @@
 import { DropdownMenu, IconButton } from "@radix-ui/themes";
 import { Editor } from "@tiptap/react";
-import { FC, useRef } from "react";
+import { FC, useId, useRef } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import type { ScribeTableLayout } from "../Scribe/extension/resizable-table";
 
@@ -8,8 +8,12 @@ interface TableLayoutOptionsProps {
   editor: Editor;
   layout: ScribeTableLayout;
   limitHeight: boolean;
+  stickyHeaderRow: boolean;
+  hasHeaderRow: boolean;
   canSetLayout: boolean;
   canSetHeightLimit: boolean;
+  hasStickyHeaderCommand: boolean;
+  canSetStickyHeaderRow: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -24,12 +28,19 @@ const TableLayoutOptions: FC<TableLayoutOptionsProps> = ({
   editor,
   layout,
   limitHeight,
+  stickyHeaderRow,
+  hasHeaderRow,
   canSetLayout,
   canSetHeightLimit,
+  hasStickyHeaderCommand,
+  canSetStickyHeaderRow,
   open,
   onOpenChange,
 }) => {
   const returnFocusToEditor = useRef(false);
+  const stickyHeaderHelpId = useId();
+  const stickyHeaderHelp =
+    !limitHeight || !hasHeaderRow ? "Requires Limit height and a header row." : undefined;
 
   return (
     <DropdownMenu.Root
@@ -117,6 +128,29 @@ const TableLayoutOptions: FC<TableLayoutOptionsProps> = ({
         >
           Limit height
         </DropdownMenu.CheckboxItem>
+        {hasStickyHeaderCommand ? (
+          <>
+            <DropdownMenu.CheckboxItem
+              checked={stickyHeaderRow}
+              disabled={!canSetStickyHeaderRow}
+              aria-describedby={stickyHeaderHelp ? stickyHeaderHelpId : undefined}
+              onCheckedChange={(checked) => {
+                returnFocusToEditor.current = true;
+                editor.commands.setTableStickyHeaderRow(checked);
+              }}
+            >
+              Sticky header row
+            </DropdownMenu.CheckboxItem>
+            {stickyHeaderHelp ? (
+              <DropdownMenu.Label
+                id={stickyHeaderHelpId}
+                style={{ height: "auto", maxWidth: 220, whiteSpace: "normal" }}
+              >
+                {stickyHeaderHelp}
+              </DropdownMenu.Label>
+            ) : null}
+          </>
+        ) : null}
       </DropdownMenu.Content>
     </DropdownMenu.Root>
   );

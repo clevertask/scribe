@@ -432,6 +432,24 @@
   overflow-y: auto;
 }
 
+.scribe-content .tiptap .tableWrapper[data-table-sticky-header-active="true"] {
+  isolation: isolate;
+}
+
+.scribe-content
+  .tiptap
+  .tableWrapper[data-table-sticky-header-active="true"]
+  > table
+  > tbody
+  > tr:first-child
+  > th {
+  background: var(--gray-3);
+  box-shadow: inset 0 -1px var(--gray-6);
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
 .scribe-content .tiptap th,
 .scribe-content .tiptap td {
   border: 1px solid var(--gray-6);

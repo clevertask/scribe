@@ -105,6 +105,37 @@ describe("headless Scribe schema", () => {
     });
   });
 
+  it("shares sticky header defaults and persisted preferences with the interactive schema", () => {
+    for (const attributes of [
+      "",
+      'data-table-layout="scroll" data-table-limit-height="true" data-table-sticky-header-row="true"',
+      'data-table-sticky-header-row="true" data-table-sticky-header-active="true"',
+    ]) {
+      const html = `<table ${attributes}><tbody><tr><th><p>Project</p></th><th><p>Owner</p></th></tr><tr><td colwidth="180"><p>Scribe</p></td><td><p>Roberto</p></td></tr></tbody></table>`;
+      const headlessExtensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+      const interactiveExtensions = initExtensions({ enableUndoRedo: false });
+      const content = generateJSON(html, headlessExtensions);
+      expect(content).toEqual(generateJSON(html, interactiveExtensions));
+      const table = collectNodes(content, "table")[0];
+      expect(table.attrs?.stickyHeaderRow).toBe(
+        attributes.includes('data-table-sticky-header-row="true"'),
+      );
+      expect(Object.keys(table.attrs ?? {}).sort()).toEqual([
+        "limitHeight",
+        "stickyHeaderRow",
+        "tableLayout",
+      ]);
+      const schema = getSchema(headlessExtensions);
+      const parsed = schema.nodeFromJSON(content);
+      expect(() => parsed.check()).not.toThrow();
+      expect(
+        schema
+          .nodeFromJSON(generateJSON(generateHTML(content, headlessExtensions), headlessExtensions))
+          .eq(parsed),
+      ).toBe(true);
+    }
+  });
+
   it("preserves inline code combined with other text marks", () => {
     const html = [
       "<p>",

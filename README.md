@@ -225,9 +225,11 @@ The **Table layout** menu stores each table's explicit layout choice. **Auto** k
 
 **Limit height** is an independent option that caps the table at 360px and enables vertical scrolling. Override `--scribe-table-max-height` on the editor's container to change the cap. Layout and height choices apply in both editing and read-only views, and remain intact when content is saved and loaded as JSON, HTML, or Markdown. Hosts can also use `editor.commands.setTableLayout("scroll")` (accepts `"auto"`, `"fit"`, or `"scroll"`) and `editor.commands.setTableHeightLimit(true)` (accepts a boolean) while the selection is inside the table.
 
+**Sticky header row** keeps the first row visible while scrolling inside a height-limited table. Enable it in **Table layout** after turning on **Limit height** and making the entire first row header cells. The preference stays saved if either prerequisite is removed and becomes active again when both are restored. It works in editing and read-only views. Hosts can use `editor.commands.setTableStickyHeaderRow(true)` to enable it or `false` to clear it while the selection is inside an editable table.
+
 Keyboard users can press `Alt + F10` while editing a table to focus its controls, use the arrow, Home, and End keys to move between actions, and press Escape to return to the active cell.
 
-Simple headed tables serialize as GFM Markdown. Tables with explicit layout or height options, merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
+Simple headed tables serialize as GFM Markdown. Tables with explicit layout, height, or sticky-header preferences (including an inactive sticky preference), merged cells, multiple blocks in a cell, resized columns, or other structures that GFM cannot represent are kept as sanitized raw HTML inside the Markdown output so their structure is not silently lost.
 
 Scribe's `insertTable` command and `/table` action do not create a table while the selection is
 already inside another table. Existing documents containing nested tables remain loadable so old
