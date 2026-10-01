@@ -16,8 +16,10 @@ import {
   useState,
 } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
+import type { ScribeTableLayout } from "../Scribe/extension/resizable-table";
 import { getSelectionContextualMenuOwner } from "./contextualMenuOwner";
 import { getSelectionTableContext, tableBubbleMenuPluginKey } from "./tableBubbleMenuPlugin";
+import TableLayoutOptions from "./TableLayoutOptions";
 
 export interface TableBubbleMenuProps {
   editor: Editor;
@@ -63,6 +65,10 @@ const UNAVAILABLE_TABLE_STATE = {
   canDeleteTable: false,
   canToggleHeaderRow: false,
   hasHeaderRow: false,
+  canSetTableLayout: false,
+  canSetTableHeightLimit: false,
+  tableLayout: "auto" as ScribeTableLayout,
+  limitHeight: false,
 };
 const SCROLLABLE_OVERFLOW = /auto|overlay|scroll/;
 
@@ -186,8 +192,15 @@ const TableControlIcon: FC<{ name: TableControlIconName }> = ({ name }) => {
 const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [menuMaxWidth, setMenuMaxWidth] = useState<number | null>(null);
+  const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
   const hasTableCommands = useMemo(
     () => TABLE_COMMAND_NAMES.every((name) => typeof editor.commands[name] === "function"),
+    [editor],
+  );
+  const hasTableLayoutCommands = useMemo(
+    () =>
+      typeof editor.commands.setTableLayout === "function" &&
+      typeof editor.commands.setTableHeightLimit === "function",
     [editor],
   );
   const tableState = useEditorState({
@@ -210,13 +223,18 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         canDeleteTable: can.deleteTable(),
         canToggleHeaderRow: can.toggleHeaderRow(),
         hasHeaderRow: tableContext ? tableHasHeaderRow(tableContext.node) : false,
+        canSetTableLayout: hasTableLayoutCommands && can.setTableLayout("auto"),
+        canSetTableHeightLimit: hasTableLayoutCommands && can.setTableHeightLimit(true),
+        tableLayout: (tableContext?.node.attrs.tableLayout ?? "auto") as ScribeTableLayout,
+        limitHeight: tableContext?.node.attrs.limitHeight === true,
       };
     },
   });
 
   const handleShouldShow = useCallback<TableBubbleMenuShouldShow>(
     ({ editor: currentEditor, element, state, view }) => {
-      const hasFocus = view.hasFocus() || element.contains(element.ownerDocument.activeElement);
+      const hasFocus =
+        layoutMenuOpen || view.hasFocus() || element.contains(element.ownerDocument.activeElement);
 
       return (
         hasTableCommands &&
@@ -225,7 +243,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         getSelectionContextualMenuOwner(state) === "table"
       );
     },
-    [hasTableCommands],
+    [hasTableCommands, layoutMenuOpen],
   );
   const getReferencedVirtualElement = useCallback(() => {
     if (editor.isDestroyed) {
@@ -497,6 +515,20 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
           <Flex key={group[0]?.label} align="center" gap="1">
             {groupIndex > 0 ? (
               <Separator orientation="vertical" decorative style={{ height: 20 }} />
+            ) : null}
+            {groupIndex === groups.length - 1 && hasTableLayoutCommands ? (
+              <>
+                <TableLayoutOptions
+                  editor={editor}
+                  layout={tableState.tableLayout}
+                  limitHeight={tableState.limitHeight}
+                  canSetLayout={tableState.canSetTableLayout}
+                  canSetHeightLimit={tableState.canSetTableHeightLimit}
+                  open={layoutMenuOpen}
+                  onOpenChange={setLayoutMenuOpen}
+                />
+                <Separator orientation="vertical" decorative style={{ height: 20 }} />
+              </>
             ) : null}
             {group.map((item) => (
               <IconButton
