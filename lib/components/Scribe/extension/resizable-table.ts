@@ -9,9 +9,11 @@ import {
   scrollTablePresentation,
   SCRIBE_TABLE_LAYOUTS,
   ScribeTableView,
+  tableHasHeaderRow,
   tableLayoutAttributes,
   type ScribeTableLayout,
 } from "./table-layout";
+import { createStickyTableHeaderPlugin } from "./table-sticky-header";
 
 export type { ScribeTableLayout } from "./table-layout";
 
@@ -20,11 +22,12 @@ declare module "@tiptap/core" {
     scribeTableLayout: {
       setTableLayout: (layout: ScribeTableLayout) => ReturnType;
       setTableHeightLimit: (limit: boolean) => ReturnType;
+      setTableStickyHeaderRow: (sticky: boolean) => ReturnType;
     };
   }
 }
 
-const selectedTable = (state: EditorState) => {
+const selectedTable = (state: Pick<EditorState, "selection">) => {
   if (
     state.selection instanceof NodeSelection &&
     state.selection.node.type.spec.tableRole === "table"
@@ -85,6 +88,12 @@ export const ScribeTable = Table.extend({
         renderHTML: ({ limitHeight }) =>
           limitHeight === true ? { "data-table-limit-height": "true" } : {},
       },
+      stickyHeaderRow: {
+        default: false,
+        parseHTML: (element) => element.getAttribute("data-table-sticky-header-row") === "true",
+        renderHTML: ({ stickyHeaderRow }) =>
+          stickyHeaderRow === true ? { "data-table-sticky-header-row": "true" } : {},
+      },
     };
   },
 
@@ -103,7 +112,9 @@ export const ScribeTable = Table.extend({
       ];
     }
 
-    return props.node.attrs.tableLayout !== "auto" || props.node.attrs.limitHeight
+    return props.node.attrs.tableLayout !== "auto" ||
+      props.node.attrs.limitHeight ||
+      props.node.attrs.stickyHeaderRow
       ? ["div", { class: "tableWrapper", ...tableLayoutAttributes(props.node) }, table]
       : table;
   },
@@ -152,6 +163,29 @@ export const ScribeTable = Table.extend({
 
           return true;
         },
+      setTableStickyHeaderRow:
+        (sticky) =>
+        ({ editor, state, tr, dispatch }) => {
+          const table = selectedTable(state);
+
+          if (
+            !editor.isEditable ||
+            !table ||
+            typeof sticky !== "boolean" ||
+            (sticky && !tableHasHeaderRow(table.node))
+          ) {
+            return false;
+          }
+
+          if (dispatch && table.node.attrs.stickyHeaderRow !== sticky) {
+            tr.setNodeMarkup(table.position, undefined, {
+              ...table.node.attrs,
+              stickyHeaderRow: sticky,
+            });
+          }
+
+          return true;
+        },
       insertTable:
         (options = {}) =>
         (props) => {
@@ -159,7 +193,20 @@ export const ScribeTable = Table.extend({
             return false;
           }
 
-          return parentCommands?.insertTable?.(options)(props) ?? false;
+          const inserted = parentCommands?.insertTable?.(options)(props) ?? false;
+
+          if (inserted && props.dispatch) {
+            // Default new headed tables without changing imported or saved choices.
+            const table = selectedTable(props.tr);
+            if (table && tableHasHeaderRow(table.node)) {
+              props.tr.setNodeMarkup(table.position, undefined, {
+                ...table.node.attrs,
+                stickyHeaderRow: true,
+              });
+            }
+          }
+
+          return inserted;
         },
     };
   },
@@ -229,6 +276,7 @@ export const ScribeTable = Table.extend({
       tableEditing({
         allowTableNodeSelection: this.options.allowTableNodeSelection,
       }),
+      createStickyTableHeaderPlugin(),
     ];
   },
 

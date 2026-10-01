@@ -238,6 +238,43 @@ describe("applyScribeTableTransform", () => {
     expect(result.document.lastChild).toBe(document.lastChild);
   });
 
+  it.each([
+    { type: "insert_row", index: 1 },
+    { type: "delete_row", index: 0 },
+    { type: "insert_column", index: 1 },
+    { type: "delete_column", index: 1 },
+    {
+      type: "merge_cells",
+      rectangle: { topRow: 0, leftColumn: 0, bottomRowExclusive: 1, rightColumnExclusive: 2 },
+    },
+  ] satisfies ScribeTableTransformOperation[])(
+    "retains saved table preferences through $type without a DOM",
+    (operation) => {
+      const preferences = { tableLayout: "scroll", limitHeight: true, stickyHeaderRow: true };
+      const originalTable = table([
+        row([
+          cell([paragraph("Project")], { type: "tableHeader" }),
+          cell([paragraph("Owner")], { type: "tableHeader" }),
+        ]),
+        row([cell([paragraph("Scribe")]), cell([paragraph("Roberto")])]),
+      ]);
+      const document = documentWithTable({ ...originalTable, attrs: preferences });
+      const result = apply(document, operation);
+      expect(globalThis.document).toBeUndefined();
+      expect(getTable(result.document, result.tablePosition).attrs).toEqual(preferences);
+      expect(() => result.document.check()).not.toThrow();
+      if (operation.type === "merge_cells") {
+        const split = apply(
+          result.document,
+          { type: "split_cell", row: 0, column: 0 },
+          result.tablePosition,
+        );
+        expect(getTable(split.document, split.tablePosition).attrs).toEqual(preferences);
+        expect(() => split.document.check()).not.toThrow();
+      }
+    },
+  );
+
   it("inserts and deletes through existing row and column spans", () => {
     const rowSpanDocument = documentWithTable(
       table([

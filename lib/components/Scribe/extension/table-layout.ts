@@ -9,9 +9,31 @@ export const SCROLL_TABLE_COLUMN_WIDTH = 128;
 export const normalizeTableLayout = (value: unknown): ScribeTableLayout =>
   value === "fit" || value === "scroll" ? value : "auto";
 
+export const tableHasHeaderRow = (table: ProseMirrorNode) => {
+  const firstRow = table.firstChild;
+
+  if (!firstRow || firstRow.childCount === 0) {
+    return false;
+  }
+
+  let hasOnlyHeaderCells = true;
+  firstRow.forEach((cell) => {
+    if (cell.type.spec.tableRole !== "header_cell") {
+      hasOnlyHeaderCells = false;
+    }
+  });
+
+  return hasOnlyHeaderCells;
+};
+
+export const tableHasStickyHeader = (node: ProseMirrorNode) =>
+  node.attrs.stickyHeaderRow === true && tableHasHeaderRow(node);
+
 export const tableLayoutAttributes = (node: ProseMirrorNode) => ({
   "data-table-layout": normalizeTableLayout(node.attrs.tableLayout),
   "data-table-limit-height": node.attrs.limitHeight === true ? "true" : "false",
+  "data-table-sticky-header-row": node.attrs.stickyHeaderRow === true ? "true" : "false",
+  "data-table-sticky-header-active": tableHasStickyHeader(node) ? "true" : "false",
 });
 
 export const scrollTablePresentation = (node: ProseMirrorNode, cellMinWidth: number) => {
@@ -58,6 +80,10 @@ export class ScribeTableView extends TableView {
     for (const [name, value] of Object.entries(tableLayoutAttributes(this.node))) {
       this.dom.setAttribute(name, value);
       this.table.setAttribute(name, value);
+    }
+
+    if (!tableHasStickyHeader(this.node) || this.node.attrs.limitHeight === true) {
+      this.dom.style.removeProperty("--scribe-table-sticky-header-top");
     }
 
     // Rebuild column presentation from authored widths so changing modes never

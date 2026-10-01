@@ -72,6 +72,24 @@ const tableLayoutFixture = `
   ${tableFixture}
 `;
 
+const tableStickyHeaderFixture = (limitHeight: boolean) => `
+  <p>Sticky header example</p>
+  <table data-table-layout="scroll" data-table-limit-height="${limitHeight}"><tbody>
+    <tr><th colwidth="180"><p>Sticky project</p></th><th colwidth="180"><p>Owner</p><p>Accountable person</p></th><th colwidth="180"><p>Stage</p></th></tr>
+    ${Array.from({ length: 20 }, (_, index) => `<tr><td colwidth="180"><p>Sticky project ${index + 1}</p></td><td colwidth="180"><p><strong>Owner ${index + 1}</strong></p></td><td colwidth="180"><p>Stage ${index + 1}</p></td></tr>`).join("")}
+  </tbody></table>
+  <p>Independent table below</p>
+  ${tableFixture}
+  <p>Merged cells example</p>
+  <table data-table-layout="scroll" data-table-limit-height="true" data-table-sticky-header-row="true"><tbody>
+    <tr><th colspan="2" colwidth="180,180"><p>Merged work</p></th><th colwidth="180"><p>Phase</p></th></tr>
+    <tr><td rowspan="2" colwidth="180"><p>Shared owner</p></td><td colwidth="180"><p>Merged task 1</p></td><td colwidth="180"><p>Phase 1</p></td></tr>
+    <tr><td colwidth="180"><p>Merged task 2</p></td><td colwidth="180"><p>Phase 2</p></td></tr>
+    ${Array.from({ length: 18 }, (_, index) => `<tr><td colwidth="180"><p>Merged owner ${index + 3}</p></td><td colwidth="180"><p>Merged task ${index + 3}</p></td><td colwidth="180"><p>Phase ${index + 3}</p></td></tr>`).join("")}
+  </tbody></table>
+  <p>Content after the sticky tables</p>
+`;
+
 const calloutFixture = `
   <p>Content before the callout</p>
   <aside data-type="callout" data-variant="warning">
@@ -121,11 +139,14 @@ function App() {
   const disableUndoRedo = searchParams.get("disableUndoRedo") === "true";
   const mobile = searchParams.get("mobile") === "true";
   const showConsumerDecoration = searchParams.get("consumerDecoration") === "true";
+  const captureContent = searchParams.get("captureContent") === "true";
   const showCalloutFixture = searchParams.get("callout") === "true";
   const showExternalLinkPreviewFixture = searchParams.get("linkPreview") === "true";
   const showExternalLinkPreviewListFixture = searchParams.get("linkPreviewList") === "true";
   const showTableFixture = searchParams.get("table") === "true";
   const showTableLayoutFixture = searchParams.get("tableLayoutFixture") === "true";
+  const showTableStickyHeaderFixture = searchParams.get("tableStickyHeaderFixture") === "true";
+  const testUncappedStickyHeader = searchParams.get("uncappedStickyHeader") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
   const testNestedScroll = searchParams.get("nestedScroll") === "true";
@@ -171,17 +192,19 @@ function App() {
         ariaLabel="Document content"
         content={
           reloadedTableHtml ??
-          (showTableLayoutFixture
-            ? tableLayoutFixture
-            : showConsumerDecoration
-              ? ""
-              : showExternalLinkPreviewListFixture
-                ? "<ul><li><p></p></li></ul>"
-                : showCalloutFixture
-                  ? calloutFixture
-                  : showTableFixture
-                    ? tableFixture
-                    : "<p>Package consumer content</p>")
+          (showTableStickyHeaderFixture
+            ? tableStickyHeaderFixture(!testUncappedStickyHeader)
+            : showTableLayoutFixture
+              ? tableLayoutFixture
+              : showConsumerDecoration
+                ? ""
+                : showExternalLinkPreviewListFixture
+                  ? "<ul><li><p></p></li></ul>"
+                  : showCalloutFixture
+                    ? calloutFixture
+                    : showTableFixture
+                      ? tableFixture
+                      : "<p>Package consumer content</p>")
         }
         editable={editable}
         {...(disableUndoRedo ? { enableUndoRedo: false } : {})}
@@ -196,7 +219,10 @@ function App() {
         extensions={showConsumerDecoration ? [ConsumerDecoration] : undefined}
         mobile={mobile}
         onContentChange={
-          showConsumerDecoration || showTableLayoutFixture
+          captureContent ||
+          showConsumerDecoration ||
+          showTableLayoutFixture ||
+          showTableStickyHeaderFixture
             ? ({ htmlContent }) => {
                 setSerializedHtml(htmlContent);
               }
@@ -216,7 +242,7 @@ function App() {
             {editable ? "Disable editing" : "Enable editing"}
           </button>
         ) : null}
-        {showTableLayoutFixture ? (
+        {showTableLayoutFixture || showTableStickyHeaderFixture ? (
           <button
             type="button"
             onClick={() => {
@@ -244,7 +270,10 @@ function App() {
           scribe
         )}
         {testWindowScroll ? <div aria-hidden style={{ height: "50rem" }} /> : null}
-        {showConsumerDecoration || showTableLayoutFixture ? (
+        {captureContent ||
+        showConsumerDecoration ||
+        showTableLayoutFixture ||
+        showTableStickyHeaderFixture ? (
           <output data-testid="serialized-html" hidden>
             {serializedHtml}
           </output>

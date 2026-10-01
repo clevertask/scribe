@@ -101,7 +101,14 @@ describe("Scribe document node capabilities", () => {
     expect(manifest.taskList.potentialOperations).toEqual([]);
 
     expect(manifest.heading.potentialOperations).toEqual([]);
-    expect(manifest.table.potentialOperations).toEqual([]);
+    expect(manifest.table).toMatchObject({
+      attributes: {
+        tableLayout: { kind: "enum", values: ["auto", "fit", "scroll"] },
+        limitHeight: { kind: "boolean" },
+        stickyHeaderRow: { kind: "boolean" },
+      },
+      potentialOperations: [],
+    });
     expect(manifest.tableCell).toMatchObject({
       attributes: {
         align: { kind: "enum", nullable: true, values: ["left", "center", "right"] },
