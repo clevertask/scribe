@@ -5,6 +5,7 @@ import { NodeSelection, type EditorState, type Selection } from "@tiptap/pm/stat
 import { columnResizing, columnResizingPluginKey, tableEditing } from "@tiptap/pm/tables";
 import {
   normalizeTableLayout,
+  normalizeTableMaxHeight,
   SCROLL_TABLE_COLUMN_WIDTH,
   scrollTablePresentation,
   SCRIBE_TABLE_LAYOUTS,
@@ -22,6 +23,7 @@ declare module "@tiptap/core" {
     scribeTableLayout: {
       setTableLayout: (layout: ScribeTableLayout) => ReturnType;
       setTableHeightLimit: (limit: boolean) => ReturnType;
+      setTableMaxHeight: (height: number | null) => ReturnType;
       setTableStickyHeaderRow: (sticky: boolean) => ReturnType;
     };
   }
@@ -88,6 +90,15 @@ export const ScribeTable = Table.extend({
         renderHTML: ({ limitHeight }) =>
           limitHeight === true ? { "data-table-limit-height": "true" } : {},
       },
+      maxHeight: {
+        default: null,
+        parseHTML: (element) =>
+          normalizeTableMaxHeight(element.getAttribute("data-table-max-height")),
+        renderHTML: ({ maxHeight }) => {
+          const height = normalizeTableMaxHeight(maxHeight);
+          return height === null ? {} : { "data-table-max-height": String(height) };
+        },
+      },
       stickyHeaderRow: {
         default: false,
         parseHTML: (element) => element.getAttribute("data-table-sticky-header-row") === "true",
@@ -99,6 +110,7 @@ export const ScribeTable = Table.extend({
 
   renderHTML(props) {
     let table = this.parent!(props);
+    const maxHeight = normalizeTableMaxHeight(props.node.attrs.maxHeight);
 
     if (props.node.attrs.tableLayout === "scroll") {
       const { width, colgroup } = scrollTablePresentation(props.node, this.options.cellMinWidth);
@@ -114,8 +126,19 @@ export const ScribeTable = Table.extend({
 
     return props.node.attrs.tableLayout !== "auto" ||
       props.node.attrs.limitHeight ||
-      props.node.attrs.stickyHeaderRow
-      ? ["div", { class: "tableWrapper", ...tableLayoutAttributes(props.node) }, table]
+      props.node.attrs.stickyHeaderRow ||
+      maxHeight !== null
+      ? [
+          "div",
+          {
+            class: "tableWrapper",
+            ...tableLayoutAttributes(props.node),
+            ...(maxHeight === null
+              ? {}
+              : { style: `--scribe-table-custom-max-height: ${maxHeight}px` }),
+          },
+          table,
+        ]
       : table;
   },
 
@@ -159,6 +182,34 @@ export const ScribeTable = Table.extend({
               ...table.node.attrs,
               limitHeight: limit,
             });
+          }
+
+          return true;
+        },
+      setTableMaxHeight:
+        (height) =>
+        ({ editor, tr, dispatch }) => {
+          const table = selectedTable(tr);
+
+          if (
+            !editor.isEditable ||
+            !table ||
+            (height !== null &&
+              (typeof height !== "number" || normalizeTableMaxHeight(height) === null))
+          ) {
+            return false;
+          }
+
+          if (dispatch && table.node.attrs.maxHeight !== height) {
+            const selectedWholeTable =
+              tr.selection instanceof NodeSelection && tr.selection.node === table.node;
+            tr.setNodeMarkup(table.position, undefined, {
+              ...table.node.attrs,
+              maxHeight: height,
+            });
+            if (selectedWholeTable) {
+              tr.setSelection(NodeSelection.create(tr.doc, table.position));
+            }
           }
 
           return true;

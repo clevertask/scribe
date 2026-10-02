@@ -250,7 +250,12 @@ describe("applyScribeTableTransform", () => {
   ] satisfies ScribeTableTransformOperation[])(
     "retains saved table preferences through $type without a DOM",
     (operation) => {
-      const preferences = { tableLayout: "scroll", limitHeight: true, stickyHeaderRow: true };
+      const preferences = {
+        tableLayout: "scroll",
+        limitHeight: true,
+        maxHeight: 600,
+        stickyHeaderRow: true,
+      };
       const originalTable = table([
         row([
           cell([paragraph("Project")], { type: "tableHeader" }),

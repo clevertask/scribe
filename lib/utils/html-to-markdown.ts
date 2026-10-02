@@ -143,6 +143,7 @@ const getSimpleTableRows = (table: HTMLTableElement) => {
     hasResizableWidths(table) ||
     ["fit", "scroll"].includes(table.getAttribute("data-table-layout") ?? "") ||
     table.getAttribute("data-table-limit-height") === "true" ||
+    table.hasAttribute("data-table-max-height") ||
     table.getAttribute("data-table-sticky-header-row") === "true"
   ) {
     return null;

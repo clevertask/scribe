@@ -5,6 +5,20 @@ import type { EditorView } from "@tiptap/pm/view";
 export const SCRIBE_TABLE_LAYOUTS = ["auto", "fit", "scroll"] as const;
 export type ScribeTableLayout = (typeof SCRIBE_TABLE_LAYOUTS)[number];
 export const SCROLL_TABLE_COLUMN_WIDTH = 128;
+export const MIN_TABLE_MAX_HEIGHT = 120;
+export const MAX_TABLE_MAX_HEIGHT = 2000;
+export const DEFAULT_TABLE_MAX_HEIGHT = 360;
+
+export const normalizeTableMaxHeight = (value: unknown): number | null => {
+  const height = typeof value === "string" && /^\d+$/.test(value) ? Number(value) : value;
+
+  return typeof height === "number" &&
+    Number.isInteger(height) &&
+    height >= MIN_TABLE_MAX_HEIGHT &&
+    height <= MAX_TABLE_MAX_HEIGHT
+    ? height
+    : null;
+};
 
 export const normalizeTableLayout = (value: unknown): ScribeTableLayout =>
   value === "fit" || value === "scroll" ? value : "auto";
@@ -29,12 +43,17 @@ export const tableHasHeaderRow = (table: ProseMirrorNode) => {
 export const tableHasStickyHeader = (node: ProseMirrorNode) =>
   node.attrs.stickyHeaderRow === true && tableHasHeaderRow(node);
 
-export const tableLayoutAttributes = (node: ProseMirrorNode) => ({
-  "data-table-layout": normalizeTableLayout(node.attrs.tableLayout),
-  "data-table-limit-height": node.attrs.limitHeight === true ? "true" : "false",
-  "data-table-sticky-header-row": node.attrs.stickyHeaderRow === true ? "true" : "false",
-  "data-table-sticky-header-active": tableHasStickyHeader(node) ? "true" : "false",
-});
+export const tableLayoutAttributes = (node: ProseMirrorNode) => {
+  const maxHeight = normalizeTableMaxHeight(node.attrs.maxHeight);
+
+  return {
+    "data-table-layout": normalizeTableLayout(node.attrs.tableLayout),
+    "data-table-limit-height": node.attrs.limitHeight === true ? "true" : "false",
+    "data-table-sticky-header-row": node.attrs.stickyHeaderRow === true ? "true" : "false",
+    "data-table-sticky-header-active": tableHasStickyHeader(node) ? "true" : "false",
+    ...(maxHeight === null ? {} : { "data-table-max-height": String(maxHeight) }),
+  };
+};
 
 export const scrollTablePresentation = (node: ProseMirrorNode, cellMinWidth: number) => {
   let width = 0;
@@ -76,6 +95,15 @@ export class ScribeTableView extends TableView {
 
   private applyLayout() {
     const layout = normalizeTableLayout(this.node.attrs.tableLayout);
+    const maxHeight = normalizeTableMaxHeight(this.node.attrs.maxHeight);
+
+    if (maxHeight === null) {
+      this.dom.removeAttribute("data-table-max-height");
+      this.table.removeAttribute("data-table-max-height");
+      this.dom.style.removeProperty("--scribe-table-custom-max-height");
+    } else {
+      this.dom.style.setProperty("--scribe-table-custom-max-height", `${maxHeight}px`);
+    }
 
     for (const [name, value] of Object.entries(tableLayoutAttributes(this.node))) {
       this.dom.setAttribute(name, value);

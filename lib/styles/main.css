@@ -395,6 +395,7 @@
 }
 
 .scribe-content .tiptap .tableWrapper {
+  --scribe-table-custom-max-height: initial;
   margin: 0 0 1rem;
   max-width: 100%;
   overflow-x: auto;
@@ -428,7 +429,7 @@
 }
 
 .scribe-content .tiptap .tableWrapper[data-table-limit-height="true"] {
-  max-height: var(--scribe-table-max-height, 360px);
+  max-height: var(--scribe-table-custom-max-height, var(--scribe-table-max-height, 360px));
   overflow-y: auto;
 }
 
