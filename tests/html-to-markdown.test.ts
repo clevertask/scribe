@@ -101,6 +101,20 @@ describe("html2md tables", () => {
     expect(normalizeHtml(md2html(markdown))).toContain('<th align="center">Center</th>');
   });
 
+  it.each(["", 'data-table-limit-height="true"'])(
+    "preserves a saved custom height as raw HTML with attributes %s",
+    (attributes) => {
+      const html = `<table data-table-max-height="600" ${attributes}><tbody><tr><th><p>Project</p></th></tr><tr><td><p>Scribe</p></td></tr></tbody></table>`;
+      const markdown = html2md(html);
+      expect(markdown).toContain('<table data-table-max-height="600"');
+      const restored = document.createElement("div");
+      restored.innerHTML = md2html(markdown);
+      expect(restored.querySelector("table")).toHaveAttribute("data-table-max-height", "600");
+      expect(restored.querySelectorAll("tr")).toHaveLength(2);
+      expect(restored.querySelector("td")?.textContent).toBe("Scribe");
+    },
+  );
+
   it("does not leak the synthetic LaTeX placeholder into a raw HTML table", () => {
     const html =
       '<table><tbody><tr><td><p><span data-type="latex" data-content="x | y" data-display-mode="false"></span></p></td></tr></tbody></table>';

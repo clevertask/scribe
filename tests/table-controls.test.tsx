@@ -123,9 +123,16 @@ const openTableLayout = async () => {
   return screen.findByRole("menu");
 };
 
-const closeTableLayout = async () => {
+const closeTableLayout = async (editor: Editor) => {
   fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
   await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
+  await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+};
+
+const openTableHeight = async () => {
+  await openTableLayout();
+  fireEvent.click(screen.getByRole("menuitem", { name: "Maximum height…" }));
+  return screen.findByRole("dialog", { name: "Table height" });
 };
 
 describe("Scribe table controls", () => {
@@ -508,7 +515,7 @@ describe("Scribe table controls", () => {
       "true",
     );
 
-    await closeTableLayout();
+    await closeTableLayout(editor);
     const toolbar = await screen.findByRole("toolbar", { name: "Table controls" });
     fireEvent.click(within(toolbar).getByRole("button", { name: "Toggle header row" }));
     await openTableLayout();
@@ -520,7 +527,7 @@ describe("Scribe table controls", () => {
     expect(headerDisabledOption).toHaveAccessibleDescription("Requires a header row.");
     fireEvent.click(headerDisabledOption);
     expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(true);
-    await closeTableLayout();
+    await closeTableLayout(editor);
 
     fireEvent.click(within(toolbar).getByRole("button", { name: "Toggle header row" }));
     await openTableLayout();
@@ -554,7 +561,7 @@ describe("Scribe table controls", () => {
     });
     expect(editor.state.selection.toJSON()).toEqual(selectionBefore);
     await openTableLayout();
-    await closeTableLayout();
+    await closeTableLayout(editor);
     await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
     expect(editor.state.selection.toJSON()).toEqual(selectionBefore);
   });
@@ -576,7 +583,7 @@ describe("Scribe table controls", () => {
       "aria-checked",
       "true",
     );
-    await closeTableLayout();
+    await closeTableLayout(editor);
 
     selectText(editor, "Second body");
     await openTableLayout();
@@ -602,11 +609,12 @@ describe("Scribe table controls", () => {
     expect(findTable(editor)?.node.attrs.stickyHeaderRow).toBe(false);
   });
 
-  it("keeps existing layout choices available when an external editor lacks sticky commands", async () => {
+  it("keeps existing layout choices available when an external editor lacks optional table settings", async () => {
     const LegacyTable = ScribeTable.extend({
       addCommands() {
         const commands = { ...this.parent?.() };
         delete commands.setTableStickyHeaderRow;
+        delete commands.setTableMaxHeight;
         return commands;
       },
     });
@@ -629,6 +637,7 @@ describe("Scribe table controls", () => {
     expect(
       screen.queryByRole("menuitemcheckbox", { name: "Sticky header row" }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Maximum height…" })).not.toBeInTheDocument();
   });
 
   it("reads checked options from each table after moving the selection", async () => {
@@ -678,6 +687,208 @@ describe("Scribe table controls", () => {
       expect(screen.queryByRole("toolbar", { name: "Table controls" })).not.toBeInTheDocument(),
     );
   });
+
+  it("applies a complete custom-height draft with Enter without enabling the height limit", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    selectText(editor, "Cell 1");
+    const initialDocument = editor.getJSON();
+    const initialSelection = editor.state.selection.toJSON();
+    await openTableHeight();
+    const field = screen.getByRole("textbox", { name: "Maximum height (px)" });
+    await waitFor(() => expect(field).toHaveFocus());
+    expect(field).toHaveValue("");
+    expect(field).toHaveAttribute("placeholder", "Editor default");
+    fireEvent.change(field, { target: { value: "480" } });
+    expect(editor.getJSON()).toEqual(initialDocument);
+    fireEvent.keyDown(field, { key: "Enter" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+    expect(findTable(editor)?.node.attrs).toMatchObject({ maxHeight: 480, limitHeight: false });
+    expect(editor.state.selection.toJSON()).toEqual(initialSelection);
+  });
+
+  it("reports invalid height drafts inline and cancels them without changing the document", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    selectText(editor, "Cell 1");
+    const initialDocument = editor.getJSON();
+    const initialSelection = editor.state.selection.toJSON();
+    const dialog = await openTableHeight();
+    const field = screen.getByRole("textbox", { name: "Maximum height (px)" });
+
+    for (const value of ["", "119", "2001", "240.5", "1e3"]) {
+      fireEvent.change(field, { target: { value } });
+      fireEvent.click(screen.getByRole("button", { name: "Apply", exact: true }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Enter a whole number from 120 to 2000.");
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(expect.stringContaining("Enter a whole number"));
+      expect(editor.getJSON()).toEqual(initialDocument);
+    }
+
+    fireEvent.change(field, { target: { value: "520" } });
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(editor.view.hasFocus()).toBe(true);
+    });
+    expect(editor.getJSON()).toEqual(initialDocument);
+    expect(editor.state.selection.toJSON()).toEqual(initialSelection);
+  });
+
+  it("preserves a whole-table selection after changing the maximum height", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    const position = findTable(editor)?.position;
+    if (position === undefined) throw new Error("Expected an existing table");
+    act(() => {
+      editor.commands.setNodeSelection(position);
+      editor.view.focus();
+    });
+    const initialSelection = editor.state.selection.toJSON();
+    await openTableHeight();
+    fireEvent.change(screen.getByRole("textbox", { name: "Maximum height (px)" }), {
+      target: { value: "400" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Apply", exact: true }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    expect(editor.state.selection.toJSON()).toEqual(initialSelection);
+    expect(findTable(editor)?.node.attrs.maxHeight).toBe(400);
+  });
+
+  it("clears only the custom height and follows the host default without hardcoding it in the field", async () => {
+    const editor = renderScribe(
+      TABLE_CONTENT.replace(
+        "<table>",
+        '<table data-table-max-height="420" data-table-limit-height="true">',
+      ),
+    );
+    const root = editor.view.dom.closest<HTMLElement>("[data-scribe-root]");
+    root?.style.setProperty("--scribe-table-max-height", "520px");
+    selectText(editor, "Cell 1");
+    await openTableHeight();
+    expect(screen.getByRole("textbox", { name: "Maximum height (px)" })).toHaveValue("420");
+    fireEvent.click(screen.getByRole("button", { name: "Use default", exact: true }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    expect(findTable(editor)?.node.attrs).toMatchObject({ maxHeight: null, limitHeight: true });
+    expect(root?.style.getPropertyValue("--scribe-table-max-height")).toBe("520px");
+
+    const dialog = await openTableHeight();
+    expect(screen.getByRole("textbox", { name: "Maximum height (px)" })).toHaveValue("");
+    expect(dialog).not.toHaveTextContent("360");
+    expect(dialog).toHaveTextContent("configured height");
+  });
+
+  it("reads and updates only the selected table's custom height", async () => {
+    const editor = renderScribe(`
+      <table data-table-max-height="240"><tbody><tr><th>First heading</th></tr><tr><td>First body</td></tr></tbody></table>
+      <p>Between tables</p>
+      <table data-table-max-height="480"><tbody><tr><th>Second heading</th></tr><tr><td>Second body</td></tr></tbody></table>
+    `);
+    selectText(editor, "First body");
+    await openTableHeight();
+    const firstField = screen.getByRole("textbox", { name: "Maximum height (px)" });
+    expect(firstField).toHaveValue("240");
+    fireEvent.change(firstField, { target: { value: "320" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply", exact: true }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+
+    selectText(editor, "Second body");
+    await openTableHeight();
+    expect(screen.getByRole("textbox", { name: "Maximum height (px)" })).toHaveValue("480");
+    fireEvent.click(screen.getByRole("button", { name: "Use default", exact: true }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    expect(getSelectionTableContext(editor.state)?.node.attrs.maxHeight).toBeNull();
+    expect(findTable(editor)?.node.attrs.maxHeight).toBe(320);
+  });
+
+  it("keeps the active cell mapped through unrelated edits while a height draft is open", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    selectText(editor, "Cell 1");
+    const initialPosition = editor.state.selection.from;
+    await openTableHeight();
+    const field = screen.getByRole("textbox", { name: "Maximum height (px)" });
+    fireEvent.change(field, { target: { value: "440" } });
+    act(() => editor.view.dispatch(editor.state.tr.insertText("Prefix ", 1)));
+    expect(screen.getByRole("dialog", { name: "Table height" })).toBeInTheDocument();
+    expect(field).toHaveValue("440");
+    fireEvent.click(screen.getByRole("button", { name: "Apply", exact: true }));
+    await waitFor(() => expect(editor.view.hasFocus()).toBe(true));
+    expect(editor.state.selection.from).toBe(initialPosition + "Prefix ".length);
+    expect(getSelectionTableContext(editor.state)?.node.attrs.maxHeight).toBe(440);
+  });
+
+  it.each(["selection changed", "table removed", "read-only"])(
+    "closes an unsaved height draft safely when the editor becomes %s",
+    async (change) => {
+      const editor = renderScribe(TABLE_CONTENT);
+      selectText(editor, "Cell 1");
+      await openTableHeight();
+      fireEvent.change(screen.getByRole("textbox", { name: "Maximum height (px)" }), {
+        target: { value: "600" },
+      });
+      act(() => {
+        if (change === "selection changed") {
+          editor.commands.setTextSelection(findTextPosition(editor, "Cell 2"));
+        } else if (change === "table removed") {
+          editor.commands.deleteTable();
+        } else {
+          editor.setEditable(false);
+        }
+      });
+      const selectionAfter = editor.state.selection.toJSON();
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(editor.state.selection.toJSON()).toEqual(selectionAfter);
+      if (change !== "table removed") expect(findTable(editor)?.node.attrs.maxHeight).toBeNull();
+    },
+  );
+
+  it("closes an unsaved height draft when the caller destroys the editor", async () => {
+    const editor = renderScribe(TABLE_CONTENT);
+    selectText(editor, "Cell 1");
+    await openTableHeight();
+    fireEvent.change(screen.getByRole("textbox", { name: "Maximum height (px)" }), {
+      target: { value: "600" },
+    });
+    act(() => editor.destroy());
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it.each(["adjacent table", "replacement table"])(
+    "does not apply a stale draft to an %s after the original table is removed",
+    async (replacement) => {
+      const editor = renderScribe(`
+        <table><tbody><tr><th>Original heading</th></tr><tr><td>Original body</td></tr></tbody></table>
+        ${replacement === "adjacent table" ? '<table data-table-max-height="280"><tbody><tr><th>Other heading</th></tr><tr><td>Other body</td></tr></tbody></table>' : ""}
+      `);
+      selectText(editor, "Original body");
+      const original = findTable(editor);
+      if (!original) throw new Error("Expected the original table");
+      await openTableHeight();
+      fireEvent.change(screen.getByRole("textbox", { name: "Maximum height (px)" }), {
+        target: { value: "640" },
+      });
+      const apply = screen.getByRole("button", { name: "Apply", exact: true });
+      let documentAfterRemoval: ReturnType<Editor["getJSON"]> | undefined;
+      act(() => {
+        if (replacement === "adjacent table") {
+          editor.commands.deleteTable();
+        } else {
+          editor.commands.insertContentAt(
+            { from: original.position, to: original.position + original.node.nodeSize },
+            '<table data-table-max-height="280"><tbody><tr><th>Replacement heading</th></tr><tr><td>Replacement body</td></tr></tbody></table>',
+          );
+        }
+        documentAfterRemoval = editor.getJSON();
+        // Exercise the stale button before React removes the invalidated dialog.
+        fireEvent.click(apply);
+      });
+      await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+      expect(editor.getJSON()).toEqual(documentAfterRemoval);
+      expect(findTable(editor)?.node.attrs.maxHeight).toBe(280);
+    },
+  );
 
   it("supports caller-owned editors without table extensions", () => {
     const externalEditor = new CoreEditor({

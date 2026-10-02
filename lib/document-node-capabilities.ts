@@ -212,6 +212,7 @@ const builtInCapabilities = [
     attributes: {
       tableLayout: { kind: "enum", values: SCRIBE_TABLE_LAYOUTS },
       limitHeight: { kind: "boolean" },
+      maxHeight: { kind: "number", nullable: true },
       stickyHeaderRow: { kind: "boolean" },
     },
     content: { expression: "tableRow+", kind: "structured" },

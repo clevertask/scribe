@@ -105,6 +105,7 @@ describe("Scribe document node capabilities", () => {
       attributes: {
         tableLayout: { kind: "enum", values: ["auto", "fit", "scroll"] },
         limitHeight: { kind: "boolean" },
+        maxHeight: { kind: "number", nullable: true },
         stickyHeaderRow: { kind: "boolean" },
       },
       potentialOperations: [],

@@ -16,7 +16,7 @@ import {
 } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import type { ScribeTableLayout } from "../Scribe/extension/resizable-table";
-import { tableHasHeaderRow } from "../Scribe/extension/table-layout";
+import { normalizeTableMaxHeight, tableHasHeaderRow } from "../Scribe/extension/table-layout";
 import { getSelectionContextualMenuOwner } from "./contextualMenuOwner";
 import { getSelectionTableContext, tableBubbleMenuPluginKey } from "./tableBubbleMenuPlugin";
 import TableLayoutOptions from "./TableLayoutOptions";
@@ -67,9 +67,11 @@ const UNAVAILABLE_TABLE_STATE = {
   hasHeaderRow: false,
   canSetTableLayout: false,
   canSetTableHeightLimit: false,
+  canSetTableMaxHeight: false,
   canSetTableStickyHeaderRow: false,
   tableLayout: "auto" as ScribeTableLayout,
   limitHeight: false,
+  maxHeight: null as number | null,
   stickyHeaderRow: false,
 };
 const SCROLLABLE_OVERFLOW = /auto|overlay|scroll/;
@@ -177,6 +179,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [menuMaxWidth, setMenuMaxWidth] = useState<number | null>(null);
   const [layoutMenuOpen, setLayoutMenuOpen] = useState(false);
+  const [heightSettingsOpen, setHeightSettingsOpen] = useState(false);
   const hasTableCommands = useMemo(
     () => TABLE_COMMAND_NAMES.every((name) => typeof editor.commands[name] === "function"),
     [editor],
@@ -191,10 +194,14 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
     () => typeof editor.commands.setTableStickyHeaderRow === "function",
     [editor],
   );
+  const hasTableMaxHeightCommand = useMemo(
+    () => typeof editor.commands.setTableMaxHeight === "function",
+    [editor],
+  );
   const tableState = useEditorState({
     editor,
     selector: ({ editor: currentEditor }) => {
-      if (!hasTableCommands) {
+      if (!hasTableCommands || currentEditor.isDestroyed) {
         return UNAVAILABLE_TABLE_STATE;
       }
 
@@ -216,6 +223,8 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         hasHeaderRow,
         canSetTableLayout: hasTableLayoutCommands && can.setTableLayout("auto"),
         canSetTableHeightLimit: hasTableLayoutCommands && can.setTableHeightLimit(true),
+        canSetTableMaxHeight:
+          currentEditor.isEditable && hasTableMaxHeightCommand && can.setTableMaxHeight(null),
         canSetTableStickyHeaderRow:
           currentEditor.isEditable &&
           hasTableStickyHeaderCommand &&
@@ -223,6 +232,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
           can.setTableStickyHeaderRow(!stickyHeaderRow),
         tableLayout: (tableContext?.node.attrs.tableLayout ?? "auto") as ScribeTableLayout,
         limitHeight,
+        maxHeight: normalizeTableMaxHeight(tableContext?.node.attrs.maxHeight),
         stickyHeaderRow,
       };
     },
@@ -231,7 +241,10 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
   const handleShouldShow = useCallback<TableBubbleMenuShouldShow>(
     ({ editor: currentEditor, element, state, view }) => {
       const hasFocus =
-        layoutMenuOpen || view.hasFocus() || element.contains(element.ownerDocument.activeElement);
+        layoutMenuOpen ||
+        heightSettingsOpen ||
+        view.hasFocus() ||
+        element.contains(element.ownerDocument.activeElement);
 
       return (
         hasTableCommands &&
@@ -240,7 +253,7 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
         getSelectionContextualMenuOwner(state) === "table"
       );
     },
-    [hasTableCommands, layoutMenuOpen],
+    [hasTableCommands, layoutMenuOpen, heightSettingsOpen],
   );
   const getReferencedVirtualElement = useCallback(() => {
     if (editor.isDestroyed) {
@@ -519,14 +532,19 @@ const TableBubbleMenu: FC<TableBubbleMenuProps> = ({ editor }) => {
                   editor={editor}
                   layout={tableState.tableLayout}
                   limitHeight={tableState.limitHeight}
+                  maxHeight={tableState.maxHeight}
                   stickyHeaderRow={tableState.stickyHeaderRow}
                   hasHeaderRow={tableState.hasHeaderRow}
                   canSetLayout={tableState.canSetTableLayout}
                   canSetHeightLimit={tableState.canSetTableHeightLimit}
+                  hasMaxHeightCommand={hasTableMaxHeightCommand}
+                  canSetMaxHeight={tableState.canSetTableMaxHeight}
                   hasStickyHeaderCommand={hasTableStickyHeaderCommand}
                   canSetStickyHeaderRow={tableState.canSetTableStickyHeaderRow}
                   open={layoutMenuOpen}
                   onOpenChange={setLayoutMenuOpen}
+                  heightSettingsOpen={heightSettingsOpen}
+                  onHeightSettingsOpenChange={setHeightSettingsOpen}
                 />
                 <Separator orientation="vertical" decorative style={{ height: 20 }} />
               </>

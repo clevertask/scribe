@@ -122,6 +122,7 @@ describe("headless Scribe schema", () => {
       );
       expect(Object.keys(table.attrs ?? {}).sort()).toEqual([
         "limitHeight",
+        "maxHeight",
         "stickyHeaderRow",
         "tableLayout",
       ]);
@@ -137,6 +138,25 @@ describe("headless Scribe schema", () => {
       );
     }
   });
+
+  it.each(["", 'data-table-limit-height="true"'])(
+    "preserves a custom height in both schemas with attributes %s",
+    (attributes) => {
+      const html = `<table data-table-max-height="600" ${attributes}><tbody><tr><th><p>Project</p></th></tr><tr><td><p>Scribe</p></td></tr></tbody></table>`;
+      const headlessExtensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+      const interactiveExtensions = initExtensions({ enableUndoRedo: false });
+      const content = generateJSON(html, headlessExtensions);
+      expect(content).toEqual(generateJSON(html, interactiveExtensions));
+      expect(collectNodes(content, "table")[0].attrs).toMatchObject({
+        maxHeight: 600,
+        limitHeight: attributes !== "",
+      });
+      const rendered = generateHTML(content, headlessExtensions);
+      expect(rendered).toContain('data-table-max-height="600"');
+      expect(rendered).toContain("--scribe-table-custom-max-height: 600px");
+      expect(generateJSON(rendered, headlessExtensions)).toEqual(content);
+    },
+  );
 
   it("preserves inline code combined with other text marks", () => {
     const html = [

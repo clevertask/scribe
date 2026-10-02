@@ -6,6 +6,12 @@ import type { Editor } from "@tiptap/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScribeEditor } from "../lib/main";
 import { createScribeSchemaExtensions } from "../lib/schema";
+import {
+  DEFAULT_TABLE_MAX_HEIGHT,
+  MAX_TABLE_MAX_HEIGHT,
+  MIN_TABLE_MAX_HEIGHT,
+  normalizeTableMaxHeight,
+} from "../lib/components/Scribe/extension/table-layout";
 import { html2md } from "../lib/utils/html-to-markdown";
 import { md2html } from "../lib/utils/markdown-to-html";
 
@@ -304,6 +310,234 @@ describe("explicit table layout", () => {
     expect(editor.getHTML()).not.toContain("data-table-layout");
     expect(editor.getHTML()).not.toContain("data-table-limit-height");
   });
+});
+
+describe("custom table maximum height", () => {
+  it("keeps the legacy default unset and exposes the supported pixel range", () => {
+    expect(MIN_TABLE_MAX_HEIGHT).toBe(120);
+    expect(MAX_TABLE_MAX_HEIGHT).toBe(2000);
+    expect(DEFAULT_TABLE_MAX_HEIGHT).toBe(360);
+    const editor = createEditor(tableHtml());
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBeNull();
+    expect(editor.getHTML()).not.toContain("data-table-max-height");
+    expect(editor.getHTML()).not.toContain("--scribe-table-custom-max-height");
+    expect(html2md(editor.getHTML())).not.toContain("<table");
+  });
+
+  it.each([120, 360, 600, 2000])("accepts a whole-pixel height of %s", (height) => {
+    expect(normalizeTableMaxHeight(height)).toBe(height);
+    expect(normalizeTableMaxHeight(String(height))).toBe(height);
+    const editor = createEditor(tableHtml());
+    selectText(editor, "First cell");
+    expect(editor.commands.setTableMaxHeight(height)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBe(height);
+  });
+
+  it.each([
+    undefined,
+    true,
+    false,
+    0,
+    -120,
+    119,
+    2001,
+    600.5,
+    NaN,
+    Infinity,
+    "",
+    " 600 ",
+    "600px",
+    "600.0",
+    "6e2",
+    "600; color: red",
+    {},
+  ])("ignores the invalid stored height %j before presenting it", (height) => {
+    expect(normalizeTableMaxHeight(height)).toBeNull();
+    const editor = createEditor(tableHtml());
+    const json = editor.getJSON();
+    collectTables(json)[0].attrs!.maxHeight = height;
+    editor.commands.setContent(json);
+    const wrapper = editor.view.dom.querySelector<HTMLElement>(".tableWrapper")!;
+    expect(wrapper).not.toHaveAttribute("data-table-max-height");
+    expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("");
+    expect(editor.getHTML()).not.toContain("data-table-max-height");
+    expect(editor.getHTML()).not.toContain("--scribe-table-custom-max-height");
+  });
+
+  it.each(["119", "2001", "600.5", "600px", "6e2", "600; color: red"])(
+    "normalizes invalid HTML height %s to the unset default",
+    (height) => {
+      const editor = createEditor(tableHtml(`data-table-max-height="${height}"`));
+      expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBeNull();
+      expect(editor.getHTML()).not.toContain("data-table-max-height");
+    },
+  );
+
+  it.each([undefined, true, false, 119, 2001, 600.5, NaN, Infinity, "600", "600px"])(
+    "rejects invalid command input %j without changing the document",
+    (height) => {
+      const editor = createEditor(tableHtml('data-table-max-height="600"'));
+      selectText(editor, "First cell");
+      const original = editor.getJSON();
+      const historyDepth = undoDepth(editor.state);
+      expect(editor.can().setTableMaxHeight(height as number)).toBe(false);
+      expect(editor.commands.setTableMaxHeight(height as number)).toBe(false);
+      expect(editor.getJSON()).toEqual(original);
+      expect(undoDepth(editor.state)).toBe(historyDepth);
+    },
+  );
+
+  it("changes only the selected table, preserves content and other preferences, and remembers an inactive cap", () => {
+    const editor = createEditor(siblingTables);
+    const original = editor.state.doc;
+    const [first, second] = tableNodes(original);
+    selectText(editor, "First cell");
+    expect(
+      editor
+        .chain()
+        .setTableLayout("scroll")
+        .setTableStickyHeaderRow(true)
+        .setTableMaxHeight(600)
+        .setTableHeightLimit(true)
+        .run(),
+    ).toBe(true);
+    const [updatedFirst, unchangedSecond] = tableNodes(editor.state.doc);
+    expect(updatedFirst.node.attrs).toMatchObject({
+      maxHeight: 600,
+      limitHeight: true,
+      tableLayout: "scroll",
+      stickyHeaderRow: true,
+    });
+    expect(updatedFirst.node.content.eq(first.node.content)).toBe(true);
+    expect(updatedFirst.node.firstChild?.firstChild?.attrs.colwidth).toEqual([180]);
+    expect(unchangedSecond.node).toBe(second.node);
+    expect(editor.state.doc.firstChild).toBe(original.firstChild);
+    expect(editor.state.doc.lastChild).toBe(original.lastChild);
+
+    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBe(600);
+    selectText(editor, "Second cell");
+    expect(editor.commands.setTableMaxHeight(240)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBe(600);
+    expect(tableNodes(editor.state.doc)[1].node.attrs).toMatchObject({
+      maxHeight: 240,
+      limitHeight: false,
+      tableLayout: "auto",
+      stickyHeaderRow: false,
+    });
+    expect(() => editor.state.doc.check()).not.toThrow();
+  });
+
+  it("updates and clears native table presentation while preserving the saved override with Limit height off", () => {
+    const editor = createEditor(tableHtml());
+    selectText(editor, "First cell");
+    const wrapper = editor.view.dom.querySelector<HTMLElement>(".tableWrapper")!;
+    const table = wrapper.querySelector("table")!;
+    expect(editor.commands.setTableMaxHeight(600)).toBe(true);
+    expect(wrapper).toHaveAttribute("data-table-max-height", "600");
+    expect(table).toHaveAttribute("data-table-max-height", "600");
+    expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("600px");
+    expect(wrapper).toHaveAttribute("data-table-limit-height", "false");
+    expect(editor.commands.setTableHeightLimit(true)).toBe(true);
+    expect(editor.commands.setTableMaxHeight(240)).toBe(true);
+    expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("240px");
+    expect(editor.commands.setTableHeightLimit(false)).toBe(true);
+    expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("240px");
+    expect(editor.commands.setTableMaxHeight(null)).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBeNull();
+    expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("");
+    expect(wrapper).not.toHaveAttribute("data-table-max-height");
+    expect(table).not.toHaveAttribute("data-table-max-height");
+    expect(editor.getHTML()).not.toContain("data-table-max-height");
+    expect(editor.view.dom.querySelector(".tableWrapper")).toBe(wrapper);
+  });
+
+  it("checks availability without dispatching, supports undo and redo, and does not add history for the same value", () => {
+    const editor = createEditor(`${tableHtml()}<p>After</p>`);
+    selectText(editor, "First cell");
+    const initialState = editor.state;
+    const onTransaction = vi.fn();
+    editor.on("transaction", onTransaction);
+    expect(editor.can().setTableMaxHeight(600)).toBe(true);
+    expect(editor.can().setTableMaxHeight(null)).toBe(true);
+    expect(onTransaction).not.toHaveBeenCalled();
+    expect(editor.state).toBe(initialState);
+    expect(undoDepth(editor.state)).toBe(0);
+    expect(editor.commands.setTableMaxHeight(600)).toBe(true);
+    const document = editor.state.doc;
+    expect(editor.commands.setTableMaxHeight(600)).toBe(true);
+    expect(editor.state.doc).toBe(document);
+    expect(undoDepth(editor.state)).toBe(1);
+    expect(editor.commands.undo()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBeNull();
+    expect(editor.commands.redo()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBe(600);
+  });
+
+  it("supports cell and whole-table selections without disturbing the selection", () => {
+    const editor = createEditor(tableHtml());
+    const cellPositions: number[] = [];
+    editor.state.doc.descendants((node, position) => {
+      if (node.type.spec.tableRole === "cell") cellPositions.push(position);
+    });
+    const selection = CellSelection.create(editor.state.doc, cellPositions[0], cellPositions[1]);
+    editor.view.dispatch(editor.state.tr.setSelection(selection));
+    expect(editor.commands.setTableMaxHeight(600)).toBe(true);
+    expect(editor.state.selection).toBeInstanceOf(CellSelection);
+    expect(editor.state.selection.from).toBe(selection.from);
+    expect(editor.state.selection.to).toBe(selection.to);
+    const [{ position }] = tableNodes(editor.state.doc);
+    expect(editor.chain().setNodeSelection(position).setTableMaxHeight(240).run()).toBe(true);
+    // The native tableEditing plugin normalizes whole-table selection to cells.
+    expect(editor.state.selection).toBeInstanceOf(CellSelection);
+    expect((editor.state.selection as CellSelection).isRowSelection()).toBe(true);
+    expect((editor.state.selection as CellSelection).isColSelection()).toBe(true);
+    expect(tableNodes(editor.state.doc)[0].node.attrs.maxHeight).toBe(240);
+  });
+
+  it("rejects commands outside a table and in read-only mode", () => {
+    const editor = createEditor(siblingTables);
+    selectText(editor, "Before");
+    const original = editor.getJSON();
+    expect(editor.can().setTableMaxHeight(600)).toBe(false);
+    expect(editor.commands.setTableMaxHeight(600)).toBe(false);
+    expect(editor.commands.setTableMaxHeight(null)).toBe(false);
+    selectText(editor, "First cell");
+    editor.setEditable(false);
+    expect(editor.can().setTableMaxHeight(600)).toBe(false);
+    expect(editor.commands.setTableMaxHeight(600)).toBe(false);
+    expect(editor.commands.setTableMaxHeight(null)).toBe(false);
+    expect(editor.getJSON()).toEqual(original);
+  });
+
+  it.each([false, true])(
+    "round-trips the saved maximum with Limit height %s through JSON, HTML, Markdown and read-only presentation",
+    (limitHeight) => {
+      const editor = createEditor(tableHtml());
+      selectText(editor, "First cell");
+      editor.commands.setTableMaxHeight(600);
+      editor.commands.setTableHeightLimit(limitHeight);
+      const json = editor.getJSON();
+      const extensions = createScribeSchemaExtensions({ enableUndoRedo: false });
+      const schema = getSchema(extensions);
+      expect(() => schema.nodeFromJSON(json).check()).not.toThrow();
+      const html = generateHTML(json, extensions);
+      expect(html).toContain('data-table-max-height="600"');
+      expect(html).toContain("--scribe-table-custom-max-height: 600px");
+      expect(html).toContain('class="tableWrapper"');
+      expect(collectTables(generateJSON(html, extensions))[0]).toEqual(collectTables(json)[0]);
+      const markdown = html2md(html);
+      expect(markdown).toContain("<table");
+      expect(markdown).toContain('data-table-max-height="600"');
+      const restored = generateJSON(md2html(markdown), extensions);
+      expect(collectTables(restored)[0]).toEqual(collectTables(json)[0]);
+      const readOnly = createEditor(md2html(markdown), false);
+      const wrapper = readOnly.view.dom.querySelector<HTMLElement>(".tableWrapper")!;
+      expect(wrapper).toHaveAttribute("data-table-max-height", "600");
+      expect(wrapper).toHaveAttribute("data-table-limit-height", String(limitHeight));
+      expect(wrapper.style.getPropertyValue("--scribe-table-custom-max-height")).toBe("600px");
+    },
+  );
 });
 
 describe("sticky table header preference", () => {
