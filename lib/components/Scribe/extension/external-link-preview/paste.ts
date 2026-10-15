@@ -1,6 +1,7 @@
 import type { NodeType } from "@tiptap/pm/model";
 import { NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
+import { find } from "linkifyjs";
 import { normalizeLinkUrl } from "../../../Menu/linkUrl";
 import {
   normalizeExternalLinkPreviewAttributes,
@@ -19,6 +20,36 @@ const getExactClipboardText = (event: ClipboardEvent) => {
   const trimmedText = clipboardText.trim();
 
   return trimmedText && !/[\r\n]/.test(trimmedText) ? trimmedText : null;
+};
+
+const getClipboardUrl = (text: string) => {
+  const href = normalizeLinkUrl(text);
+
+  if (!href) {
+    return null;
+  }
+
+  // Root-relative destinations are recognizable internal URLs only when the
+  // complete clipboard is a path, without prose or ambiguous separators.
+  if (href.startsWith("/") && !/[\s\\]/u.test(text)) {
+    return href;
+  }
+
+  // Manual link entry also accepts ordinary words as hostnames. Clipboard text
+  // must be recognized as one whole URL before it can link an existing selection.
+  const isWholeUrl = find(text, { defaultProtocol: "https" }).some(
+    (link) => link.type === "url" && link.isLink && link.value === text,
+  );
+
+  if (isWholeUrl) {
+    return href;
+  }
+
+  // Linkify does not recognize IPv6 hosts. Preserve explicit HTTP(S) IPv6 URLs
+  // after URL parsing, while rejecting raw whitespace and backslash normalization.
+  const isExplicitIpv6Url = /^https?:\/\/\[/i.test(text) && !/[\s\\]/u.test(text);
+
+  return isExplicitIpv6Url && new URL(href).hostname.startsWith("[") ? href : null;
 };
 
 const applyUrlToSelectedText = (view: EditorView, href: string) => {
@@ -95,7 +126,7 @@ export const createExternalLinkPreviewPastePlugin = ({
           return false;
         }
 
-        const selectedTextHref = normalizeLinkUrl(clipboardText);
+        const selectedTextHref = getClipboardUrl(clipboardText);
 
         if (!view.state.selection.empty && selectedTextHref) {
           const applied = applyUrlToSelectedText(view, selectedTextHref);

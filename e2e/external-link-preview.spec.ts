@@ -309,6 +309,31 @@ test("a full-line plain link discovers Compact and Preview card in the same dial
   await expect(page.getByTestId("preview-requests")).toHaveText(JSON.stringify([externalUrl]));
 });
 
+for (const [clipboardText, expectedText] of [
+  ["replacement", "replacement"],
+  ["2026", "2026"],
+  ["**replacement**", "replacement"],
+  ["https://example.com/path extra words", "https://example.com/path extra words"],
+]) {
+  test(`pasting non-URL clipboard content replaces Select all: ${clipboardText}`, async ({
+    context,
+    page,
+  }) => {
+    await grantClipboardAccess(context);
+    await page.goto("/?linkPreview=true");
+
+    const editor = page.getByRole("textbox", { name: "Document content", exact: true });
+
+    await editor.click();
+    await editor.press("ControlOrMeta+A");
+    await pasteText(page, clipboardText);
+
+    await expect(editor).toHaveText(expectedText);
+    await expect(editor.locator('[data-type="external-link-preview"]')).toHaveCount(0);
+    await expect(page.getByTestId("preview-requests")).toHaveText("[]");
+  });
+}
+
 test("pasting a URL over selected text keeps an ordinary labeled link", async ({
   context,
   page,
