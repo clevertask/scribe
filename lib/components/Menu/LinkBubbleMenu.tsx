@@ -5,8 +5,6 @@ import {
   type BubbleMenuProps as CoreBubbleMenuProps,
 } from "@tiptap/react/menus";
 import { FC, KeyboardEventHandler, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getExternalLinkPreviewHostname } from "../Scribe/extension/external-link-preview/attributes";
-import { getExternalLinkPreviewResolutionStatus } from "../Scribe/extension/external-link-preview/resolver";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import { getSelectionContextualMenuOwner } from "./contextualMenuOwner";
 import LinkEditor from "./LinkEditor";
@@ -63,26 +61,9 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
   const focusFrameRef = useRef<number | null>(null);
   const linkState = useEditorState({
     editor,
-    selector: ({ editor: currentEditor }) => {
-      const context = getSelectionLinkContext(currentEditor.state);
-
-      if (!context || context.kind === "plain") {
-        return {
-          canRefresh: false,
-          context,
-          status: "idle" as const,
-          statusLabel: "",
-        };
-      }
-
-      return {
-        canRefresh: currentEditor.can().refreshExternalLinkPreview(context.position),
-        context,
-        status: getExternalLinkPreviewResolutionStatus(currentEditor.state, context.position),
-        statusLabel:
-          context.attributes.siteName || getExternalLinkPreviewHostname(context.attributes.href),
-      };
-    },
+    selector: ({ editor: currentEditor }) => ({
+      context: getSelectionLinkContext(currentEditor.state),
+    }),
   });
 
   useEffect(() => {
@@ -131,11 +112,7 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
       const target = event.target as Element | null;
       const link = target?.closest?.("a");
 
-      if (
-        !link ||
-        !editorElement.contains(link) ||
-        link.closest('[data-type="external-link-preview"]')
-      ) {
+      if (!link || !editorElement.contains(link)) {
         return;
       }
 
@@ -150,11 +127,7 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
       const target = event.target as Element | null;
       const link = target?.closest?.("a");
 
-      if (
-        !link ||
-        !editorElement.contains(link) ||
-        link.closest('[data-type="external-link-preview"]')
-      ) {
+      if (!link || !editorElement.contains(link)) {
         return;
       }
 
@@ -166,6 +139,22 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
       pointerStart = null;
 
       if (movedWhileSelecting) {
+        return;
+      }
+
+      const legacyWrapper = link.closest('[data-type="external-link-preview"]');
+      if (legacyWrapper) {
+        let legacyPosition: number;
+        try {
+          legacyPosition = editor.view.posAtDOM(legacyWrapper, 0);
+        } catch {
+          return;
+        }
+        if (editor.state.doc.nodeAt(legacyPosition)?.type.name === "externalLinkPreview") {
+          editor.commands.setNodeSelection(legacyPosition);
+          event.preventDefault();
+          showLinkBubbleMenu(editor, "dialog");
+        }
         return;
       }
 
@@ -344,16 +333,6 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     editor.chain().setTextSelection(selectionEnd).focus().run();
   }, [editor]);
 
-  const handleRefreshPreview = useCallback(() => {
-    const context = getSelectionLinkContext(editor.state);
-
-    if (context?.kind !== "preview") {
-      return;
-    }
-
-    editor.commands.refreshExternalLinkPreview(context.position);
-  }, [editor]);
-
   const handleShow = useCallback(() => {
     if (focusFrameRef.current !== null) {
       window.cancelAnimationFrame(focusFrameRef.current);
@@ -456,16 +435,11 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
         }}
       >
         <LinkEditor
-          canRefreshPreview={linkState.canRefresh}
-          currentDisplay={context?.display ?? "plain"}
           editor={editor}
           existingHref={context?.href ?? ""}
           inputRef={inputRef}
           onClose={handleClose}
-          onRefreshPreview={handleRefreshPreview}
           onValueChange={setLinkValue}
-          previewStatus={linkState.status}
-          previewStatusLabel={linkState.statusLabel}
           resetToken={menuSession}
           targetPosition={context?.kind === "preview" ? context.position : undefined}
           value={linkValue}

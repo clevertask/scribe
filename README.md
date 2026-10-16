@@ -11,7 +11,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
 - **Markdown Support:** Parse and render Markdown content effortlessly.
 - **Markdown Paste:** Paste plain-text markdown into the editor and have it converted into rich content automatically.
 - **Table Authoring:** Insert, resize, and edit tables with controls that stay next to the active table.
-- **Experimental External Link Previews:** Opt into Compact and Preview card presentations while keeping ordinary links available.
+- **Ordinary Links:** Edit display text and URL with an accessible popover and native Tiptap paste behavior.
 - **Versatile Integration:** Easily integrate `@clevertask/scribe` into any project requiring rich text editing.
 - **View and Edit:** Seamlessly switch between viewing and editing modes.
 - **Experimental Table of Contents:** Subscribe to heading changes and render an app-owned table of contents outside the editor.
@@ -23,7 +23,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
   - [Headless schema](#headless-schema)
   - [Usage](#usage)
   - [Table Authoring](#table-authoring)
-  - [External Link Previews](#external-link-previews)
+  - [Links](#links)
   - [Experimental Table of Contents](#experimental-table-of-contents)
   - [Math Expressions](#math-expressions)
   - [Props](#props)
@@ -240,56 +240,39 @@ calls to `insertContent`, Markdown table paste, and rich-HTML table paste remain
 points. Applications that require a hard no-nested-table guarantee must validate or filter those
 paths too.
 
-## External Link Previews
+## Links
 
-> [!NOTE]
-> External Link Previews are experimental. Their public API, built-in card presentation, and link-options UI may change as we test them in real document workflows.
+Scribe uses Tiptap's Link extension for ordinary links and URL paste. Use the toolbar or click an
+existing link to edit **Text to display** and **URL**, then choose **Apply** or **Remove link**.
+An unchanged label preserves the link's inline formatting. Keyboard users can press `Alt + F10`
+from a link to open the form and Escape to return to the document.
 
-Compact links work locally without a metadata provider. Scribe builds their visible label from authored link text or, for a raw URL, from its hostname and path. The exact destination—including its query and fragment—remains unchanged. Preview cards are opt-in: Scribe owns their editor behavior and presentation, while your app owns metadata fetching. Pass a resolver that calls an authenticated app endpoint; Scribe never requests the destination website directly.
+Pasting recognizable URL-only content over selected text applies a link using native Tiptap
+behavior; ordinary text replaces the selection. Rich clipboard content follows Tiptap's parsed
+content handling. Scribe does not fetch metadata or create Compact/Preview card presentations.
+Automatic links and URL paste use Tiptap's native URL/protocol recognition and safety checks,
+including email and FTP links. The manual URL form accepts HTTP(S), bare domains and
+root-relative links. Application-owned task and document reference extensions remain separate:
+URL paste links eligible text around selected inline atoms without marking the atoms themselves,
+while an atom-only selection follows normal paste replacement.
 
-That endpoint should validate the destination, block private or reserved network addresses, re-check redirects, and enforce response-size and timeout limits before returning sanitized metadata.
+### Legacy preview compatibility
 
-```tsx
-import { Scribe, type ExternalLinkPreviewResolver } from "@clevertask/scribe";
-import { useCallback } from "react";
+Saved `externalLinkPreview` nodes still load in the interactive and headless schemas and render
+as ordinary links using their authored `linkText` and exact `href`. Their node identity, display
+value and metadata remain serialized in HTML, JSON and Markdown. Reading a document does not
+convert these nodes or discard metadata. No stored favicon or preview image is requested.
 
-function DocumentEditor() {
-  const resolveLinkPreview = useCallback<ExternalLinkPreviewResolver>(async (href, { signal }) => {
-    const response = await fetch(`/api/link-previews?url=${encodeURIComponent(href)}`, {
-      credentials: "include",
-      signal,
-    });
+The exported `ExternalLinkPreview` extension, constants, types and `externalLinkPreview` options
+remain for compatibility. `autoPreviewOnPaste`, `resolve` and `shouldPreview` are deprecated and
+ignored; `HTMLAttributes` still applies to the legacy wrapper. A caller-owned `externalEditor`
+must register the compatibility extension to read existing preview nodes.
 
-    if (!response.ok) {
-      return null;
-    }
-
-    return response.json();
-  }, []);
-  const shouldPreview = useCallback((href: string) => {
-    return new URL(href).origin !== window.location.origin;
-  }, []);
-
-  return (
-    <Scribe
-      externalLinkPreview={{
-        resolve: resolveLinkPreview,
-        shouldPreview,
-        // Defaults to false. When enabled, standalone pastes become local Compact links.
-        autoPreviewOnPaste: false,
-      }}
-    />
-  );
-}
-```
-
-By default, pasting a standalone external URL creates an ordinary link. Select it and choose Compact to shorten only its presentation, with no metadata request. A meaningful authored label is kept; a raw URL is shown as `hostname/path` without its query or fragment. Switching back to Plain restores the original label and exact destination. Set `autoPreviewOnPaste: true` only if standalone URL pastes should become local Compact links automatically. Pasting a URL over selected text always keeps an ordinary labeled link.
-
-While editing, select a Plain, Compact, or Card link to open its contextual menu. From there you can edit or open the destination, or switch presentation. A Preview card is available only when the link has its own line and metadata is already stored or a resolver is configured. Refresh is available only for Preview cards with a resolver. Keyboard users can press `Alt + F10` from a selected link to open the same menu and press Escape to return to the document.
-
-The resolver runs only when a Preview card needs metadata: after explicit Card conversion, programmatic Card insertion, a Card destination edit, or Card refresh. Compact creation, editing, automatic paste, and document reopen make no metadata request. The resolver receives an `AbortSignal`, and can return `pageTitle`, `description`, `siteName`, `faviconUrl`, `imageUrl`, and `fetchedAt`. Use `shouldPreview` to keep app-owned or otherwise unsupported destinations on the ordinary-link path.
-
-Preview nodes use sanitized raw HTML when content is serialized as Markdown, so their metadata and presentation survive Scribe's current Markdown round trip. A caller-owned `externalEditor` must register `ExternalLinkPreview` itself.
+The deprecated `insertExternalLinkPreview` and `updateExternalLinkPreview` commands retain the
+legacy node shape and attributes, displayed as ordinary links, without fetching metadata.
+`setExternalLinkDisplay("compact" | "card")` and `refreshExternalLinkPreview` return `false`.
+`setExternalLinkDisplay("plain")` and `convertExternalLinkPreviewToPlain` remain explicit,
+undoable conversions to ordinary Link-marked text. There is no automatic content migration.
 
 ## Experimental Table of Contents
 
@@ -386,7 +369,7 @@ The `createScribeEditor` helper accepts the same `enableUndoRedo` option.
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
 | `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |
 | `enableUndoRedo`          | `boolean`                                                          | `true`                     | Enables Scribe's built-in undo and redo history. Set it to `false` when another extension owns history. This creation-time option does not configure a caller-owned `externalEditor`.                                                                    |
-| `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Experimental. Opts into external-link metadata resolution and enhanced Compact/Card presentation. The consumer owns fetching and destination policy; automatic previews on paste default to disabled.                                                    |
+| `externalLinkPreview`     | `Partial<ExternalLinkPreviewOptions>`                              | `undefined`                | Deprecated compatibility options. Only HTMLAttributes affects legacy wrappers; metadata resolution, preview policy and automatic previews are ignored.                                                                                                   |
 | `editorProps`             | `EditorProps`                                                      | `undefined`                | A tiptap-based prop to handle advanced use cases, you can read about it on their [documentation](https://tiptap.dev/docs/editor/api/editor#editorprops)                                                                                                  |
 | `showBarMenu`             | `boolean`                                                          | `true`                     | Determines whether to show the text editor top menu bar or not. This menu bar shows options to format the text                                                                                                                                           |
 | `placeholderText`         | `string`                                                           | `Type "/" for commands...` | Change the initial placeholder for your text editor                                                                                                                                                                                                      |

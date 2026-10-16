@@ -24,7 +24,7 @@ const applyLink = async (page: Page) => {
     .getByRole("button", { name: "Link", exact: true })
     .click();
   await linkSettings.getByRole("textbox", { name: "URL", exact: true }).fill(linkHref);
-  await linkSettings.getByRole("button", { name: "Save", exact: true }).click();
+  await linkSettings.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(linkSettings).toHaveCount(0);
 };
 

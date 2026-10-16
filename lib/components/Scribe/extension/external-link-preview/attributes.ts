@@ -16,14 +16,6 @@ const MAX_MEDIA_URL_LENGTH = 16_384;
 const MAX_FETCHED_AT_LENGTH = 128;
 const ISO_TIMESTAMP_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
-const EXTERNAL_LINK_PREVIEW_METADATA_KEYS = [
-  "pageTitle",
-  "description",
-  "siteName",
-  "faviconUrl",
-  "imageUrl",
-  "fetchedAt",
-] as const satisfies ReadonlyArray<keyof ExternalLinkPreviewMetadata>;
 
 const containsAsciiControlCharacter = (value: string) => {
   for (const character of value) {
@@ -158,22 +150,6 @@ export const normalizeExternalLinkPreviewMetadata = (
   fetchedAt: normalizeFetchedAt(metadata?.fetchedAt),
 });
 
-/** Normalize only metadata fields that a resolver deliberately returned. */
-export const normalizeExternalLinkPreviewMetadataPatch = (
-  metadata: ExternalLinkPreviewMetadata,
-): Partial<Required<ExternalLinkPreviewMetadata>> => {
-  const normalized = normalizeExternalLinkPreviewMetadata(metadata);
-  const patch: Partial<Required<ExternalLinkPreviewMetadata>> = {};
-
-  EXTERNAL_LINK_PREVIEW_METADATA_KEYS.forEach((key) => {
-    if (Object.prototype.hasOwnProperty.call(metadata, key) && metadata[key] !== undefined) {
-      patch[key] = normalized[key];
-    }
-  });
-
-  return patch;
-};
-
 export const normalizeExternalLinkPreviewAttributes = (
   input: Partial<Record<keyof ExternalLinkPreviewAttributes, unknown>>,
 ): ExternalLinkPreviewAttributes | null => {
@@ -193,52 +169,3 @@ export const normalizeExternalLinkPreviewAttributes = (
     ...metadata,
   };
 };
-
-export const getExternalLinkPreviewHostname = (href: string) => {
-  try {
-    return new URL(href).hostname;
-  } catch {
-    return href;
-  }
-};
-
-/** Build a concise, presentation-only label without changing the authored destination. */
-export const getExternalLinkPreviewReadableLabel = (href: string) => {
-  try {
-    const url = new URL(href);
-    const pathname = url.pathname === "/" ? "" : url.pathname;
-
-    return `${url.host}${pathname}`;
-  } catch {
-    return href;
-  }
-};
-
-export const getExternalLinkPreviewTitle = (
-  attributes: Pick<ExternalLinkPreviewAttributes, "href" | "linkText" | "pageTitle" | "siteName">,
-  display: ExternalLinkPreviewDisplay,
-) => {
-  if (display === "compact") {
-    return attributes.linkText !== attributes.href
-      ? attributes.linkText
-      : getExternalLinkPreviewReadableLabel(attributes.href);
-  }
-
-  return (
-    attributes.pageTitle || attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
-  );
-};
-
-export const hasExternalLinkPreviewMetadata = (
-  attributes: Pick<
-    ExternalLinkPreviewAttributes,
-    "pageTitle" | "description" | "siteName" | "faviconUrl" | "imageUrl"
-  >,
-) =>
-  Boolean(
-    attributes.pageTitle ||
-    attributes.description ||
-    attributes.siteName ||
-    attributes.faviconUrl ||
-    attributes.imageUrl,
-  );

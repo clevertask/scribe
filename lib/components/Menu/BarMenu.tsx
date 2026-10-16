@@ -13,7 +13,7 @@ import { Editor, useEditorState } from "@tiptap/react";
 import { ChangeEvent, FC, Fragment, MouseEvent, useCallback, useState } from "react";
 import { getPopupMountTarget } from "../Scribe/extension/getPopupMountTarget";
 import LinkEditor from "./LinkEditor";
-import { hideLinkBubbleMenu } from "./linkBubbleMenuPlugin";
+import { getSelectionLinkContext, hideLinkBubbleMenu } from "./linkBubbleMenuPlugin";
 import {
   BlockQuoteIcon,
   BoldIcon,
@@ -78,7 +78,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
     (open: boolean) => {
       if (open) {
         hideLinkBubbleMenu(editor);
-        const previousUrl = (editor.getAttributes("link").href as string | undefined) ?? "";
+        const previousUrl = getSelectionLinkContext(editor.state)?.href ?? "";
         setLinkValue(previousUrl);
         setImagePopoverOpen(false);
       }
@@ -269,9 +269,7 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                         >
                           <LinkEditor
                             editor={editor}
-                            existingHref={
-                              (editor.getAttributes("link").href as string | undefined) ?? ""
-                            }
+                            existingHref={getSelectionLinkContext(editor.state)?.href ?? ""}
                             onClose={() => setLinkPopoverOpen(false)}
                             onValueChange={setLinkValue}
                             selectTextblockEndAfterSave

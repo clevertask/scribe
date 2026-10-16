@@ -1,10 +1,10 @@
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export const EXTERNAL_LINK_PREVIEW_DISPLAYS = ["compact", "card"] as const;
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export type ExternalLinkPreviewDisplay = (typeof EXTERNAL_LINK_PREVIEW_DISPLAYS)[number];
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface ExternalLinkPreviewMetadata {
   pageTitle?: string | null;
   description?: string | null;
@@ -14,7 +14,7 @@ export interface ExternalLinkPreviewMetadata {
   fetchedAt?: string | null;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface ExternalLinkPreviewAttributes {
   href: string;
   linkText: string;
@@ -27,46 +27,43 @@ export interface ExternalLinkPreviewAttributes {
   fetchedAt: string | null;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface ExternalLinkPreviewResolverContext {
   signal: AbortSignal;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export type ExternalLinkPreviewResolver = (
   href: string,
   context: ExternalLinkPreviewResolverContext,
 ) => Promise<ExternalLinkPreviewMetadata | null>;
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface ExternalLinkPreviewOptions {
   HTMLAttributes?: Record<string, unknown>;
-  /**
-   * Automatically turn a standalone pasted URL into a local Compact preview.
-   * This does not request metadata.
-   * @default false
-   */
+  /** @deprecated Ignored. Paste uses native Tiptap Link behavior. */
   autoPreviewOnPaste?: boolean;
-  /** Resolve metadata when a Preview card needs enrichment. */
+  /** @deprecated Ignored. Scribe no longer fetches preview metadata. */
   resolve?: ExternalLinkPreviewResolver;
+  /** @deprecated Ignored. Saved nodes are never converted by a preview policy. */
   shouldPreview?: (href: string) => boolean;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface InsertExternalLinkPreviewOptions extends ExternalLinkPreviewMetadata {
   href: string;
   linkText?: string;
   display?: ExternalLinkPreviewDisplay;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export interface UpdateExternalLinkPreviewOptions extends ExternalLinkPreviewMetadata {
   href?: string;
   linkText?: string;
 }
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export type ExternalLinkDisplay = "plain" | ExternalLinkPreviewDisplay;
 
-/** @experimental Part of Scribe's evolving external-link-preview contract. */
+/** @deprecated Retained for saved external-link-preview compatibility. */
 export type ExternalLinkPreviewResolutionStatus = "idle" | "loading" | "error";

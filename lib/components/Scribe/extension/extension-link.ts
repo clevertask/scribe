@@ -1,46 +1,63 @@
+import { commands, Extension, getMarkType } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 
-export default Link.configure({
+const LinkAtomGuard = Extension.create({
+  name: "linkAtomGuard",
+  // Core commands have priority 100; register this narrow override afterwards.
+  priority: 90,
+  addCommands() {
+    return {
+      setMark:
+        (typeOrName, attributes = {}) =>
+        (props) => {
+          const { tr, state, dispatch } = props;
+          const type = getMarkType(typeOrName, state.schema);
+          let containsInlineAtom = false;
+
+          if (type.name === "link" && !tr.selection.empty) {
+            tr.selection.ranges.forEach(({ $from, $to }) => {
+              tr.doc.nodesBetween($from.pos, $to.pos, (node) => {
+                if (node.isInline && !node.isText && node.isAtom) containsInlineAtom = true;
+              });
+            });
+          }
+
+          if (!containsInlineAtom) return commands.setMark(typeOrName, attributes)(props);
+
+          // Native URL paste calls setMark directly. Keep application-owned atoms
+          // intact while applying the native link mark to eligible selected text.
+          let canApply = false;
+          tr.selection.ranges.forEach(({ $from, $to }) => {
+            tr.doc.nodesBetween($from.pos, $to.pos, (node, pos, parent) => {
+              if (node.isInline && !node.isText && node.isAtom) return false;
+              if (!node.isText || !parent?.type.allowsMarkType(type)) return;
+              const existing = type.isInSet(node.marks);
+              if (!existing && node.marks.some((mark) => mark.type.excludes(type))) return;
+              canApply = true;
+              if (dispatch) {
+                tr.addMark(
+                  Math.max(pos, $from.pos),
+                  Math.min(pos + node.nodeSize, $to.pos),
+                  type.create({ ...existing?.attrs, ...attributes }),
+                );
+              }
+            });
+          });
+          // An atom-only selection follows the normal paste replacement path.
+          return canApply;
+        },
+    };
+  },
+});
+
+export default Link.extend({
+  addExtensions() {
+    return [...(this.parent?.() ?? []), LinkAtomGuard];
+  },
+}).configure({
   openOnClick: false,
   enableClickSelection: true,
   autolink: true,
-  linkOnPaste: false,
+  linkOnPaste: true,
   defaultProtocol: "https",
-  protocols: ["http", "https"],
-  isAllowedUri: (url, ctx) => {
-    try {
-      const parsedUrl = url.includes(":")
-        ? new URL(url)
-        : new URL(`${ctx.defaultProtocol}://${url}`);
-
-      if (!ctx.defaultValidate(parsedUrl.href)) {
-        return false;
-      }
-
-      const disallowedProtocols = ["ftp", "file", "mailto"];
-      const protocol = parsedUrl.protocol.replace(":", "");
-
-      if (disallowedProtocols.includes(protocol)) {
-        return false;
-      }
-
-      const allowedProtocols = ctx.protocols.map((p) => (typeof p === "string" ? p : p.scheme));
-
-      if (!allowedProtocols.includes(protocol)) {
-        return false;
-      }
-
-      return true;
-    } catch {
-      return false;
-    }
-  },
-  shouldAutoLink: (url) => {
-    try {
-      const parsedUrl = url.includes(":") ? new URL(url) : new URL(`https://${url}`);
-      return !!parsedUrl;
-    } catch {
-      return false;
-    }
-  },
 });
