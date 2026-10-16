@@ -6,7 +6,11 @@ const initialUrl = "initial.example/docs";
 const initialHref = "https://initial.example/docs";
 const linkedMarkdown = `[${documentText}](${initialHref})`;
 
-const pasteLinkedMarkdown = async (context: BrowserContext, page: Page) => {
+const pasteLinkedMarkdown = async (
+  context: BrowserContext,
+  page: Page,
+  markdown = linkedMarkdown,
+) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
     origin: "http://127.0.0.1:5174",
   });
@@ -14,10 +18,7 @@ const pasteLinkedMarkdown = async (context: BrowserContext, page: Page) => {
 
   const editor = page.getByRole("textbox", { name: "Document content", exact: true });
 
-  await page.evaluate(
-    (clipboardText) => navigator.clipboard.writeText(clipboardText),
-    linkedMarkdown,
-  );
+  await page.evaluate((clipboardText) => navigator.clipboard.writeText(clipboardText), markdown);
   await editor.click();
   await editor.press("ControlOrMeta+A");
   await editor.press("Backspace");
@@ -45,6 +46,15 @@ const dragAcrossLink = async (page: Page, link: Locator) => {
   await page.mouse.up();
 };
 
+const expectSimpleLinkEditor = async (dialog: Locator) => {
+  await expect(dialog.getByRole("textbox")).toHaveCount(2);
+  await expect(dialog.getByRole("textbox", { name: "Text to display", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("textbox", { name: "URL", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button")).toHaveCount(2);
+  await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Remove link", exact: true })).toBeVisible();
+};
+
 const createLink = async (page: Page) => {
   await page.goto("/");
 
@@ -59,11 +69,15 @@ const createLink = async (page: Page) => {
   const linkSettings = page.getByRole("dialog", { name: "Link settings", exact: true });
 
   await expect(linkSettings).toBeVisible();
+  await expectSimpleLinkEditor(linkSettings);
+  await expect(
+    linkSettings.getByRole("textbox", { name: "Text to display", exact: true }),
+  ).toHaveValue(documentText);
   await expect(
     linkSettings.getByRole("button", { name: "Remove link", exact: true }),
   ).toBeDisabled();
   await linkSettings.getByRole("textbox", { name: "URL", exact: true }).fill(initialUrl);
-  await linkSettings.getByRole("button", { name: "Save", exact: true }).click();
+  await linkSettings.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(linkSettings).toHaveCount(0);
 
   const link = editor.getByRole("link", { name: documentText, exact: true });
@@ -96,13 +110,17 @@ test("Existing link opens for editing without navigation and updates", async ({
   const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
 
   await expect(editLink).toBeVisible();
+  await expectSimpleLinkEditor(editLink);
+  await expect(editLink.getByRole("textbox", { name: "Text to display", exact: true })).toHaveValue(
+    documentText,
+  );
   expect(popupCount).toBe(0);
   expect(context.pages()).toHaveLength(pageCount);
   await expect(page).toHaveURL(editorUrl);
   await expect(urlInput).toHaveValue(initialHref);
 
   await urlInput.fill("updated.example/reference");
-  await editLink.getByRole("button", { name: "Save", exact: true }).click();
+  await editLink.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(editLink).toHaveCount(0);
   await expect(link).toHaveAttribute("href", "https://updated.example/reference");
 
@@ -155,4 +173,104 @@ test("Existing link can be removed without removing its text", async ({ page }) 
   await expect(editLink).toHaveCount(0);
   await expect(link).toHaveCount(0);
   await expect(editor).toContainText(documentText);
+});
+
+test("Editing a link label and URL only changes the targeted link", async ({ context, page }) => {
+  const otherLabel = "Untouched link";
+  const renamedLabel = "Updated link label";
+  const updatedHref = "https://updated.example/reference";
+  const { editor, link } = await pasteLinkedMarkdown(
+    context,
+    page,
+    `Before ${linkedMarkdown} between [${otherLabel}](${initialHref}) after`,
+  );
+  const otherLink = editor.getByRole("link", { name: otherLabel, exact: true });
+
+  await expect(otherLink).toHaveAttribute("href", initialHref);
+  await link.click();
+
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+
+  await expect(editLink).toBeVisible();
+  await editLink.getByRole("textbox", { name: "Text to display", exact: true }).fill(renamedLabel);
+  await editLink.getByRole("textbox", { name: "URL", exact: true }).fill(updatedHref);
+
+  await expect(link).toHaveAttribute("href", initialHref);
+  await expect(editor).toHaveText(`Before ${documentText} between ${otherLabel} after`);
+
+  await editLink.getByRole("button", { name: "Apply", exact: true }).click();
+
+  await expect(editLink).toHaveCount(0);
+  await expect(link).toHaveCount(0);
+  await expect(editor.getByRole("link", { name: renamedLabel, exact: true })).toHaveAttribute(
+    "href",
+    updatedHref,
+  );
+  await expect(otherLink).toHaveAttribute("href", initialHref);
+  await expect(editor.getByRole("link")).toHaveCount(2);
+  await expect(editor).toHaveText(`Before ${renamedLabel} between ${otherLabel} after`);
+});
+
+for (const { name, label, expectedText } of [
+  { name: "the supplied label", label: "Inserted link label", expectedText: "Inserted link label" },
+  { name: "the normalized URL when the label is blank", label: "", expectedText: initialHref },
+]) {
+  test(`A new link at an empty cursor inserts ${name}`, async ({ page }) => {
+    await page.goto("/");
+
+    const editor = page.getByRole("textbox", { name: "Document content", exact: true });
+    const toolbar = page.getByRole("toolbar", { name: "Text formatting", exact: true });
+
+    await editor.click();
+    await editor.press("ControlOrMeta+A");
+    await editor.press("Backspace");
+    await toolbar.getByRole("button", { name: "Link", exact: true }).click();
+
+    const linkSettings = page.getByRole("dialog", { name: "Link settings", exact: true });
+    const labelInput = linkSettings.getByRole("textbox", { name: "Text to display", exact: true });
+
+    await expect(linkSettings).toBeVisible();
+    await expect(labelInput).toHaveValue("");
+    await expect(
+      linkSettings.getByRole("button", { name: "Remove link", exact: true }),
+    ).toBeDisabled();
+    await labelInput.fill(label);
+    await linkSettings.getByRole("textbox", { name: "URL", exact: true }).fill(initialUrl);
+    await linkSettings.getByRole("button", { name: "Apply", exact: true }).click();
+
+    await expect(linkSettings).toHaveCount(0);
+    await expect(editor.getByRole("link", { name: expectedText, exact: true })).toHaveAttribute(
+      "href",
+      initialHref,
+    );
+    await expect(editor.getByRole("link")).toHaveCount(1);
+    await expect(editor).toHaveText(expectedText);
+  });
+}
+
+test("Escape dismisses pending label and URL changes without changing the link", async ({
+  page,
+}) => {
+  const { editor, link } = await createLink(page);
+
+  await link.click();
+
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const labelInput = editLink.getByRole("textbox", { name: "Text to display", exact: true });
+  const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
+
+  await expect(editLink).toBeVisible();
+  await labelInput.fill("Unapplied label");
+  await urlInput.fill("unapplied.example/path");
+  await urlInput.press("Escape");
+
+  await expect(editLink).toHaveCount(0);
+  await expect(link).toHaveAttribute("href", initialHref);
+  await expect(editor).toHaveText(documentText);
+
+  await link.click();
+
+  await expect(editLink).toBeVisible();
+  await expect(labelInput).toHaveValue(documentText);
+  await expect(urlInput).toHaveValue(initialHref);
 });

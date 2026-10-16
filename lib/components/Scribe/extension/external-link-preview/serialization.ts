@@ -1,8 +1,6 @@
 import {
   EXTERNAL_LINK_PREVIEW_SELECTOR,
   EXTERNAL_LINK_PREVIEW_TARGET_SELECTOR,
-  getExternalLinkPreviewHostname,
-  getExternalLinkPreviewTitle,
   normalizeExternalLinkPreviewAttributes,
 } from "./attributes";
 import type { ExternalLinkPreviewAttributes } from "./types";
@@ -58,23 +56,11 @@ export const getExternalLinkPreviewDataAttributes = (attributes: ExternalLinkPre
   return dataAttributes;
 };
 
-const createTextSpan = (document: Document, hook: string, text: string) => {
-  const span = document.createElement("span");
-
-  span.setAttribute(hook, "");
-  span.textContent = text;
-
-  return span;
-};
-
 export const rebuildExternalLinkPreviewElement = (
   element: Element,
   attributes: ExternalLinkPreviewAttributes,
 ) => {
-  const document = element.ownerDocument;
-  const target = document.createElement("a");
-  const main = document.createElement("span");
-  const copy = document.createElement("span");
+  const target = element.ownerDocument.createElement("a");
 
   Array.from(element.attributes).forEach((attribute) => element.removeAttribute(attribute.name));
   Object.entries(getExternalLinkPreviewDataAttributes(attributes)).forEach(([name, value]) => {
@@ -85,56 +71,7 @@ export const rebuildExternalLinkPreviewElement = (
   target.setAttribute("href", attributes.href);
   target.setAttribute("target", "_blank");
   target.setAttribute("rel", "noopener noreferrer");
-
-  if (attributes.display === "card" && attributes.imageUrl) {
-    const image = document.createElement("img");
-
-    image.setAttribute("data-link-preview-image", "");
-    image.setAttribute("src", attributes.imageUrl);
-    image.setAttribute("alt", "");
-    target.append(image);
-  }
-
-  main.setAttribute("data-link-preview-main", "");
-
-  if (attributes.display === "card" && attributes.faviconUrl) {
-    const favicon = document.createElement("img");
-
-    favicon.setAttribute("data-link-preview-favicon", "");
-    favicon.setAttribute("src", attributes.faviconUrl);
-    favicon.setAttribute("alt", "");
-    main.append(favicon);
-  } else {
-    const fallback = createTextSpan(document, "data-link-preview-favicon-fallback", "↗");
-
-    fallback.setAttribute("aria-hidden", "true");
-    main.append(fallback);
-  }
-
-  copy.setAttribute("data-link-preview-copy", "");
-  copy.append(
-    createTextSpan(
-      document,
-      "data-link-preview-title",
-      getExternalLinkPreviewTitle(attributes, attributes.display),
-    ),
-  );
-
-  const siteLabel =
-    attributes.display === "card"
-      ? attributes.siteName || getExternalLinkPreviewHostname(attributes.href)
-      : null;
-
-  if (siteLabel) {
-    copy.append(createTextSpan(document, "data-link-preview-site", siteLabel));
-  }
-
-  if (attributes.display === "card" && attributes.description) {
-    copy.append(createTextSpan(document, "data-link-preview-description", attributes.description));
-  }
-
-  main.append(copy);
-  target.append(main);
+  target.textContent = attributes.linkText;
   element.replaceChildren(target);
 };
 

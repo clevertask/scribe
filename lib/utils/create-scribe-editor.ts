@@ -11,7 +11,7 @@ export type CreateEditorOptions = {
    * extension owns history for the editor.
    */
   enableUndoRedo?: boolean;
-  /** @experimental The link-preview API and built-in UI may change while this feature is tested. */
+  /** @deprecated Legacy node compatibility. Resolver, policy and automatic preview options are ignored. */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   onContentChange?: (content: {
     htmlContent: string;

@@ -362,7 +362,7 @@ describe("Callout Markdown fallback", () => {
 });
 
 describe("External link preview Markdown fallback", () => {
-  it("rebuilds a provider-free Compact label while preserving its exact tracked URL", () => {
+  it("renders a saved raw URL as ordinary text while preserving its exact destination", () => {
     const href =
       "https://shop.example:8443/products/edward-jacket?utm_source=wishlist&color=navy#details";
     const html = `<p><span data-type="external-link-preview" data-display="compact" data-href="${href.replaceAll("&", "&amp;")}" data-link-text="${href.replaceAll("&", "&amp;")}"><a data-link-preview-target href="${href.replaceAll("&", "&amp;")}">${href.replaceAll("&", "&amp;")}</a></span></p>`;
@@ -372,12 +372,8 @@ describe("External link preview Markdown fallback", () => {
     expect(restored).toHaveAttribute("data-href", href);
     expect(restored).toHaveAttribute("data-link-text", href);
     expect(restored?.querySelector("a[data-link-preview-target]")).toHaveAttribute("href", href);
-    expect(restored?.querySelector("[data-link-preview-title]")).toHaveTextContent(
-      "shop.example:8443/products/edward-jacket",
-    );
-    expect(restored?.querySelector("[data-link-preview-title]")?.textContent).not.toContain(
-      "utm_source",
-    );
+    expect(restored?.querySelector("a")).toHaveTextContent(href);
+    expect(restored?.querySelector("img, [data-link-preview-title]")).toBeNull();
   });
 
   it.each(["compact", "card"] as const)(
@@ -406,31 +402,10 @@ describe("External link preview Markdown fallback", () => {
       expect(target).toHaveAttribute("href", EXTERNAL_LINK_PREVIEW_HREF);
       expect(target).toHaveAttribute("target", "_blank");
       expect(target).toHaveAttribute("rel", "noopener noreferrer");
-      if (display === "card") {
-        expect(target?.querySelector("[data-link-preview-title]")).toHaveTextContent(
-          "Edward & Sons Jacket",
-        );
-        expect(target?.querySelector("img[data-link-preview-favicon]")).toHaveAttribute(
-          "src",
-          "/link-preview-assets/favicon-123",
-        );
-        expect(target?.querySelector("img[data-link-preview-image]")).toHaveAttribute(
-          "src",
-          "https://images.example/edward-jacket.jpg",
-        );
-        expect(target?.querySelector("[data-link-preview-description]")).toHaveTextContent(
-          "A navy wool jacket",
-        );
-      } else {
-        expect(target?.querySelector("[data-link-preview-title]")).toHaveTextContent(
-          "Original product link",
-        );
-        expect(target?.querySelector("img[data-link-preview-favicon]")).toBeNull();
-        expect(target?.querySelector("[data-link-preview-favicon-fallback]")).not.toBeNull();
-        expect(target?.querySelector("[data-link-preview-site]")).toBeNull();
-        expect(target?.querySelector("[data-link-preview-image]")).toBeNull();
-        expect(target?.querySelector("[data-link-preview-description]")).toBeNull();
-      }
+      expect(target).toHaveTextContent("Original product link");
+      expect(
+        target?.querySelector("img, [data-link-preview-title], [data-link-preview-description]"),
+      ).toBeNull();
     },
   );
 

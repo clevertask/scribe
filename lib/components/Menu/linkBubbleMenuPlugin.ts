@@ -61,6 +61,16 @@ export const getPlainLinkContextAtPosition = (
     return null;
   }
 
+  let containsInlineNode = false;
+  state.doc.nodesBetween(range.from, range.to, (node) => {
+    if (node.isInline && !node.isText) {
+      containsInlineNode = true;
+    }
+  });
+  if (containsInlineNode) {
+    return null;
+  }
+
   const linkNode = state.doc.nodeAt(range.from);
   const linkMark = linkNode?.marks.find((mark) => mark.type === linkType);
   const href = typeof linkMark?.attrs.href === "string" ? linkMark.attrs.href : "";
@@ -98,7 +108,7 @@ export const getSelectionLinkContext = (state: EditorState): LinkBubbleMenuConte
       : null;
   }
 
-  if (!selection.$from.sameParent(selection.$to)) {
+  if (selection instanceof NodeSelection || !selection.$from.sameParent(selection.$to)) {
     return null;
   }
 

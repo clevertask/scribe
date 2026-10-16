@@ -1,76 +1,14 @@
-import { ReactNodeViewRenderer } from "@tiptap/react";
 import { createExternalLinkPreviewCommands } from "./commands";
-import { ExternalLinkPreviewNodeView } from "./node-view";
-import {
-  createExternalLinkPreviewNormalizationPlugin,
-  createExternalLinkPreviewNormalizationTransaction,
-} from "./normalization";
-import { createExternalLinkPreviewPastePlugin } from "./paste";
-import {
-  createExternalLinkPreviewPolicyPlugin,
-  createExternalLinkPreviewPolicyTransaction,
-} from "./policy";
-import { createExternalLinkPreviewResolverPlugin } from "./resolver";
 import { ExternalLinkPreviewSchema } from "./schema";
-import type { ExternalLinkPreviewOptions } from "./types";
 
 /**
- * Backend-agnostic enhanced external links. Consumers own metadata fetching through
- * the optional resolver; Scribe owns only presentation, conversion, and persistence.
- *
- * @experimental The link-preview API and built-in UI may change while this feature is tested.
+ * @deprecated Compatibility reader for saved external-link previews.
+ * Legacy attributes are retained, but links render as ordinary authored text.
+ * No metadata requests, preview creation UI, or automatic document conversions run.
  */
-export const ExternalLinkPreview = ExternalLinkPreviewSchema.extend<ExternalLinkPreviewOptions>({
+export const ExternalLinkPreview = ExternalLinkPreviewSchema.extend({
   addCommands() {
-    return createExternalLinkPreviewCommands({
-      resolveMetadata: Boolean(this.options.resolve),
-      shouldPreview: this.options.shouldPreview,
-    });
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(ExternalLinkPreviewNodeView, {
-      trackNodeViewPosition: true,
-    });
-  },
-
-  onCreate() {
-    if (this.editor.isDestroyed) {
-      return;
-    }
-
-    const normalizationTransaction = createExternalLinkPreviewNormalizationTransaction(
-      this.editor.state,
-    );
-
-    if (normalizationTransaction) {
-      this.editor.view.dispatch(normalizationTransaction.setMeta("addToHistory", false));
-    }
-
-    const policyTransaction = createExternalLinkPreviewPolicyTransaction(
-      this.editor.state,
-      this.options.shouldPreview,
-    );
-
-    if (policyTransaction) {
-      this.editor.view.dispatch(policyTransaction);
-    }
-  },
-
-  addProseMirrorPlugins() {
-    return [
-      createExternalLinkPreviewPastePlugin({
-        previewType: this.type,
-        autoPreviewOnPaste: this.options.autoPreviewOnPaste === true,
-        shouldPreview: this.options.shouldPreview,
-      }),
-      createExternalLinkPreviewPolicyPlugin(this.options.shouldPreview),
-      createExternalLinkPreviewNormalizationPlugin(),
-      createExternalLinkPreviewResolverPlugin({
-        editor: this.editor,
-        resolve: this.options.resolve,
-      }),
-    ];
+    return createExternalLinkPreviewCommands();
   },
 });
 

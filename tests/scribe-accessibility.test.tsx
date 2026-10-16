@@ -318,8 +318,12 @@ describe("Scribe accessibility", () => {
 
     fireEvent.click(linkButton);
     expect(await screen.findByRole("dialog", { name: "Link settings" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "URL" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Format");
+    const urlInput = screen.getByRole("textbox", { name: "URL" });
+    expect(urlInput).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove link" })).toBeDisabled();
+    fireEvent.keyDown(urlInput, { key: "Escape" });
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Link settings" })).not.toBeInTheDocument();

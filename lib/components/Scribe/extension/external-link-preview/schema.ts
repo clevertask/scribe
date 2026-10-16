@@ -52,8 +52,8 @@ const validateMediaUrl = (key: "faviconUrl" | "imageUrl", value: unknown) => {
 };
 
 /**
- * The persistence schema for Scribe external-link previews. Interactive
- * behavior is layered onto this node by the regular Scribe editor entry point.
+ * Compatibility schema for saved external-link previews. Attributes survive
+ * round trips while both editor and headless output render ordinary authored links.
  */
 export const ExternalLinkPreviewSchema = Node.create<ExternalLinkPreviewOptions>({
   name: EXTERNAL_LINK_PREVIEW_NODE_NAME,

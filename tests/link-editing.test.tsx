@@ -1,13 +1,16 @@
+import { getSelectionLinkContext } from "../lib/components/Menu/linkBubbleMenuPlugin";
+import { Node } from "@tiptap/core";
 import { Theme } from "@radix-ui/themes";
 import type { Editor } from "@tiptap/react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  hideLinkBubbleMenu,
-  showLinkBubbleMenu,
-} from "../lib/components/Menu/linkBubbleMenuPlugin";
-import { Scribe, type ExternalLinkPreviewOptions, type ScribeRef } from "../lib/main";
+  Scribe,
+  type ExternalLinkPreviewOptions,
+  type ScribeRef,
+  type ScribeProps,
+} from "../lib/main";
 
 const LINK_CONTENT =
   '<p>Visit <a href="https://old.example/docs">Example link</a> for details.</p>';
@@ -30,6 +33,7 @@ interface RenderScribeOptions {
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   showBarMenu?: boolean;
   showOutsideFocusTarget?: boolean;
+  extensions?: ScribeProps["extensions"];
 }
 
 const renderScribe = ({
@@ -38,6 +42,7 @@ const renderScribe = ({
   externalLinkPreview,
   showBarMenu = false,
   showOutsideFocusTarget = false,
+  extensions,
 }: RenderScribeOptions = {}) => {
   const scribeRef = createRef<ScribeRef>();
 
@@ -50,6 +55,7 @@ const renderScribe = ({
           editable={editable}
           externalLinkPreview={externalLinkPreview}
           showBarMenu={showBarMenu}
+          extensions={extensions}
         />
         {showOutsideFocusTarget ? <button type="button">Outside focus target</button> : null}
       </>
@@ -211,14 +217,13 @@ describe("link editing", () => {
     expect(urlInput).toHaveValue("https://old.example/docs");
     expect(urlInput.closest("[data-scribe-popup-root]")).not.toBeNull();
 
-    const openAction = screen.getByRole("link", { name: "Open link" });
-    expect(openAction).toHaveAttribute("href", "https://old.example/docs");
-    expect(openAction).toHaveAttribute("target", "_blank");
-    expect(openAction).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Example link");
+    expect(screen.queryByRole("link", { name: "Open link" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Display as" })).not.toBeInTheDocument();
 
     fireEvent.change(urlInput, { target: { value: "updated.example/docs" } });
-    expect(openAction).toHaveAttribute("href", "https://updated.example/docs");
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
@@ -273,7 +278,7 @@ describe("link editing", () => {
     const urlInput = await screen.findByRole("textbox", { name: "URL" });
 
     fireEvent.change(urlInput, { target: { value: "javascript:alert(1)" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     const errorMessage = await screen.findByRole("alert");
 
@@ -357,116 +362,14 @@ describe("link editing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Link" }));
     const urlInput = await screen.findByRole("textbox", { name: "URL" });
     fireEvent.change(urlInput, { target: { value: "/docs?view=compact#today" } });
-    expect(screen.getByRole("link", { name: "Open link" })).toHaveAttribute(
-      "href",
-      "/docs?view=compact#today",
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Plain");
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => {
       expect(editor.view.dom.querySelector("a")).not.toBeNull();
     });
     expect(getRenderedLink(editor)).toHaveAttribute("href", "/docs?view=compact#today");
     expect(getRenderedLink(editor)).toHaveTextContent("Plain");
-  });
-
-  it("opens one shared dialog from a preview without navigating or showing inline options", async () => {
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
-    const { editor } = renderScribe({
-      content: PREVIEW_CONTENT,
-      externalLinkPreview: { resolve: vi.fn(async () => null) },
-    });
-    const previewTarget = await findRenderedPreviewTarget(editor);
-
-    expect(fireEvent.click(previewTarget)).toBe(false);
-    expect(openSpy).not.toHaveBeenCalled();
-
-    const dialog = await screen.findByRole("dialog", { name: "Edit link" });
-    const urlInput = screen.getByRole("textbox", { name: "URL" });
-
-    await waitFor(() => expect(dialog).toHaveFocus());
-    expect(urlInput).not.toHaveFocus();
-    expect(urlInput).toHaveValue(PREVIEW_HREF);
-    expect(screen.queryByRole("button", { name: "Link options" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Remove link" })).not.toBeInTheDocument();
-    expect(editor.state.selection.from).toBe(findPreviewPosition(editor));
-  });
-
-  it("saves an allowed Compact URL locally and keeps a rejected update in the dialog", async () => {
-    const resolve = vi.fn(async (href: string) => ({
-      pageTitle: href.includes("updated") ? "Updated Jacket" : "Edward Jacket",
-      siteName: "Example Store",
-    }));
-    const { editor } = renderScribe({
-      content: PREVIEW_CONTENT,
-      externalLinkPreview: {
-        resolve,
-        shouldPreview: (href) => !href.includes("blocked.example"),
-      },
-    });
-
-    fireEvent.click(await findRenderedPreviewTarget(editor));
-    let urlInput = await screen.findByRole("textbox", { name: "URL" });
-
-    fireEvent.change(urlInput, { target: { value: "updated.example/products/jacket" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    await waitFor(() => {
-      expect(editor.state.doc.nodeAt(findPreviewPosition(editor))?.attrs.href).toBe(
-        "https://updated.example/products/jacket",
-      );
-    });
-    expect(resolve).not.toHaveBeenCalled();
-
-    fireEvent.click(await findRenderedPreviewTarget(editor));
-    urlInput = await screen.findByRole("textbox", { name: "URL" });
-    fireEvent.change(urlInput, { target: { value: "https://blocked.example/products/jacket" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
-    expect(await screen.findByRole("alert")).toHaveTextContent("can't be used as a preview");
-    expect(editor.state.doc.nodeAt(findPreviewPosition(editor))?.attrs.href).toBe(
-      "https://updated.example/products/jacket",
-    );
-    expect(screen.getByRole("dialog", { name: "Edit link" })).toBeInTheDocument();
-
-    act(() => hideLinkBubbleMenu(editor));
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
-    });
-    act(() => showLinkBubbleMenu(editor, "dialog"));
-
-    expect(await screen.findByRole("textbox", { name: "URL" })).toHaveValue(
-      "https://updated.example/products/jacket",
-    );
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("converts a preview to Plain and reopens the ordinary link for local Compact", async () => {
-    const { editor } = renderScribe({
-      content: PREVIEW_CONTENT,
-    });
-
-    fireEvent.click(await findRenderedPreviewTarget(editor));
-    await screen.findByRole("dialog", { name: "Edit link" });
-    fireEvent.click(screen.getByRole("button", { name: "Plain link", exact: true }));
-
-    await waitFor(() => {
-      expect(editor.view.dom.querySelector('[data-type="external-link-preview"]')).toBeNull();
-    });
-
-    const range = findLinkRange(editor);
-    const plainLink = getRenderedLink(editor);
-
-    clickLink(editor, plainLink, range.from + 1);
-    const urlInput = await screen.findByRole("textbox", { name: "URL" });
-
-    await waitFor(() => expect(urlInput).toHaveFocus());
-    fireEvent.click(screen.getByRole("button", { name: "Compact", exact: true }));
-
-    await waitFor(() => {
-      expect(editor.view.dom.querySelector('[data-type="external-link-preview"]')).not.toBeNull();
-    });
-    expect(editor.view.dom.querySelector("[data-link-preview-title]")).toHaveTextContent("Jacket");
   });
 
   it("resets an abandoned URL draft whenever the same link menu reopens", async () => {
@@ -534,40 +437,239 @@ describe("link editing", () => {
     expect(editor.state.selection.to).toBe(range.to);
   });
 
-  it("refreshes preview metadata and announces its loading status", async () => {
-    let finishResolution: ((metadata: { pageTitle: string; siteName: string }) => void) | undefined;
-    const resolve = vi.fn(
-      () =>
-        new Promise<{ pageTitle: string; siteName: string }>((resolveMetadata) => {
-          finishResolution = resolveMetadata;
-        }),
-    );
+  it("targets the whole link from a cursor and preserves mixed formatting for a URL-only edit", async () => {
     const { editor } = renderScribe({
-      content: PREVIEW_CONTENT.replace('data-display="compact"', 'data-display="card"'),
-      externalLinkPreview: { resolve },
+      content:
+        '<p>Before <a href="https://old.example/docs"><strong>Bold</strong> and <em>italic</em></a> after.</p>',
+      showBarMenu: true,
     });
+    const original = editor.getJSON();
+    const range = findTextRange(editor, "Bold");
+    act(() => {
+      editor.commands.setTextSelection(range.from + 1);
+      editor.view.focus();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    const url = await screen.findByRole("textbox", { name: "URL" });
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Bold and italic");
+    fireEvent.change(url, { target: { value: "https://updated.example/formatting" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(editor.getText()).toBe("Before Bold and italic after.");
+    expect(editor.view.dom.querySelector("strong")).toHaveTextContent("Bold");
+    expect(editor.view.dom.querySelector("em")).toHaveTextContent("italic");
+    expect(editor.getHTML()).not.toContain('href="https://old.example/docs"');
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.getHTML()).toContain('href="https://updated.example/formatting"');
+  });
 
+  it("changes only the target label and destination in one undo step", async () => {
+    const { editor } = renderScribe({
+      content:
+        '<p>Before <a href="https://old.example/docs" target="_self" rel="nofollow">First link</a> between <a href="https://old.example/docs">Second link</a> after.</p>',
+    });
+    const original = editor.getJSON();
+    const range = findTextRange(editor, "First link");
+    clickLink(editor, getRenderedLink(editor), range.from + 1);
+    const url = await screen.findByRole("textbox", { name: "URL" });
+    fireEvent.change(screen.getByRole("textbox", { name: "Text to display" }), {
+      target: { value: "Renamed" },
+    });
+    fireEvent.change(url, { target: { value: "https://updated.example/target" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(editor.getText()).toBe("Before Renamed between Second link after.");
+    const links = editor.view.dom.querySelectorAll("a");
+    expect(links[0]).toHaveAttribute("href", "https://updated.example/target");
+    expect(links[0]).toHaveAttribute("target", "_self");
+    expect(links[0]).toHaveAttribute("rel", "nofollow");
+    expect(links[1]).toHaveAttribute("href", "https://old.example/docs");
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.getText()).toBe("Before Renamed between Second link after.");
+  });
+
+  it.each([
+    ["New label", "New label"],
+    ["", "https://new.example/path"],
+  ])("inserts a link at an empty cursor with display text %s", async (label, expected) => {
+    const { editor } = renderScribe({ content: "<p></p>", showBarMenu: true });
+    const original = editor.getJSON();
+    act(() => {
+      editor.commands.setTextSelection(1);
+      editor.view.focus();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    const url = await screen.findByRole("textbox", { name: "URL" });
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("");
+    fireEvent.change(screen.getByRole("textbox", { name: "Text to display" }), {
+      target: { value: label },
+    });
+    fireEvent.change(url, { target: { value: "new.example/path" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(getRenderedLink(editor)).toHaveTextContent(expected);
+    expect(getRenderedLink(editor)).toHaveAttribute("href", "https://new.example/path");
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+  });
+
+  it("preserves internal inline atoms and disables label replacement across them", async () => {
+    const Reference = Node.create({
+      name: "testResourceReference",
+      group: "inline",
+      inline: true,
+      atom: true,
+      parseHTML: () => [{ tag: "span[data-test-reference]" }],
+      renderHTML: () => ["span", { "data-test-reference": "" }, "Task reference"],
+    });
+    const { editor } = renderScribe({
+      content: "<p>Before <span data-test-reference></span> after</p>",
+      showBarMenu: true,
+      extensions: [Reference],
+    });
+    act(() => {
+      editor.commands.setTextSelection({ from: 1, to: editor.state.doc.content.size - 1 });
+      editor.view.focus();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    const url = await screen.findByRole("textbox", { name: "URL" });
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toBeDisabled();
+    fireEvent.change(url, { target: { value: "https://updated.example/text" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(editor.getJSON().content?.[0].content?.[1]).toEqual({ type: "testResourceReference" });
+    expect(editor.view.dom.querySelector("[data-test-reference]")).toHaveTextContent(
+      "Task reference",
+    );
+    expect(editor.getText()).toBe("Before  after");
+  });
+
+  it("edits a legacy link without fetching metadata and removes it in one undo step", async () => {
+    const resolve = vi.fn(async () => null);
+    const { editor } = renderScribe({ content: PREVIEW_CONTENT, externalLinkPreview: { resolve } });
+    const original = editor.getJSON();
     fireEvent.click(await findRenderedPreviewTarget(editor));
-    await screen.findByRole("dialog", { name: "Edit link" });
-    expect(screen.getByRole("status")).toHaveTextContent("Example Store");
-
-    const refreshButton = screen.getByRole("button", { name: "Refresh preview" });
-
-    refreshButton.focus();
-    fireEvent.click(refreshButton);
-
-    await waitFor(() => expect(resolve).toHaveBeenCalledOnce());
-    expect(screen.getByRole("status")).toHaveTextContent("Loading preview");
-    expect(refreshButton).toHaveAttribute("aria-disabled", "true");
-    expect(refreshButton).toHaveFocus();
-
-    await act(async () => {
-      finishResolution?.({ pageTitle: "Updated Jacket", siteName: "Updated Store" });
-      await Promise.resolve();
+    const url = await screen.findByRole("textbox", { name: "URL" });
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Jacket");
+    expect(screen.queryByRole("group", { name: "Display as" })).not.toBeInTheDocument();
+    fireEvent.change(url, { target: { value: "https://updated.example/jacket" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Text to display" }), {
+      target: { value: "Updated label" },
     });
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    const updated = editor.getJSON();
+    expect(updated.content?.[0].content?.[0]?.attrs).toMatchObject({
+      href: "https://updated.example/jacket",
+      linkText: "Updated label",
+      pageTitle: "Edward Jacket",
+    });
+    expect(resolve).not.toHaveBeenCalled();
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+    act(() => {
+      editor.commands.redo();
+    });
+    fireEvent.click(await findRenderedPreviewTarget(editor));
+    await screen.findByRole("textbox", { name: "URL" });
+    fireEvent.click(screen.getByRole("button", { name: "Remove link" }));
+    expect(editor.getText()).toBe("Updated label");
+    expect(editor.view.dom.querySelector("a")).toBeNull();
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(updated);
+  });
 
-    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Updated Store"));
-    expect(refreshButton).toHaveAttribute("aria-disabled", "false");
-    expect(refreshButton).toHaveFocus();
+  it("converts a legacy link to an ordinary root-relative link only on Apply", async () => {
+    const { editor } = renderScribe({ content: PREVIEW_CONTENT });
+    const original = editor.getJSON();
+    fireEvent.click(await findRenderedPreviewTarget(editor));
+    fireEvent.change(await screen.findByRole("textbox", { name: "URL" }), {
+      target: { value: "/documents/guide" },
+    });
+    expect(editor.getJSON()).toEqual(original);
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(editor.getText()).toBe("Jacket");
+    expect(getRenderedLink(editor)).toHaveAttribute("href", "/documents/guide");
+    expect(editor.view.dom.querySelector('[data-type="external-link-preview"]')).toBeNull();
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+  });
+
+  it("does not treat a marked reference atom as an ordinary editable link", () => {
+    const Reference = Node.create({
+      name: "testResourceReference",
+      group: "inline",
+      inline: true,
+      atom: true,
+      parseHTML: () => [{ tag: "span[data-test-reference]" }],
+      renderHTML: () => ["span", { "data-test-reference": "" }, "Task reference"],
+    });
+    const { editor } = renderScribe({
+      content:
+        '<p><a href="https://old.example/docs">Before <span data-test-reference></span> after</a></p>',
+      extensions: [Reference],
+    });
+    act(() => {
+      editor.commands.setNodeSelection(8);
+    });
+    expect(editor.state.selection.to - editor.state.selection.from).toBe(1);
+    expect(getSelectionLinkContext(editor.state)).toBeNull();
+    act(() => {
+      editor.commands.setTextSelection(2);
+    });
+    expect(getSelectionLinkContext(editor.state)).toBeNull();
+  });
+
+  it("refuses label replacement when an inline reference enters the open target", async () => {
+    const Reference = Node.create({
+      name: "testResourceReference",
+      group: "inline",
+      inline: true,
+      atom: true,
+      parseHTML: () => [{ tag: "span[data-test-reference]" }],
+      renderHTML: () => ["span", { "data-test-reference": "" }, "Task reference"],
+    });
+    const { editor } = renderScribe({
+      content: "<p>Before Example link after.</p>",
+      extensions: [Reference],
+      showBarMenu: true,
+    });
+    const range = findTextRange(editor, "Example link");
+    act(() => {
+      editor.commands.setTextSelection(range);
+      editor.view.focus();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Link" }));
+    const label = await screen.findByRole("textbox", { name: "Text to display" });
+    fireEvent.change(label, { target: { value: "Changed label" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "URL" }), {
+      target: { value: "https://updated.example/text" },
+    });
+    act(() => {
+      editor.commands.insertContentAt(
+        range.from + 3,
+        { type: "testResourceReference" },
+        { updateSelection: false },
+      );
+    });
+    const withReference = editor.getJSON();
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+    expect(editor.getJSON()).toEqual(withReference);
+    expect(screen.getByRole("alert")).toHaveTextContent("Scribe could not save this link.");
   });
 });

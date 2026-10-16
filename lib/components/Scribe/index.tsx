@@ -139,15 +139,9 @@ export interface ScribeProps {
    */
   slashCommand?: ScribeSlashCommandOptions;
   /**
-   * Configures enhanced previews for external links. The consumer owns metadata
-   * fetching; Scribe never requests a website directly.
-   *
-   * Scribe reads this configuration when it creates its editor. Pass stable
-   * callback references when the component can re-render.
-   *
-   * A caller-owned `externalEditor` must register the extension itself.
-   *
-   * @experimental The link-preview API and built-in UI may change while this feature is tested.
+   * @deprecated Compatibility options for saved preview nodes. Only HTMLAttributes
+   * affects their plain-link wrapper; resolve, shouldPreview and autoPreviewOnPaste
+   * are ignored. A caller-owned externalEditor must register the legacy extension.
    */
   externalLinkPreview?: Partial<ExternalLinkPreviewOptions>;
   /**

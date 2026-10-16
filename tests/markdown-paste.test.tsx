@@ -1,5 +1,5 @@
 import { Theme } from "@radix-ui/themes";
-import { Extension, type JSONContent } from "@tiptap/core";
+import { Extension, Node, type JSONContent } from "@tiptap/core";
 import { Plugin } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import type { Editor } from "@tiptap/react";
@@ -78,11 +78,95 @@ const getTextMarkTypes = (content: JSONContent, text: string): string[] | undefi
   return undefined;
 };
 
-describe("Selected-text paste", () => {
+describe("Native selected-text paste", () => {
+  it("links selected text without marking an application-owned reference atom", () => {
+    const Reference = Node.create({
+      name: "testResourceReference",
+      group: "inline",
+      inline: true,
+      atom: true,
+      addAttributes: () => ({ id: { default: "saved-task-id" } }),
+      parseHTML: () => [{ tag: "span[data-test-reference]" }],
+      renderHTML: () => ["span", { "data-test-reference": "" }, "Saved task"],
+    });
+    const editor = renderScribe({
+      content: "<p>Before <span data-test-reference></span> after</p>",
+      extensions: [Reference],
+    });
+    act(() => {
+      editor.commands.selectAll();
+    });
+    paste({ editor, text: "https://example.com/reference" });
+    expect(editor.getJSON().content?.[0].content?.[1]).toEqual({
+      type: "testResourceReference",
+      attrs: { id: "saved-task-id" },
+    });
+    expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
+      text: "Before ",
+      marks: [{ type: "link", attrs: { href: "https://example.com/reference" } }],
+    });
+  });
+
+  it("replaces an atom-only selection and restores its identity with undo", () => {
+    const Reference = Node.create({
+      name: "testResourceReference",
+      group: "inline",
+      inline: true,
+      atom: true,
+      addAttributes: () => ({ id: { default: "saved-task-id" } }),
+      parseHTML: () => [{ tag: "span[data-test-reference]" }],
+      renderHTML: () => ["span", { "data-test-reference": "" }, "Saved task"],
+    });
+    const editor = renderScribe({
+      content: "<p><span data-test-reference></span></p>",
+      extensions: [Reference],
+    });
+    const original = editor.getJSON();
+    act(() => {
+      editor.commands.setNodeSelection(1);
+    });
+    paste({ editor, text: "https://example.com/reference" });
+    expect(editor.getText()).toBe("https://example.com/reference");
+    expect(editor.getJSON().content?.[0].content?.[0].type).toBe("text");
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(original);
+  });
+
+  it.each([
+    ["ftp://example.com/file", "ftp://example.com/file"],
+    ["person@example.com", "mailto:person@example.com"],
+    ["mailto:person@example.com", "mailto:person@example.com"],
+  ])("uses native protocol recognition with a rendered href: %s", (text, href) => {
+    const editor = renderScribe({ content: "<p>Selected label</p>" });
+    act(() => {
+      editor.commands.selectAll();
+    });
+    paste({ editor, text });
+    expect(editor.getText()).toBe("Selected label");
+    expect(editor.view.dom.querySelector("a")).toHaveAttribute("href", href);
+    expect(editor.getHTML()).toContain(`href="${href}"`);
+  });
+
+  it.each(["javascript:alert(1)", "data:text/html,unsafe"])(
+    "rejects unsafe native link commands and pastes as text: %s",
+    (text) => {
+      const editor = renderScribe({ content: "<p>Selected label</p>" });
+      act(() => {
+        editor.commands.selectAll();
+      });
+      expect(editor.commands.setLink({ href: text })).toBe(false);
+      paste({ editor, text });
+      expect(editor.getText()).toBe(text);
+      expect(editor.view.dom.querySelector("a")).toBeNull();
+    },
+  );
+
   it.each([
     ["replacement", "replacement"],
+    ["/notes", "/notes"],
     ["2026", "2026"],
-    ["test@example.com", "test@example.com"],
     ["/notes with prose", "/notes with prose"],
     ["http://[::1]:4000/path extra words", "http://[::1]:4000/path extra words"],
     ["http://[::1]:invalid/path", "http://[::1]:invalid/path"],
@@ -160,12 +244,7 @@ describe("Selected-text paste", () => {
   });
 
   it.each([
-    ["/notes", "/notes"],
-    ["/tasks/list?itemId=1234567890abcdef12345678", "/tasks/list?itemId=1234567890abcdef12345678"],
     ["https://example.com/reference", "https://example.com/reference"],
-    ["  https://example.com/reference  ", "https://example.com/reference"],
-    ["localhost:3000/path", "https://localhost:3000/path"],
-    ["http://[::1]:4000/path", "http://[::1]:4000/path"],
     ["example.com/reference", "https://example.com/reference"],
     ["https://example.com/path%20with%20spaces", "https://example.com/path%20with%20spaces"],
     [

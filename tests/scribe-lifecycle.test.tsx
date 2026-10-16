@@ -1,6 +1,6 @@
 import { Theme } from "@radix-ui/themes";
 import type { Editor } from "@tiptap/react";
-import { act, render, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createRef, StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createScribeEditor, Scribe, type ScribeRef } from "../lib/main";
@@ -114,7 +114,7 @@ describe("Scribe editor lifecycle", () => {
     );
   });
 
-  it("keeps the preview menu affordance synchronized across editable transitions", async () => {
+  it("keeps legacy links readable and editable across editable transitions", async () => {
     const scribeRef = createRef<ScribeRef>();
     const previewContent =
       '<p><span data-type="external-link-preview" data-href="https://example.com/reference" data-link-text="Reference" data-display="compact"><a data-link-preview-target href="https://example.com/reference">Reference</a></span></p>';
@@ -131,25 +131,45 @@ describe("Scribe editor lifecycle", () => {
       </Theme>
     );
     const { rerender } = render(renderEditor(true));
-    const getPreviewTarget = () =>
-      getEditor(scribeRef).view.dom.querySelector<HTMLAnchorElement>("[data-link-preview-target]");
+    const editor = getEditor(scribeRef);
+    const original = editor.getJSON();
+    const getPreviewTarget = () => {
+      const target = editor.view.dom.querySelector<HTMLAnchorElement>("[data-link-preview-target]");
+      if (!target) {
+        throw new Error("Expected a readable legacy link");
+      }
+      expect(target).toHaveAttribute("href", "https://example.com/reference");
+      expect(target).toHaveTextContent("Reference");
+      return target;
+    };
 
+    fireEvent.click(getPreviewTarget());
+    expect(await screen.findByRole("dialog", { name: "Edit link" })).toBeInTheDocument();
+    const urlInput = screen.getByRole("textbox", { name: "URL" });
+    expect(urlInput).toHaveValue("https://example.com/reference");
+    fireEvent.keyDown(urlInput, { key: "Escape" });
     await waitFor(() => {
-      expect(getPreviewTarget()).toHaveAttribute("aria-haspopup", "dialog");
+      expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
     });
 
     rerender(renderEditor(false));
-
     await waitFor(() => {
-      expect(getPreviewTarget()).not.toHaveAttribute("aria-haspopup");
+      expect(editor.isEditable).toBe(false);
     });
+    expect(editor.view.dom).toHaveAttribute("aria-readonly", "true");
+    expect(fireEvent.click(getPreviewTarget())).toBe(true);
+    expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
 
     rerender(renderEditor(true));
-
     await waitFor(() => {
-      expect(getPreviewTarget()).toHaveAttribute("aria-haspopup", "dialog");
+      expect(editor.isEditable).toBe(true);
     });
-    expect(getEditor(scribeRef).isEditable).toBe(true);
+    expect(editor.view.dom).toHaveAttribute("aria-readonly", "false");
+    fireEvent.click(getPreviewTarget());
+    expect(await screen.findByRole("dialog", { name: "Edit link" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Reference");
+    expect(editor.getJSON()).toEqual(original);
+    expect(resolve).not.toHaveBeenCalled();
   });
 
   it("does not remove update listeners owned by a caller-provided editor", () => {
