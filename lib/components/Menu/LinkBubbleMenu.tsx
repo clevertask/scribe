@@ -24,6 +24,9 @@ export interface LinkBubbleMenuProps {
 type LinkBubbleMenuShouldShow = NonNullable<CoreBubbleMenuProps["shouldShow"]>;
 
 const SCROLLABLE_OVERFLOW = /auto|overlay|scroll/;
+const MENU_GAP = 8;
+// Tiptap applies offset after shift, so reserve the gap as well as the viewport inset.
+const MENU_COLLISION_PADDING = 8 + MENU_GAP;
 
 const getScrollableAncestors = (element: HTMLElement) => {
   const ownerWindow = element.ownerDocument.defaultView;
@@ -280,6 +283,8 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     };
 
     ownerWindow.addEventListener("scroll", updatePosition, { passive: true });
+    ownerWindow.visualViewport?.addEventListener("resize", updatePosition);
+    ownerWindow.visualViewport?.addEventListener("scroll", updatePosition);
     scrollableAncestors.forEach((ancestor) => {
       ancestor.addEventListener("scroll", updatePosition, { passive: true });
     });
@@ -290,6 +295,8 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
       }
 
       ownerWindow.removeEventListener("scroll", updatePosition);
+      ownerWindow.visualViewport?.removeEventListener("resize", updatePosition);
+      ownerWindow.visualViewport?.removeEventListener("scroll", updatePosition);
       scrollableAncestors.forEach((ancestor) => {
         ancestor.removeEventListener("scroll", updatePosition);
       });
@@ -365,12 +372,6 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     }
   }, []);
 
-  const handleEditUrl = useCallback(() => {
-    handleHide();
-    inputRef.current?.focus({ preventScroll: true });
-    inputRef.current?.select();
-  }, [handleHide]);
-
   const handleDialogKeyDown = useCallback<KeyboardEventHandler<HTMLDivElement>>(
     (event) => {
       if (event.key !== "Escape") {
@@ -399,18 +400,47 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
   );
 
   const appendTo = useCallback(() => getPopupMountTarget(editor), [editor]);
+  const keepFocusedControlVisible = useCallback(() => {
+    const dialog = dialogRef.current;
+    const focused = dialog?.ownerDocument.activeElement;
+
+    if (!dialog || !focused || focused === dialog || !dialog.contains(focused)) {
+      return;
+    }
+
+    const dialogRect = dialog.getBoundingClientRect();
+    const focusedRect = focused.getBoundingClientRect();
+    const top = dialogRect.top + dialog.clientTop + MENU_GAP;
+    const bottom = dialogRect.top + dialog.clientTop + dialog.clientHeight - MENU_GAP;
+
+    // Scroll only the form when the keyboard leaves less room, preserving the page and caret.
+    if (focusedRect.top < top) {
+      dialog.scrollTop -= top - focusedRect.top;
+    } else if (focusedRect.bottom > bottom) {
+      dialog.scrollTop += focusedRect.bottom - bottom;
+    }
+  }, []);
   const options = useMemo<NonNullable<CoreBubbleMenuProps["options"]>>(
     () => ({
       strategy: "fixed",
       placement: "bottom",
-      offset: 8,
-      flip: {},
-      shift: { padding: 8 },
+      offset: MENU_GAP,
+      flip: { padding: MENU_COLLISION_PADDING },
+      shift: { padding: MENU_COLLISION_PADDING, crossAxis: true },
+      size: {
+        padding: MENU_COLLISION_PADDING,
+        apply: ({ availableHeight }) => {
+          if (dialogRef.current) {
+            dialogRef.current.style.maxHeight = `min(32rem, ${Math.max(0, availableHeight)}px)`;
+          }
+        },
+      },
       inline: true,
       onHide: handleHide,
       onShow: handleShow,
+      onUpdate: keepFocusedControlVisible,
     }),
-    [handleHide, handleShow],
+    [handleHide, handleShow, keepFocusedControlVisible],
   );
   const context = linkState.context;
 
@@ -451,7 +481,6 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
           existingHref={context?.href ?? ""}
           inputRef={inputRef}
           onClose={handleClose}
-          onEditUrl={handleEditUrl}
           onValueChange={setLinkValue}
           resetToken={menuSession}
           targetPosition={context?.kind === "preview" ? context.position : undefined}

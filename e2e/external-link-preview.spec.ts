@@ -3,9 +3,9 @@ import { expect, test, type Locator, type Page } from "./fixtures";
 
 const externalUrl =
   "https://store.example/products/edward-jacket?utm_source=wishlist&color=navy%20blue";
-const grantClipboardAccess = async (context: BrowserContext) => {
+const grantClipboardAccess = async (context: BrowserContext, page: Page) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:5174",
+    origin: new URL(page.url()).origin,
   });
 };
 const pasteText = async (page: Page, text: string) => {
@@ -45,8 +45,8 @@ test("standalone URL paste stays ordinary and exposes only text and URL editing"
   context,
   page,
 }) => {
-  await grantClipboardAccess(context);
   await page.goto("/?linkPreview=true");
+  await grantClipboardAccess(context, page);
   const { editor, link } = await pasteStandaloneLink(page);
   await expect(editor.locator('[data-type="external-link-preview"]')).toHaveCount(0);
   await link.click();
@@ -66,8 +66,8 @@ for (const [clipboardText, expectedText] of [
   ["https://example.com/path extra words", "https://example.com/path extra words"],
 ]) {
   test(`native paste replaces Select all: ${clipboardText}`, async ({ context, page }) => {
-    await grantClipboardAccess(context);
     await page.goto("/?linkPreview=true");
+    await grantClipboardAccess(context, page);
     const editor = page.getByRole("textbox", { name: "Document content", exact: true });
     await editor.click();
     await editor.press("ControlOrMeta+A");
@@ -82,8 +82,8 @@ test("native URL-only paste links selected text without changing its label", asy
   context,
   page,
 }) => {
-  await grantClipboardAccess(context);
   await page.goto("/?linkPreview=true");
+  await grantClipboardAccess(context, page);
   const editor = page.getByRole("textbox", { name: "Document content", exact: true });
   await editor.click();
   await editor.press("ControlOrMeta+A");
@@ -99,8 +99,8 @@ for (const display of ["compact", "card"] as const) {
     context,
     page,
   }) => {
-    await grantClipboardAccess(context);
     await page.goto("/?linkPreview=true&captureContent=true");
+    await grantClipboardAccess(context, page);
     const editor = page.getByRole("textbox", { name: "Document content", exact: true });
     await editor.click();
     await editor.press("ControlOrMeta+A");
@@ -164,8 +164,8 @@ for (const scrollCase of [
     context,
     page,
   }) => {
-    await grantClipboardAccess(context);
     await page.goto(`/?linkPreview=true&${scrollCase.query}`);
+    await grantClipboardAccess(context, page);
     const editor = page.getByRole("textbox", { name: "Document content", exact: true });
     await editor.click();
     await editor.press("ControlOrMeta+A");

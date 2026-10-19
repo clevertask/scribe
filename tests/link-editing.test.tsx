@@ -236,7 +236,7 @@ describe("link editing", () => {
     expect(editor.view.dom).toHaveTextContent("Example link");
   });
 
-  it("focuses and selects the URL through the explicit Edit URL action", async () => {
+  it("keeps direct URL editing focused and restores the document on Escape", async () => {
     const { editor } = renderScribe();
     const range = findLinkRange(editor);
     clickLink(editor, getRenderedLink(editor), range.from + 1);
@@ -244,17 +244,26 @@ describe("link editing", () => {
     await waitFor(() => expect(dialog).toHaveFocus());
     const urlInput = screen.getByRole<HTMLInputElement>("textbox", { name: "URL" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Edit URL", exact: true }));
+    expect(screen.queryByRole("button", { name: "Edit URL", exact: true })).not.toBeInTheDocument();
+    fireEvent.pointerDown(urlInput);
+    act(() => {
+      urlInput.focus();
+      urlInput.setSelectionRange(4, 4);
+    });
 
     expect(urlInput).toHaveFocus();
-    expect(urlInput.selectionStart).toBe(0);
-    expect(urlInput.selectionEnd).toBe(urlInput.value.length);
+    expect(urlInput.selectionStart).toBe(4);
+    expect(urlInput.selectionEnd).toBe(4);
     fireEvent.keyDown(urlInput, { key: "Escape" });
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
       expect(editor.view.dom).toHaveFocus();
     });
     expect(getRenderedLink(editor)).toHaveAttribute("href", "https://old.example/docs");
+
+    clickLink(editor, getRenderedLink(editor), range.from + 1);
+    await waitFor(() => expect(screen.getByRole("dialog", { name: "Edit link" })).toHaveFocus());
+    expect(screen.getByRole("textbox", { name: "URL" })).not.toHaveFocus();
   });
 
   it.each(["URL", "Text to display"])(

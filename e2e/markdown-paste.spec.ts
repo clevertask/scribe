@@ -8,10 +8,10 @@ const markdown = [
 ].join("\n");
 
 test("Plain-text Markdown paste creates rich text", async ({ context, page }) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:5174",
-  });
   await page.goto("/");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
 
   const editor = page.getByRole("textbox", {
     name: "Document content",
