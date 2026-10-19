@@ -1,9 +1,14 @@
 import { Theme } from "@radix-ui/themes";
 import type { Editor } from "@tiptap/react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { createRef, StrictMode } from "react";
+import { createRef, StrictMode, useCallback, useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createScribeEditor, Scribe, type ScribeRef } from "../lib/main";
+import {
+  createScribeEditor,
+  Scribe,
+  type ScribeOnChangeContents,
+  type ScribeRef,
+} from "../lib/main";
 
 const externalEditors = new Set<Editor>();
 
@@ -50,6 +55,100 @@ const getEditor = (scribeRef: React.RefObject<ScribeRef | null>) => {
 };
 
 describe("Scribe editor lifecycle", () => {
+  it.each([false, true])(
+    "settles content feedback and keeps editability changes silent (external editor: %s)",
+    async (useExternalEditor) => {
+      const scribeRef = createRef<ScribeRef>();
+      const onContentChange = vi.fn();
+      const externalEditor = useExternalEditor
+        ? createScribeEditor({ content: "<p></p>" })
+        : undefined;
+      if (externalEditor) externalEditors.add(externalEditor);
+
+      const StatefulConsumer = ({ editable }: { editable: boolean }) => {
+        const [document, setDocument] = useState<ScribeOnChangeContents["jsonContent"]>("");
+        const handleContentChange = useCallback((content: ScribeOnChangeContents) => {
+          onContentChange(content);
+          // Bound a broken feedback cycle so the regression fails instead of hanging React.
+          if (onContentChange.mock.calls.length <= 5) setDocument(content.jsonContent);
+        }, []);
+
+        return (
+          <>
+            <Scribe
+              ref={scribeRef}
+              content="<p></p>"
+              editable={editable}
+              externalEditor={externalEditor}
+              editorProps={{ editorProps: { attributes: { "data-consumer": "planner" } } }}
+              onContentChange={handleContentChange}
+              showBarMenu={false}
+            />
+            <output aria-label="Stored document">{JSON.stringify(document)}</output>
+          </>
+        );
+      };
+      const renderConsumer = (editable: boolean) => (
+        <Theme>
+          <StatefulConsumer editable={editable} />
+        </Theme>
+      );
+      const { rerender } = render(renderConsumer(true));
+      const editor = getEditor(scribeRef);
+      onContentChange.mockClear();
+
+      await act(async () => {
+        editor.commands.insertContent("A");
+      });
+
+      expect(editor.getText()).toBe("A");
+      expect(onContentChange).toHaveBeenCalledOnce();
+      expect(onContentChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ jsonContent: editor.getJSON(), source: "user" }),
+      );
+      expect(screen.getByLabelText("Stored document")).toHaveTextContent(
+        JSON.stringify(editor.getJSON()),
+      );
+
+      rerender(renderConsumer(true));
+      expect(onContentChange).toHaveBeenCalledOnce();
+      expect(getEditor(scribeRef)).toBe(editor);
+
+      rerender(renderConsumer(false));
+      expect(editor.isEditable).toBe(false);
+      expect(editor.view.dom).toHaveAttribute("contenteditable", "false");
+      expect(editor.view.dom).toHaveAttribute("aria-readonly", "true");
+      expect(onContentChange).toHaveBeenCalledOnce();
+
+      await act(async () => {
+        editor.commands.setContent("<p>Loaded content</p>");
+      });
+      expect(onContentChange).toHaveBeenCalledTimes(2);
+      expect(onContentChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ jsonContent: editor.getJSON(), source: "programmatic" }),
+      );
+
+      rerender(renderConsumer(true));
+      expect(editor.isEditable).toBe(true);
+      expect(editor.view.dom).toHaveAttribute("contenteditable", "true");
+      expect(editor.view.dom).toHaveAttribute("aria-readonly", "false");
+      expect(onContentChange).toHaveBeenCalledTimes(2);
+
+      await act(async () => {
+        editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+        editor.commands.insertContent(" B");
+      });
+      expect(editor.getText()).toBe("Loaded content B");
+      expect(onContentChange).toHaveBeenCalledTimes(3);
+      expect(onContentChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ jsonContent: editor.getJSON(), source: "user" }),
+      );
+      expect(screen.getByLabelText("Stored document")).toHaveTextContent(
+        JSON.stringify(editor.getJSON()),
+      );
+    },
+  );
+
   it("keeps built-in undo and redo enabled by default", () => {
     const scribeRef = createRef<ScribeRef>();
 
