@@ -415,6 +415,7 @@
 
 .scribe-link-popover {
   background: var(--color-panel-solid);
+  box-sizing: border-box;
   border: 1px solid var(--gray-6);
   border-radius: 12px;
   box-shadow:

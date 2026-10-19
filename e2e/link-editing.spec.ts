@@ -11,10 +11,10 @@ const pasteLinkedMarkdown = async (
   page: Page,
   markdown = linkedMarkdown,
 ) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:5174",
-  });
   await page.goto("/");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
 
   const editor = page.getByRole("textbox", { name: "Document content", exact: true });
 
@@ -50,9 +50,30 @@ const expectSimpleLinkEditor = async (dialog: Locator) => {
   await expect(dialog.getByRole("textbox")).toHaveCount(2);
   await expect(dialog.getByRole("textbox", { name: "Text to display", exact: true })).toBeVisible();
   await expect(dialog.getByRole("textbox", { name: "URL", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button")).toHaveCount(2);
+  await expect(dialog.getByRole("button")).toHaveText(["Remove link", "Apply"]);
   await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Remove link", exact: true })).toBeVisible();
+};
+
+const expectInsideVisualViewport = async (element: Locator) => {
+  await expect
+    .poll(() =>
+      element.evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const viewport = window.visualViewport;
+        const left = viewport?.offsetLeft ?? 0;
+        const top = viewport?.offsetTop ?? 0;
+        const width = viewport?.width ?? window.innerWidth;
+        const height = viewport?.height ?? window.innerHeight;
+        return (
+          rect.left >= left - 1 &&
+          rect.top >= top - 1 &&
+          rect.right <= left + width + 1 &&
+          rect.bottom <= top + height + 1
+        );
+      }),
+    )
+    .toBe(true);
 };
 
 const createLink = async (page: Page) => {
@@ -70,6 +91,7 @@ const createLink = async (page: Page) => {
 
   await expect(linkSettings).toBeVisible();
   await expectSimpleLinkEditor(linkSettings);
+  await expect(linkSettings.getByRole("textbox", { name: "URL", exact: true })).toBeFocused();
   await expect(
     linkSettings.getByRole("textbox", { name: "Text to display", exact: true }),
   ).toHaveValue(documentText);
@@ -87,7 +109,7 @@ const createLink = async (page: Page) => {
   return { editor, link };
 };
 
-test("Existing link opens for editing without navigation and updates", async ({
+test("Existing link opens for inspection without input focus or navigation and updates", async ({
   context,
   page,
 }) => {
@@ -111,6 +133,8 @@ test("Existing link opens for editing without navigation and updates", async ({
 
   await expect(editLink).toBeVisible();
   await expectSimpleLinkEditor(editLink);
+  await expect(editLink).toBeFocused();
+  await expect(urlInput).not.toBeFocused();
   await expect(editLink.getByRole("textbox", { name: "Text to display", exact: true })).toHaveValue(
     documentText,
   );
@@ -119,12 +143,155 @@ test("Existing link opens for editing without navigation and updates", async ({
   await expect(page).toHaveURL(editorUrl);
   await expect(urlInput).toHaveValue(initialHref);
 
+  await urlInput.click();
+  await expect(urlInput).toBeFocused();
   await urlInput.fill("updated.example/reference");
   await editLink.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(editLink).toHaveCount(0);
   await expect(link).toHaveAttribute("href", "https://updated.example/reference");
 
   page.off("popup", recordPopup);
+});
+
+test("Direct URL editing preserves its caret and Escape restores the document", async ({
+  page,
+}) => {
+  const { editor, link } = await createLink(page);
+  await link.click();
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
+  await expect(editLink).toBeFocused();
+
+  await urlInput.click();
+  await urlInput.press("Home");
+  await urlInput.press("ArrowRight");
+
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+  await expect(urlInput).toHaveJSProperty("selectionEnd", 1);
+  await urlInput.press("Escape");
+  await expect(editLink).toHaveCount(0);
+  await expect(editor).toBeFocused();
+  await expect(link).toHaveAttribute("href", initialHref);
+
+  await link.click();
+  await expect(editLink).toBeFocused();
+  await expect(urlInput).not.toBeFocused();
+});
+
+test("URL editing remains reachable when the viewport becomes shorter than the popup", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 421, height: 760 });
+  const { link } = await createLink(page);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const urlInput = dialog.getByRole("textbox", { name: "URL", exact: true });
+  await expect(dialog).toBeFocused();
+  await urlInput.click();
+  await urlInput.press("Home");
+  await urlInput.press("ArrowRight");
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+
+  await page.setViewportSize({ width: 421, height: 220 });
+
+  await expectInsideVisualViewport(dialog);
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+  await expect(urlInput).toHaveJSProperty("selectionEnd", 1);
+  await expect(urlInput).toBeInViewport({ ratio: 1 });
+  expect(await dialog.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
+    true,
+  );
+
+  await urlInput.press("ControlOrMeta+A");
+  await page.keyboard.type("updated.example/short-viewport");
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveValue("updated.example/short-viewport");
+  const apply = dialog.getByRole("button", { name: "Apply", exact: true });
+  await apply.scrollIntoViewIfNeeded();
+  await expect(apply).toBeInViewport({ ratio: 1 });
+  await apply.click();
+  await expect(dialog).toHaveCount(0);
+  await expect(link).toHaveAttribute("href", "https://updated.example/short-viewport");
+});
+
+test("Simulated visual viewport resize and pan keep URL editing visible without a window resize", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 421, height: 760 });
+  const { link } = await createLink(page);
+  await link.click();
+  const dialog = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const urlInput = dialog.getByRole("textbox", { name: "URL", exact: true });
+  await expect(dialog).toBeFocused();
+  await urlInput.click();
+  await urlInput.press("Home");
+  await urlInput.press("ArrowRight");
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+
+  const simulateVisualViewport = async (offsetTop: number, eventType: "resize" | "scroll") => {
+    const layout = await page.evaluate(
+      async ({ offsetTop, eventType }) => {
+        const viewport = window.visualViewport;
+        if (!viewport) {
+          throw new Error("Expected a visual viewport");
+        }
+        let windowResizes = 0;
+        const recordResize = () => {
+          windowResizes += 1;
+        };
+        window.addEventListener("resize", recordResize);
+        // Simulate keyboard geometry only; the browser's layout viewport stays unchanged.
+        Object.defineProperties(viewport, {
+          height: { configurable: true, get: () => 180 },
+          offsetTop: { configurable: true, get: () => offsetTop },
+        });
+        viewport.dispatchEvent(new Event(eventType));
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
+        window.removeEventListener("resize", recordResize);
+        return { width: window.innerWidth, height: window.innerHeight, windowResizes };
+      },
+      { offsetTop, eventType },
+    );
+    expect(layout).toEqual({ width: 421, height: 760, windowResizes: 0 });
+  };
+
+  await simulateVisualViewport(204, "resize");
+  await expectInsideVisualViewport(dialog);
+  await expectInsideVisualViewport(urlInput);
+  await expect(urlInput).toBeInViewport({ ratio: 1 });
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+  await expect(urlInput).toHaveJSProperty("selectionEnd", 1);
+
+  // Only pan the visual viewport now, so the scroll listener must reposition the popup.
+  await simulateVisualViewport(400, "scroll");
+  await expectInsideVisualViewport(dialog);
+  await expectInsideVisualViewport(urlInput);
+  await expect(urlInput).toBeInViewport({ ratio: 1 });
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveJSProperty("selectionStart", 1);
+  await expect(urlInput).toHaveJSProperty("selectionEnd", 1);
+  await page.keyboard.type("x");
+  await expect(urlInput).toHaveValue("hxttps://initial.example/docs");
+});
+
+test("Alt+F10 keeps deliberate URL focus for an existing plain link", async ({ page }) => {
+  const { editor, link } = await createLink(page);
+  await link.click();
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  await expect(editLink).toBeFocused();
+  await editLink.press("Escape");
+  await expect(editor).toBeFocused();
+  await editor.press("ArrowLeft");
+
+  await editor.press("Alt+F10");
+
+  await expect(editLink).toBeVisible();
+  await expect(editLink.getByRole("textbox", { name: "URL", exact: true })).toBeFocused();
 });
 
 test("Selecting a pasted link keeps editing focus in the document", async ({ context, page }) => {
