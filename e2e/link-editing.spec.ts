@@ -11,10 +11,10 @@ const pasteLinkedMarkdown = async (
   page: Page,
   markdown = linkedMarkdown,
 ) => {
-  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
-    origin: "http://127.0.0.1:5174",
-  });
   await page.goto("/");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
 
   const editor = page.getByRole("textbox", { name: "Document content", exact: true });
 
@@ -46,13 +46,16 @@ const dragAcrossLink = async (page: Page, link: Locator) => {
   await page.mouse.up();
 };
 
-const expectSimpleLinkEditor = async (dialog: Locator) => {
+const expectSimpleLinkEditor = async (dialog: Locator, hasEditAction = false) => {
   await expect(dialog.getByRole("textbox")).toHaveCount(2);
   await expect(dialog.getByRole("textbox", { name: "Text to display", exact: true })).toBeVisible();
   await expect(dialog.getByRole("textbox", { name: "URL", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("button")).toHaveCount(2);
+  await expect(dialog.getByRole("button")).toHaveCount(hasEditAction ? 3 : 2);
   await expect(dialog.getByRole("button", { name: "Apply", exact: true })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Remove link", exact: true })).toBeVisible();
+  if (hasEditAction) {
+    await expect(dialog.getByRole("button", { name: "Edit URL", exact: true })).toBeVisible();
+  }
 };
 
 const createLink = async (page: Page) => {
@@ -70,6 +73,7 @@ const createLink = async (page: Page) => {
 
   await expect(linkSettings).toBeVisible();
   await expectSimpleLinkEditor(linkSettings);
+  await expect(linkSettings.getByRole("textbox", { name: "URL", exact: true })).toBeFocused();
   await expect(
     linkSettings.getByRole("textbox", { name: "Text to display", exact: true }),
   ).toHaveValue(documentText);
@@ -87,7 +91,7 @@ const createLink = async (page: Page) => {
   return { editor, link };
 };
 
-test("Existing link opens for editing without navigation and updates", async ({
+test("Existing link opens for inspection without input focus or navigation and updates", async ({
   context,
   page,
 }) => {
@@ -110,7 +114,9 @@ test("Existing link opens for editing without navigation and updates", async ({
   const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
 
   await expect(editLink).toBeVisible();
-  await expectSimpleLinkEditor(editLink);
+  await expectSimpleLinkEditor(editLink, true);
+  await expect(editLink).toBeFocused();
+  await expect(urlInput).not.toBeFocused();
   await expect(editLink.getByRole("textbox", { name: "Text to display", exact: true })).toHaveValue(
     documentText,
   );
@@ -119,12 +125,53 @@ test("Existing link opens for editing without navigation and updates", async ({
   await expect(page).toHaveURL(editorUrl);
   await expect(urlInput).toHaveValue(initialHref);
 
+  await urlInput.click();
+  await expect(urlInput).toBeFocused();
   await urlInput.fill("updated.example/reference");
   await editLink.getByRole("button", { name: "Apply", exact: true }).click();
   await expect(editLink).toHaveCount(0);
   await expect(link).toHaveAttribute("href", "https://updated.example/reference");
 
   page.off("popup", recordPopup);
+});
+
+test("Edit URL deliberately focuses the input and Escape restores the document", async ({
+  page,
+}) => {
+  const { editor, link } = await createLink(page);
+  await link.click();
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
+  await expect(editLink).toBeFocused();
+
+  await editLink.getByRole("button", { name: "Edit URL", exact: true }).click();
+
+  await expect(urlInput).toBeFocused();
+  await expect(urlInput).toHaveJSProperty("selectionStart", 0);
+  await expect(urlInput).toHaveJSProperty("selectionEnd", initialHref.length);
+  await urlInput.press("Escape");
+  await expect(editLink).toHaveCount(0);
+  await expect(editor).toBeFocused();
+  await expect(link).toHaveAttribute("href", initialHref);
+
+  await link.click();
+  await expect(editLink).toBeFocused();
+  await expect(urlInput).not.toBeFocused();
+});
+
+test("Alt+F10 keeps deliberate URL focus for an existing plain link", async ({ page }) => {
+  const { editor, link } = await createLink(page);
+  await link.click();
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  await expect(editLink).toBeFocused();
+  await editLink.press("Escape");
+  await expect(editor).toBeFocused();
+  await editor.press("ArrowLeft");
+
+  await editor.press("Alt+F10");
+
+  await expect(editLink).toBeVisible();
+  await expect(editLink.getByRole("textbox", { name: "URL", exact: true })).toBeFocused();
 });
 
 test("Selecting a pasted link keeps editing focus in the document", async ({ context, page }) => {

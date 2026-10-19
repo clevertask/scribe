@@ -22,6 +22,7 @@ export interface LinkEditorProps {
   existingHref: string;
   inputRef?: RefObject<HTMLInputElement | null>;
   onClose: () => void;
+  onEditUrl?: () => void;
   onValueChange: (value: string) => void;
   resetToken?: number;
   selectTextblockEndAfterSave?: boolean;
@@ -68,6 +69,7 @@ const LinkEditor: FC<LinkEditorProps> = ({
   existingHref,
   inputRef,
   onClose,
+  onEditUrl,
   onValueChange,
   resetToken,
   selectTextblockEndAfterSave = false,
@@ -80,6 +82,7 @@ const LinkEditor: FC<LinkEditorProps> = ({
   const [canEditText, setCanEditText] = useState(initialTarget.editableText);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const errorMessageId = useId();
+  const urlInputId = useId();
 
   useEffect(() => {
     const target = getEditTarget(editor);
@@ -298,25 +301,31 @@ const LinkEditor: FC<LinkEditorProps> = ({
             />
           </Flex>
         </label>
-        <label>
-          <Flex direction="column" gap="2">
-            <Text as="span" size="2" weight="medium">
+        <Flex direction="column" gap="2">
+          <Flex align="center" justify="between">
+            <Text as="label" htmlFor={urlInputId} size="2" weight="medium">
               URL
             </Text>
-            <TextField.Root
-              ref={inputRef}
-              aria-describedby={errorMessage ? errorMessageId : undefined}
-              aria-invalid={Boolean(errorMessage)}
-              autoFocus={!inputRef}
-              placeholder="https://example.com"
-              value={value}
-              onChange={(event) => {
-                setErrorMessage(null);
-                onValueChange(event.target.value);
-              }}
-            />
+            {onEditUrl ? (
+              <Button type="button" size="1" variant="ghost" onClick={onEditUrl}>
+                Edit URL
+              </Button>
+            ) : null}
           </Flex>
-        </label>
+          <TextField.Root
+            id={urlInputId}
+            ref={inputRef}
+            aria-describedby={errorMessage ? errorMessageId : undefined}
+            aria-invalid={Boolean(errorMessage)}
+            autoFocus={!inputRef}
+            placeholder="https://example.com"
+            value={value}
+            onChange={(event) => {
+              setErrorMessage(null);
+              onValueChange(event.target.value);
+            }}
+          />
+        </Flex>
         {errorMessage ? (
           <Text id={errorMessageId} as="p" role="alert" size="2" color="red">
             {errorMessage}

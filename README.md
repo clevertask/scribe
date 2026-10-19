@@ -242,8 +242,10 @@ paths too.
 
 ## Links
 
-Scribe uses Tiptap's Link extension for ordinary links and URL paste. Use the toolbar or click an
-existing link to edit **Text to display** and **URL**, then choose **Apply** or **Remove link**.
+Scribe uses Tiptap's Link extension for ordinary links and URL paste. Clicking an existing link
+opens its popover with focus on the dialog, keeping the software keyboard closed. Choose
+**Edit URL** or tap a field to start typing, then choose **Apply** or **Remove link**.
+The toolbar Link action still focuses the URL immediately.
 An unchanged label preserves the link's inline formatting. Keyboard users can press `Alt + F10`
 from a link to open the form and Escape to return to the document.
 

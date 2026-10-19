@@ -99,7 +99,7 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
         return false;
       }
 
-      showLinkBubbleMenu(editor, "url");
+      showLinkBubbleMenu(editor, "dialog");
 
       return true;
     };
@@ -342,9 +342,9 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     const focusTarget = consumeLinkBubbleMenuFocusTarget(editor);
     const focusRequestedTarget = () => {
       if (focusTarget === "dialog") {
-        dialogRef.current?.focus();
+        dialogRef.current?.focus({ preventScroll: true });
       } else {
-        inputRef.current?.focus();
+        inputRef.current?.focus({ preventScroll: true });
         inputRef.current?.select();
       }
     };
@@ -353,8 +353,8 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
     setMenuSession((currentSession) => currentSession + 1);
     focusRequestedTarget();
     focusFrameRef.current = window.requestAnimationFrame(() => {
-      focusRequestedTarget();
       focusFrameRef.current = null;
+      focusRequestedTarget();
     });
   }, [editor]);
 
@@ -364,6 +364,12 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
       focusFrameRef.current = null;
     }
   }, []);
+
+  const handleEditUrl = useCallback(() => {
+    handleHide();
+    inputRef.current?.focus({ preventScroll: true });
+    inputRef.current?.select();
+  }, [handleHide]);
 
   const handleDialogKeyDown = useCallback<KeyboardEventHandler<HTMLDivElement>>(
     (event) => {
@@ -425,6 +431,12 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
         aria-label="Edit link"
         aria-keyshortcuts="Alt+F10"
         tabIndex={-1}
+        onFocusCapture={(event) => {
+          // A chosen field or action takes precedence over the opening focus retry.
+          if (event.target !== event.currentTarget) {
+            handleHide();
+          }
+        }}
         onKeyDown={handleDialogKeyDown}
         style={{
           maxWidth:
@@ -439,6 +451,7 @@ const LinkBubbleMenu: FC<LinkBubbleMenuProps> = ({ editor }) => {
           existingHref={context?.href ?? ""}
           inputRef={inputRef}
           onClose={handleClose}
+          onEditUrl={handleEditUrl}
           onValueChange={setLinkValue}
           resetToken={menuSession}
           targetPosition={context?.kind === "preview" ? context.position : undefined}
