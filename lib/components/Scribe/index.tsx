@@ -439,7 +439,8 @@ const ScribeEditor = forwardRef<ScribeRef, ScribeEditorProps>((props, ref) => {
   }, [editor, externalEditor]);
 
   useEffect(() => {
-    editor.setEditable(Boolean(editable));
+    // Synchronizing editability must not report a document change to the consumer.
+    editor.setEditable(Boolean(editable), false);
 
     const editorElement = editor.view.dom;
     const configuredEditorAttributes = externalEditor
