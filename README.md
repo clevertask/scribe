@@ -246,6 +246,8 @@ Scribe uses Tiptap's Link extension for ordinary links and URL paste. Clicking a
 opens its popover with focus on the dialog, keeping the software keyboard closed. Tap
 either field to start typing, then choose **Apply** or **Remove link**. The popover follows
 the visible viewport when the keyboard opens, scrolling its form when space is limited.
+**Open link ↗** opens the address currently shown in the URL field in a new tab without
+applying changes to the document. The action is disabled for empty or invalid addresses.
 The toolbar Link action still focuses the URL immediately.
 An unchanged label preserves the link's inline formatting. Keyboard users can press `Alt + F10`
 from a link to open the form and Escape to return to the document.
