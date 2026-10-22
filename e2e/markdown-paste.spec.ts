@@ -63,10 +63,13 @@ for (const shortcut of ["ControlOrMeta+V", "ControlOrMeta+Shift+V"]) {
     await page.keyboard.insertText("Keep selected words after");
     await expect(editor).toHaveText("Keep selected words after");
     await editor.press("Home");
-    await editor.press("ControlOrMeta+ArrowRight");
-    await editor.press("ControlOrMeta+Shift+ArrowRight");
-    await editor.press("ControlOrMeta+Shift+ArrowRight");
-    await editor.press("Shift+ArrowLeft");
+    // Word-jump shortcuts stop on different sides of spaces on Windows/Linux.
+    for (let index = 0; index < "Keep ".length; index++) {
+      await editor.press("ArrowRight");
+    }
+    for (let index = 0; index < "selected words".length; index++) {
+      await editor.press("Shift+ArrowRight");
+    }
     await expect
       .poll(() => page.evaluate(() => window.getSelection()?.toString()))
       .toBe("selected words");
