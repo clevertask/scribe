@@ -78,8 +78,46 @@ const getTextMarkTypes = (content: JSONContent, text: string): string[] | undefi
   return undefined;
 };
 
+const copiedPageUrl = "https://www.reddit.com/";
+const copiedPageTitle = "Reddit - The heart of the internet";
+const copiedPageHtml =
+  '<html>\r\n<body>\r\n<!--StartFragment--><a href="https://www.reddit.com/">Reddit - The heart of the internet</a><!--EndFragment-->\r\n</body>\r\n</html>';
+
 describe("Native selected-text paste", () => {
-  it("links selected text without marking an application-owned reference atom", () => {
+  it("links a partial formatted selection from a copied page URL without replacing its text", () => {
+    const editor = renderScribe({ content: "<p>Before <strong>selected</strong> text after</p>" });
+    const originalDocument = editor.getJSON();
+    act(() => {
+      editor.commands.setTextSelection({ from: 8, to: 21 });
+    });
+
+    paste({ editor, text: copiedPageUrl, html: copiedPageHtml });
+
+    expect(editor.getText()).toBe("Before selected text after");
+    expect(editor.state.selection.from).toBe(8);
+    expect(editor.state.selection.to).toBe(21);
+    expect(getTextMarkTypes(editor.getJSON(), "selected")).toEqual(["bold", "link"]);
+    expect(getTextMarkTypes(editor.getJSON(), " text")).toEqual(["link"]);
+    expect(getTextMarkTypes(editor.getJSON(), "Before ")).toEqual([]);
+    expect(getTextMarkTypes(editor.getJSON(), " after")).toEqual([]);
+    editor.view.dom.querySelectorAll("a").forEach((link) => {
+      expect(link).toHaveAttribute("href", copiedPageUrl);
+    });
+    const linkedDocument = editor.getJSON();
+    act(() => {
+      editor.commands.undo();
+    });
+    expect(editor.getJSON()).toEqual(originalDocument);
+    act(() => {
+      editor.commands.redo();
+    });
+    expect(editor.getJSON()).toEqual(linkedDocument);
+  });
+
+  it.each([
+    ["plain URL", "https://example.com/reference", ""],
+    ["titled URL", copiedPageUrl, copiedPageHtml],
+  ])("links selected text around a reference atom from a %s", (_name, text, html) => {
     const Reference = Node.create({
       name: "testResourceReference",
       group: "inline",
@@ -96,18 +134,173 @@ describe("Native selected-text paste", () => {
     act(() => {
       editor.commands.selectAll();
     });
-    paste({ editor, text: "https://example.com/reference" });
+    paste({ editor, text, html });
     expect(editor.getJSON().content?.[0].content?.[1]).toEqual({
       type: "testResourceReference",
       attrs: { id: "saved-task-id" },
     });
     expect(editor.getJSON().content?.[0].content?.[0]).toMatchObject({
       text: "Before ",
-      marks: [{ type: "link", attrs: { href: "https://example.com/reference" } }],
+      marks: [{ type: "link", attrs: { href: text } }],
     });
   });
 
-  it("replaces an atom-only selection and restores its identity with undo", () => {
+  it.each([
+    ["plain URL", "https://example.com/reference", "", "https://example.com/reference"],
+    ["titled URL", copiedPageUrl, copiedPageHtml, copiedPageTitle],
+  ])(
+    "replaces an atom-only selection with a %s and restores it with undo",
+    (_name, text, html, expectedText) => {
+      const Reference = Node.create({
+        name: "testResourceReference",
+        group: "inline",
+        inline: true,
+        atom: true,
+        addAttributes: () => ({ id: { default: "saved-task-id" } }),
+        parseHTML: () => [{ tag: "span[data-test-reference]" }],
+        renderHTML: () => ["span", { "data-test-reference": "" }, "Saved task"],
+      });
+      const editor = renderScribe({
+        content: "<p><span data-test-reference></span></p>",
+        extensions: [Reference],
+      });
+      const original = editor.getJSON();
+      act(() => {
+        editor.commands.setNodeSelection(1);
+      });
+      paste({ editor, text, html });
+      expect(editor.getText()).toBe(expectedText);
+      expect(editor.getJSON().content?.[0].content?.[0].type).toBe("text");
+      act(() => {
+        editor.commands.undo();
+      });
+      expect(editor.getJSON()).toEqual(original);
+    },
+  );
+
+  it("inserts the copied page title at an empty selection", () => {
+    const editor = renderScribe({ content: "<p>Before after</p>" });
+    act(() => {
+      editor.commands.setTextSelection(8);
+    });
+    paste({ editor, text: copiedPageUrl, html: copiedPageHtml });
+    expect(editor.getText()).toBe(`Before ${copiedPageTitle}after`);
+    expect(editor.view.dom.querySelector("a")).toHaveAttribute("href", copiedPageUrl);
+  });
+
+  it("keeps URL paste into a code block as unmarked replacement text", () => {
+    const editor = renderScribe({ content: "<pre><code>Before selected after</code></pre>" });
+    act(() => {
+      editor.commands.setTextSelection({ from: 8, to: 16 });
+    });
+    paste({ editor, text: copiedPageUrl, html: copiedPageHtml });
+    expect(editor.view.dom.querySelector("pre code")).toHaveTextContent(
+      `Before ${copiedPageUrl} after`,
+    );
+    expect(editor.view.dom.querySelector("a")).toBeNull();
+  });
+
+  it("links selected inline code and accepts formatting within the copied title", () => {
+    const editor = renderScribe({ content: "<p><code>Selected label</code></p>" });
+    act(() => {
+      editor.commands.selectAll();
+    });
+    paste({
+      editor,
+      text: copiedPageUrl,
+      html: `<p><a href="${copiedPageUrl}"><strong>Reddit</strong> page title</a></p>`,
+    });
+    expect(editor.getText()).toBe("Selected label");
+    expect(getTextMarkTypes(editor.getJSON(), "Selected label")).toEqual(["code", "link"]);
+  });
+
+  it.each<[string, string, string, string, string | null]>([
+    ["authored linked text", copiedPageTitle, copiedPageHtml, copiedPageTitle, copiedPageUrl],
+    [
+      "additional prose",
+      copiedPageUrl,
+      `<p><a href="${copiedPageUrl}">Reddit</a> plus prose</p>`,
+      "Reddit plus prose",
+      copiedPageUrl,
+    ],
+    [
+      "multiple destinations",
+      copiedPageUrl,
+      `<p><a href="${copiedPageUrl}">Reddit</a> <a href="https://example.com/">Example</a></p>`,
+      "Reddit Example",
+      copiedPageUrl,
+    ],
+    [
+      "adjacent links to the same destination",
+      copiedPageUrl,
+      `<p><a href="${copiedPageUrl}">First</a><a href="${copiedPageUrl}">Second</a></p>`,
+      "FirstSecond",
+      copiedPageUrl,
+    ],
+    [
+      "multiple blocks",
+      copiedPageUrl,
+      `<p><a href="${copiedPageUrl}">First</a></p><p><a href="${copiedPageUrl}">Second</a></p>`,
+      "First\nSecond",
+      copiedPageUrl,
+    ],
+    [
+      "a heading",
+      copiedPageUrl,
+      `<h2><a href="${copiedPageUrl}">Heading</a></h2>`,
+      "Heading\n",
+      copiedPageUrl,
+    ],
+    [
+      "a different destination",
+      copiedPageUrl,
+      '<p><a href="https://example.com/">Example</a></p>',
+      "Example",
+      "https://example.com/",
+    ],
+    [
+      "a URL followed by prose",
+      `${copiedPageUrl} extra words`,
+      copiedPageHtml,
+      copiedPageTitle,
+      copiedPageUrl,
+    ],
+    [
+      "an FTP title",
+      "ftp://example.com/file",
+      '<p><a href="ftp://example.com/file">File</a></p>',
+      "File",
+      "ftp://example.com/file",
+    ],
+    [
+      "an unsafe JavaScript URL",
+      "javascript:alert(1)",
+      '<p><a href="javascript:alert(1)">Unsafe title</a></p>',
+      "Unsafe title",
+      null,
+    ],
+    [
+      "an unsafe data URL",
+      "data:text/html,unsafe",
+      '<p><a href="data:text/html,unsafe">Unsafe title</a></p>',
+      "Unsafe title",
+      null,
+    ],
+  ])("keeps %s on the ordinary rich-paste path", (_name, text, html, expectedText, href) => {
+    const editor = renderScribe({ content: "<p>Original selected text</p>" });
+    act(() => {
+      editor.commands.selectAll();
+    });
+    paste({ editor, text, html });
+    expect(editor.getText({ blockSeparator: "\n" })).toBe(expectedText);
+    if (href) {
+      expect(editor.view.dom.querySelector("a")).toHaveAttribute("href", href);
+    } else {
+      expect(editor.view.dom.querySelector("a")).toBeNull();
+    }
+  });
+
+  it("preserves a consumer-owned reference produced by the HTML paste transform", () => {
     const Reference = Node.create({
       name: "testResourceReference",
       group: "inline",
@@ -117,21 +310,20 @@ describe("Native selected-text paste", () => {
       parseHTML: () => [{ tag: "span[data-test-reference]" }],
       renderHTML: () => ["span", { "data-test-reference": "" }, "Saved task"],
     });
+    const transformPastedHTML = vi.fn(() => "<p><span data-test-reference></span></p>");
     const editor = renderScribe({
-      content: "<p><span data-test-reference></span></p>",
+      content: "<p>Original selected text</p>",
       extensions: [Reference],
+      editorProps: { editorProps: { transformPastedHTML } },
     });
-    const original = editor.getJSON();
     act(() => {
-      editor.commands.setNodeSelection(1);
+      editor.commands.selectAll();
     });
-    paste({ editor, text: "https://example.com/reference" });
-    expect(editor.getText()).toBe("https://example.com/reference");
-    expect(editor.getJSON().content?.[0].content?.[0].type).toBe("text");
-    act(() => {
-      editor.commands.undo();
-    });
-    expect(editor.getJSON()).toEqual(original);
+    paste({ editor, text: copiedPageUrl, html: copiedPageHtml });
+    expect(transformPastedHTML).toHaveBeenCalledOnce();
+    expect(editor.getJSON().content?.[0].content).toEqual([
+      { type: "testResourceReference", attrs: { id: "saved-task-id" } },
+    ]);
   });
 
   it.each([
