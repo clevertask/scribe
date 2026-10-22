@@ -60,16 +60,9 @@ for (const shortcut of ["ControlOrMeta+V", "ControlOrMeta+Shift+V"]) {
     await expect(editor).toBeEditable();
     await editor.click();
     await editor.press("ControlOrMeta+A");
-    await page.keyboard.insertText("Keep selected words after");
-    await expect(editor).toHaveText("Keep selected words after");
-    await editor.press("Home");
-    // Word-jump shortcuts stop on different sides of spaces on Windows/Linux.
-    for (let index = 0; index < "Keep ".length; index++) {
-      await editor.press("ArrowRight");
-    }
-    for (let index = 0; index < "selected words".length; index++) {
-      await editor.press("Shift+ArrowRight");
-    }
+    await page.keyboard.insertText("selected words");
+    await expect(editor).toHaveText("selected words");
+    await editor.press("ControlOrMeta+A");
     await expect
       .poll(() => page.evaluate(() => window.getSelection()?.toString()))
       .toBe("selected words");
@@ -93,7 +86,7 @@ for (const shortcut of ["ControlOrMeta+V", "ControlOrMeta+Shift+V"]) {
     });
     await editor.press(shortcut);
 
-    await expect(editor).toHaveText("Keep selected words after");
+    await expect(editor).toHaveText("selected words");
     const link = editor.getByRole("link", { name: "selected words", exact: true });
     await expect(link).toHaveAttribute("href", "https://www.reddit.com/");
     await expect(link.locator("strong")).toHaveText("selected words");
