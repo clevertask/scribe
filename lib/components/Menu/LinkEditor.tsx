@@ -1,4 +1,4 @@
-import { Button, Flex, Text, TextField } from "@radix-ui/themes";
+import { Button, Flex, Link, Text, TextField } from "@radix-ui/themes";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { closeHistory } from "@tiptap/pm/history";
 import { TextSelection, type Transaction } from "@tiptap/pm/state";
@@ -80,6 +80,8 @@ const LinkEditor: FC<LinkEditorProps> = ({
   const [canEditText, setCanEditText] = useState(initialTarget.editableText);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const errorMessageId = useId();
+  const urlInputId = useId();
+  const openHref = normalizeLinkUrl(value);
 
   useEffect(() => {
     const target = getEditTarget(editor);
@@ -298,25 +300,39 @@ const LinkEditor: FC<LinkEditorProps> = ({
             />
           </Flex>
         </label>
-        <label>
-          <Flex direction="column" gap="2">
-            <Text as="span" size="2" weight="medium">
+        <Flex direction="column" gap="2">
+          <Flex align="center" justify="between" gap="2">
+            <Text as="label" htmlFor={urlInputId} size="2" weight="medium">
               URL
             </Text>
-            <TextField.Root
-              ref={inputRef}
-              aria-describedby={errorMessage ? errorMessageId : undefined}
-              aria-invalid={Boolean(errorMessage)}
-              autoFocus={!inputRef}
-              placeholder="https://example.com"
-              value={value}
-              onChange={(event) => {
-                setErrorMessage(null);
-                onValueChange(event.target.value);
-              }}
-            />
+            <Link
+              role="link"
+              href={openHref ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open link in a new tab"
+              aria-disabled={!openHref}
+              tabIndex={openHref ? undefined : -1}
+              color={openHref ? undefined : "gray"}
+              size="2"
+            >
+              Open link <span aria-hidden="true">↗</span>
+            </Link>
           </Flex>
-        </label>
+          <TextField.Root
+            id={urlInputId}
+            ref={inputRef}
+            aria-describedby={errorMessage ? errorMessageId : undefined}
+            aria-invalid={Boolean(errorMessage)}
+            autoFocus={!inputRef}
+            placeholder="https://example.com"
+            value={value}
+            onChange={(event) => {
+              setErrorMessage(null);
+              onValueChange(event.target.value);
+            }}
+          />
+        </Flex>
         {errorMessage ? (
           <Text id={errorMessageId} as="p" role="alert" size="2" color="red">
             {errorMessage}

@@ -179,6 +179,54 @@ test("Direct URL editing preserves its caret and Escape restores the document", 
   await expect(urlInput).not.toBeFocused();
 });
 
+test("Open link opens the current draft in a new tab without applying edits", async ({
+  context,
+  page,
+}) => {
+  const { editor, link } = await createLink(page);
+  const editorUrl = page.url();
+  const draftHref = new URL("/open-link-draft", editorUrl).href;
+
+  await context.route(
+    (url) => url.href === initialHref || url.href === draftHref,
+    (route) => route.fulfill({ contentType: "text/html", body: "<p>Link destination</p>" }),
+  );
+  await link.click();
+
+  const editLink = page.getByRole("dialog", { name: "Edit link", exact: true });
+  const urlInput = editLink.getByRole("textbox", { name: "URL", exact: true });
+  const openLink = editLink.getByRole("link", { name: "Open link", exact: true });
+
+  await expectSimpleLinkEditor(editLink);
+  await editLink.getByRole("textbox", { name: "Text to display", exact: true }).fill("Draft label");
+  await urlInput.fill("javascript:alert(1)");
+  await expect(openLink).toHaveJSProperty("tagName", "A");
+  await expect(openLink).not.toHaveAttribute("href");
+  await expect(openLink).toHaveAttribute("aria-disabled", "true");
+  await expect(openLink).toHaveJSProperty("tabIndex", -1);
+
+  await urlInput.fill(draftHref);
+  await expect(openLink).toHaveAttribute("href", draftHref);
+  await expect(openLink).toHaveAttribute("target", "_blank");
+  await expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
+  await urlInput.press("Shift+Tab");
+  await expect(openLink).toBeFocused();
+
+  const [openedPage] = await Promise.all([
+    page.waitForEvent("popup"),
+    page.keyboard.press("Enter"),
+  ]);
+
+  await expect(openedPage).toHaveURL(draftHref);
+  await expect(openedPage.getByText("Link destination", { exact: true })).toBeVisible();
+  expect(await openedPage.evaluate(() => window.opener === null)).toBe(true);
+  await expect(page).toHaveURL(editorUrl);
+  await expect(editor).toHaveText(documentText);
+  await expect(editor.getByRole("link")).toHaveCount(1);
+  await expect(link).toHaveAttribute("href", initialHref);
+  await openedPage.close();
+});
+
 test("URL editing remains reachable when the viewport becomes shorter than the popup", async ({
   page,
 }) => {

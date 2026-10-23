@@ -1,8 +1,9 @@
 import { getSelectionLinkContext } from "../lib/components/Menu/linkBubbleMenuPlugin";
 import { Node } from "@tiptap/core";
 import { Theme } from "@radix-ui/themes";
+import { redoDepth, undoDepth } from "@tiptap/pm/history";
 import type { Editor } from "@tiptap/react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -221,7 +222,10 @@ describe("link editing", () => {
     expect(urlInput.closest("[data-scribe-popup-root]")).not.toBeNull();
 
     expect(screen.getByRole("textbox", { name: "Text to display" })).toHaveValue("Example link");
-    expect(screen.queryByRole("link", { name: "Open link" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open link" })).toHaveAttribute(
+      "href",
+      "https://old.example/docs",
+    );
     expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Display as" })).not.toBeInTheDocument();
 
@@ -235,6 +239,72 @@ describe("link editing", () => {
     expect(getRenderedLink(editor)).toHaveAttribute("href", "https://updated.example/docs");
     expect(editor.view.dom).toHaveTextContent("Example link");
   });
+
+  it.each([
+    ["updated.example/docs", "https://updated.example/docs"],
+    ["/docs?view=compact#today", "/docs?view=compact#today"],
+  ])("opens the current URL draft without applying edits: %s", async (draft, href) => {
+    const { editor } = renderScribe();
+    act(() => {
+      editor.commands.insertContentAt(1, "Prior edit ");
+      editor.commands.undo();
+    });
+    const originalDocument = editor.getJSON();
+    const range = findLinkRange(editor);
+    clickLink(editor, getRenderedLink(editor), range.from + 1);
+    const urlInput = await screen.findByRole("textbox", { name: "URL" });
+    const textInput = screen.getByRole("textbox", { name: "Text to display" });
+    const originalHistory = { undo: undoDepth(editor.state), redo: redoDepth(editor.state) };
+    expect(originalHistory.redo).toBe(1);
+
+    fireEvent.change(textInput, { target: { value: "Unsaved label" } });
+    fireEvent.change(urlInput, { target: { value: draft } });
+    const openLink = screen.getByRole("link", { name: "Open link" });
+    expect(openLink).toHaveAttribute("href", href);
+    expect(openLink).toHaveAttribute("target", "_blank");
+    expect(openLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(openLink).not.toHaveAttribute("aria-disabled", "true");
+    const arrow = within(openLink).getByText("↗");
+    expect(arrow).toBeVisible();
+    expect(arrow).toHaveAttribute("aria-hidden", "true");
+
+    // Browser coverage checks the new tab; jsdom only checks the editor stays unchanged.
+    openLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    fireEvent.click(openLink);
+
+    expect(editor.getJSON()).toEqual(originalDocument);
+    expect({ undo: undoDepth(editor.state), redo: redoDepth(editor.state) }).toEqual(
+      originalHistory,
+    );
+    expect(textInput).toHaveValue("Unsaved label");
+    expect(urlInput).toHaveValue(draft);
+    expect(screen.getByRole("dialog", { name: "Edit link" })).toBeVisible();
+  });
+
+  it.each(["", "javascript:alert(1)", "not a URL"])(
+    "keeps Open link inert for an invalid URL draft: %s",
+    async (draft) => {
+      const { editor } = renderScribe();
+      const originalDocument = editor.getJSON();
+      const range = findLinkRange(editor);
+      clickLink(editor, getRenderedLink(editor), range.from + 1);
+      const urlInput = await screen.findByRole("textbox", { name: "URL" });
+      const originalHistory = { undo: undoDepth(editor.state), redo: redoDepth(editor.state) };
+
+      fireEvent.change(urlInput, { target: { value: draft } });
+      const openLink = screen.getByRole("link", { name: "Open link" });
+      expect(openLink).toHaveAttribute("aria-disabled", "true");
+      expect(openLink).not.toHaveAttribute("href");
+      expect(openLink).toHaveAttribute("tabindex", "-1");
+      fireEvent.click(openLink);
+
+      expect(editor.getJSON()).toEqual(originalDocument);
+      expect({ undo: undoDepth(editor.state), redo: redoDepth(editor.state) }).toEqual(
+        originalHistory,
+      );
+      expect(urlInput).toHaveValue(draft);
+    },
+  );
 
   it("keeps direct URL editing focused and restores the document on Escape", async () => {
     const { editor } = renderScribe();
