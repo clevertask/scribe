@@ -11,6 +11,7 @@ import {
   MAX_TABLE_MAX_HEIGHT,
   MIN_TABLE_MAX_HEIGHT,
   normalizeTableMaxHeight,
+  ScribeTableView,
 } from "../lib/components/Scribe/extension/table-layout";
 import { html2md } from "../lib/utils/html-to-markdown";
 import { md2html } from "../lib/utils/markdown-to-html";
@@ -182,6 +183,88 @@ describe("new table sticky header default", () => {
 });
 
 describe("explicit table layout", () => {
+  it("keeps the table DOM and selection while updating layout, authored widths, and columns", () => {
+    const editor = createEditor(tableHtml("", "First", true));
+    selectText(editor, "First heading");
+    const wrapper = editor.view.dom.querySelector<HTMLElement>(".tableWrapper")!;
+    const table = wrapper.querySelector("table")!;
+    const tbody = table.querySelector("tbody")!;
+    const colgroup = table.querySelector("colgroup")!;
+    const selection = editor.state.selection;
+    wrapper.scrollTop = 85;
+    wrapper.scrollLeft = 30;
+
+    expect(editor.commands.setTableLayout("scroll")).toBe(true);
+    expect(editor.commands.setTableHeightLimit(true)).toBe(true);
+    expect(editor.view.dom.querySelector(".tableWrapper")).toBe(wrapper);
+    expect(wrapper.querySelector("table")).toBe(table);
+    expect(table.querySelector("tbody")).toBe(tbody);
+    expect(table.querySelector("colgroup")).toBe(colgroup);
+    expect(editor.state.selection.eq(selection)).toBe(true);
+    expect(wrapper.scrollTop).toBe(85);
+    expect(wrapper.scrollLeft).toBe(30);
+    expect((colgroup.children[0] as HTMLElement).style.width).toBe("180px");
+    expect((colgroup.children[1] as HTMLElement).style.minWidth).toBe("128px");
+
+    const firstColumnCells: number[] = [];
+    editor.state.doc.descendants((node, position) => {
+      if (node.attrs.colwidth?.[0] === 180) firstColumnCells.push(position);
+    });
+    editor.view.dispatch(
+      editor.state.tr.setSelection(
+        CellSelection.create(editor.state.doc, firstColumnCells[0], firstColumnCells[1]),
+      ),
+    );
+    expect(editor.commands.setCellAttribute("colwidth", [220])).toBe(true);
+    expect((colgroup.children[0] as HTMLElement).style.width).toBe("220px");
+    expect(editor.commands.addColumnAfter()).toBe(true);
+    expect(colgroup.children).toHaveLength(3);
+    expect(editor.commands.deleteColumn()).toBe(true);
+    expect(colgroup.children).toHaveLength(2);
+    expect(editor.commands.setTableLayout("auto")).toBe(true);
+    expect(wrapper.querySelector("tbody")).toBe(tbody);
+    expect(
+      Array.from(colgroup.children).every((col) => (col as HTMLElement).style.minWidth !== "128px"),
+    ).toBe(true);
+    expect(editor.state.doc.textContent).toContain("Keep formatting");
+    expect(() => editor.state.doc.check()).not.toThrow();
+  });
+
+  it("rejects other node types without changing the existing table view", () => {
+    const editor = createEditor(tableHtml());
+    const node = tableNodes(editor.state.doc)[0].node;
+    const view = new ScribeTableView(node, 25);
+    const originalMarkup = view.dom.outerHTML;
+
+    expect(view.update(editor.schema.nodes.paragraph.create())).toBe(false);
+    expect(view.node).toBe(node);
+    expect(view.dom.outerHTML).toBe(originalMarkup);
+  });
+
+  it("still recreates the view for consumer-owned table attributes", () => {
+    const schema = getSchema(
+      createScribeSchemaExtensions().map((extension) =>
+        extension.name === "table"
+          ? extension.extend({
+              addAttributes() {
+                return { ...this.parent?.(), style: { default: null } };
+              },
+            })
+          : extension,
+      ),
+    );
+    const node = schema.nodes.table.createAndFill()!;
+    const view = new ScribeTableView(node, 25);
+    const changedStyle = node.type.create(
+      { ...node.attrs, style: "background-color: red" },
+      node.content,
+    );
+
+    expect(view.update(changedStyle)).toBe(false);
+    expect(view.node).toBe(node);
+    expect(new ScribeTableView(changedStyle, 25).table.style.backgroundColor).toBe("red");
+  });
+
   it("changes only the selected table and retains authored widths, rich content, and surrounding blocks", () => {
     const editor = createEditor();
     const original = editor.state.doc;

@@ -1,4 +1,4 @@
-import { TableView } from "@tiptap/extension-table";
+import { TableView, updateColumns } from "@tiptap/extension-table";
 import type { DOMOutputSpec, Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { EditorView } from "@tiptap/pm/view";
 
@@ -85,10 +85,27 @@ export class ScribeTableView extends TableView {
   }
 
   update(node: ProseMirrorNode) {
-    if (!super.update(node)) {
+    // Tiptap recreates table views when attributes change. Scribe updates its
+    // presentation attributes in place to retain the editable tbody and scroll
+    // state; leave other attribute and mark changes to a new native view.
+    if (
+      !node.hasMarkup(
+        this.node.type,
+        {
+          ...this.node.attrs,
+          tableLayout: node.attrs.tableLayout,
+          limitHeight: node.attrs.limitHeight,
+          maxHeight: node.attrs.maxHeight,
+          stickyHeaderRow: node.attrs.stickyHeaderRow,
+        },
+        this.node.marks,
+      )
+    ) {
       return false;
     }
 
+    this.node = node;
+    updateColumns(node, this.colgroup, this.table, this.cellMinWidth);
     this.applyLayout();
     return true;
   }
