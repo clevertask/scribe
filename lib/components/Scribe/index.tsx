@@ -35,6 +35,15 @@ import {
   useState,
 } from "react";
 import { ListOptionBar } from "../Menu/Mobile/ListOptionBar";
+import {
+  createReadOnlyTaskItemChecksBridge,
+  type ScribeReadOnlyTaskItemChecks,
+} from "./extension/read-only-task-item-checks";
+
+export type {
+  ScribeReadOnlyTaskItemCheck,
+  ScribeReadOnlyTaskItemChecks,
+} from "./extension/read-only-task-item-checks";
 
 export type {
   ScribeSlashCommandOptions,
@@ -116,6 +125,12 @@ export interface ScribeProps {
   /** Accessible name for the rich-text editing surface. */
   ariaLabel?: string;
   editable?: boolean;
+  /**
+   * Explicitly allow checkbox-only changes while text stays read-only. The
+   * consumer owns authorization, persistence and recovery. Applies only to
+   * Scribe-owned editors; external editors retain their own node views.
+   */
+  readOnlyTaskItemChecks?: ScribeReadOnlyTaskItemChecks;
   autoFocus?: boolean;
   extensions?: Extension[];
   /**
@@ -524,6 +539,15 @@ const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     useTableOfContentsBridge(onTableOfContentsChange);
   const editorAttributes = editorProps?.editorProps?.attributes;
   const accessibilityPropsRef = useRef({ ariaLabel, editable });
+  const taskItemChecksRef = useRef(props.readOnlyTaskItemChecks);
+  // Node views must read current permissions and callbacks without remounting.
+  // oxlint-disable-next-line react/refs
+  taskItemChecksRef.current = props.readOnlyTaskItemChecks;
+  // The getter reads the ref only from node-view events and synchronization.
+  // oxlint-disable-next-line react/refs
+  const [taskItemChecksBridge] = useState(() =>
+    createReadOnlyTaskItemChecksBridge(() => taskItemChecksRef.current),
+  );
 
   // Keep the callback-backed editor attributes current without recreating the editor.
   // oxlint-disable-next-line react/refs
@@ -546,10 +570,10 @@ const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     content: content ?? editorProps?.content,
     editable,
     extensions: [
-      ...initExtensions({
-        ...props,
-        onTableOfContentsChange: handleTableOfContentsChange,
-      }),
+      ...initExtensions(
+        { ...props, onTableOfContentsChange: handleTableOfContentsChange },
+        taskItemChecksBridge,
+      ),
       ...(extensions ?? []),
     ],
     editorProps: {
@@ -559,6 +583,10 @@ const OwnedScribe = forwardRef<ScribeRef, ScribeProps>((props, ref) => {
     shouldRerenderOnTransaction: editorProps?.shouldRerenderOnTransaction ?? false,
   }));
   const editor = useEditor(initialEditorOptions);
+
+  useEffect(() => {
+    taskItemChecksBridge.synchronize();
+  }, [editor, editable, props.readOnlyTaskItemChecks, taskItemChecksBridge]);
 
   if (!editor) {
     return null;
