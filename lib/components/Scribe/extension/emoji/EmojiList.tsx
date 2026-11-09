@@ -1,7 +1,7 @@
 import { Box, ScrollArea, Text } from "@radix-ui/themes";
 import { Editor } from "@tiptap/react";
 import { SuggestionKeyDownProps } from "@tiptap/suggestion";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from "react";
 
 interface EmojiSuggestionItem {
   emoji?: string;
@@ -21,8 +21,31 @@ export interface EmojiListRef {
 
 export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) => {
   const { command, items } = props;
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLButtonElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const resolvedSelectedIndex = items.length === 0 ? 0 : Math.min(selectedIndex, items.length - 1);
+
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const item = selectedItemRef.current;
+
+    if (!viewport || !item) {
+      return;
+    }
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const itemRect = item.getBoundingClientRect();
+    const top = viewportRect.top + viewport.clientTop;
+    const bottom = top + viewport.clientHeight;
+
+    // Scroll only the popup, preserving the editor's caret and page position.
+    if (itemRect.top < top) {
+      viewport.scrollTop -= top - itemRect.top;
+    } else if (itemRect.bottom > bottom) {
+      viewport.scrollTop += itemRect.bottom - bottom;
+    }
+  }, [items, resolvedSelectedIndex]);
 
   useImperativeHandle(ref, () => {
     return {
@@ -33,7 +56,7 @@ export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) =
           }
 
           setSelectedIndex((previousIndex) => {
-            return (previousIndex + items.length - 1) % items.length;
+            return (Math.min(previousIndex, items.length - 1) + items.length - 1) % items.length;
           });
           return true;
         }
@@ -44,7 +67,7 @@ export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) =
           }
 
           setSelectedIndex((previousIndex) => {
-            return (previousIndex + 1) % items.length;
+            return (Math.min(previousIndex, items.length - 1) + 1) % items.length;
           });
           return true;
         }
@@ -70,11 +93,12 @@ export const EmojiList = forwardRef<EmojiListRef, EmojiListProps>((props, ref) =
 
   return (
     <Box className="scribe-popup" style={{ width: 240 }}>
-      <ScrollArea type="auto" scrollbars="vertical" style={{ maxHeight: 240 }}>
+      <ScrollArea ref={viewportRef} type="auto" scrollbars="vertical" style={{ maxHeight: 240 }}>
         <div className="scribe-popup-list" role="group" aria-label="Emoji suggestions">
           {items.map((item, index) => (
             <button
               key={item.name}
+              ref={index === resolvedSelectedIndex ? selectedItemRef : undefined}
               type="button"
               aria-current={index === resolvedSelectedIndex ? "true" : undefined}
               aria-label={`Insert ${item.name} emoji`}

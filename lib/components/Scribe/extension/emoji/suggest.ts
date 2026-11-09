@@ -3,17 +3,11 @@ import { ReactRenderer } from "@tiptap/react";
 
 import { getPopupMountTarget } from "../getPopupMountTarget";
 import { EmojiList, EmojiListRef } from "./EmojiList";
+import { getEmojiSuggestions } from "./items";
 
 export default () => ({
   items: ({ editor, query }) => {
-    return editor.storage.emoji.emojis
-      .filter(({ shortcodes, tags }) => {
-        return (
-          shortcodes.find((shortcode) => shortcode.startsWith(query.toLowerCase())) ||
-          tags.find((tag) => tag.startsWith(query.toLowerCase()))
-        );
-      })
-      .slice(0, 5);
+    return getEmojiSuggestions(editor.storage.emoji.emojis, query);
   },
 
   allowSpaces: false,
