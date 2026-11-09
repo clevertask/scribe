@@ -10,8 +10,12 @@ import suggestion from "./emoji/suggest";
 import { ScribeTableOfContents } from "./tableOfContents";
 import { ExternalLinkPreview } from "./external-link-preview";
 import { createScribeSchemaExtensionSet } from "../../../schema-extensions";
+import type { createReadOnlyTaskItemChecksBridge } from "./read-only-task-item-checks";
 
-export const initExtensions = (props: ScribeProps) => {
+export const initExtensions = (
+  props: ScribeProps,
+  taskItemChecksBridge?: ReturnType<typeof createReadOnlyTaskItemChecksBridge>,
+) => {
   const {
     items: getCustomSlashCommandItems,
     render: renderSlashCommandItems,
@@ -27,7 +31,7 @@ export const initExtensions = (props: ScribeProps) => {
     ExternalLinkPreview.configure(props.externalLinkPreview),
     schemaExtensions.callout,
     schemaExtensions.taskList,
-    schemaExtensions.taskItem,
+    taskItemChecksBridge?.extend(schemaExtensions.taskItem) ?? schemaExtensions.taskItem,
     schemaExtensions.tableKit,
     schemaExtensions.table,
     Placeholder.configure({

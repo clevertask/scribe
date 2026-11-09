@@ -23,6 +23,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
   - [Headless schema](#headless-schema)
   - [Usage](#usage)
   - [Table Authoring](#table-authoring)
+  - [Checkboxes while reading](#checkboxes-while-reading)
   - [Links](#links)
   - [Experimental Table of Contents](#experimental-table-of-contents)
   - [Math Expressions](#math-expressions)
@@ -240,6 +241,40 @@ calls to `insertContent`, Markdown table paste, and rich-HTML table paste remain
 points. Applications that require a hard no-nested-table guarantee must validate or filter those
 paths too.
 
+## Checkboxes while reading
+
+Text remains read-only when `editable={false}`. To let a user check task-list items on content
+they are allowed to update, explicitly provide `readOnlyTaskItemChecks`:
+
+```tsx
+<Scribe
+  content={canonicalHtml}
+  editable={false}
+  showBarMenu={false}
+  readOnlyTaskItemChecks={
+    canUpdateContent ? { disabled: isSaving, onChange: handleCheckboxChange } : undefined
+  }
+/>
+```
+
+The exported `ScribeReadOnlyTaskItemCheck` event contains `checkboxIndex` (zero-based task-item
+order, including nested items), `previousChecked`, and `checked`. Scribe applies only that
+checkbox attribute locally before invoking the callback, without focusing the text editor.
+The callback is synchronous; the application owns permission checks, asynchronous persistence,
+pending state, error messages, and restoring or reconciling authoritative content after a failure.
+Use a synchronous in-flight guard and `disabled` while saving. Supplying no capability disables
+read-only checkboxes; disabling or removing it takes effect without recreating the editor.
+
+The index describes the document before the action, not a permanent item ID. Persist against the
+application's original canonical content/revision so concurrent changes cannot target a different
+item. Do not substitute `editor.getHTML()` for exact stored HTML: serialization can normalize it.
+Only the dedicated callback identifies this checkbox action. Ordinary `onContentChange` updates
+remain `programmatic` in read mode, including programmatic recovery and checkbox changes.
+
+This option applies to Scribe-owned editors. It does not replace a caller-owned `externalEditor`'s
+node views, enable arbitrary read-only writes, or change the headless schema or editable-mode
+checkbox behavior.
+
 ## Links
 
 Scribe uses Tiptap's Link extension for ordinary links and URL paste. Clicking an existing link
@@ -370,6 +405,7 @@ The `createScribeEditor` helper accepts the same `enableUndoRedo` option.
 | `ariaLabel`               | `string`                                                           | `Rich text editor`         | Sets the accessible name for the rich-text editing surface. Use a unique label when a page contains more than one editor.                                                                                                                                |
 | `onContentChange`         | `(content: ScribeOnChangeContents) => void;`                       | `undefined`                | A callback function triggered whenever the editor's content changes. It receives an object containing the current content in various formats (`jsonContent`, `htmlContent`, `markdownContent`). Internal table-of-contents metadata updates are ignored. |
 | `editable`                | `boolean`                                                          | `true`                     | Controls whether the editor is editable.                                                                                                                                                                                                                 |
+| `readOnlyTaskItemChecks`  | `ScribeReadOnlyTaskItemChecks`                                     | `undefined`                | Opts a Scribe-owned read-only editor into checkbox-only actions. See [Checkboxes while reading](#checkboxes-while-reading) for persistence and pending-state responsibilities.                                                                           |
 | `autoFocus`               | `boolean`                                                          | `false`                    | Controls whether the editor should automatically focus when mounted.                                                                                                                                                                                     |
 | `extensions`              | `Extension[]`                                                      | `undefined`                | You can set your own extensions for the text editor. For more information, [check the tip tap extensions docs](https://tiptap.dev/docs/editor/core-concepts/extensions)                                                                                  |
 | `externalEditor`          | `Editor`                                                           | `undefined`                | Uses a caller-owned Tiptap editor. The caller remains responsible for its extension and plugin lifecycle, including table resizing, and for destroying it.                                                                                               |

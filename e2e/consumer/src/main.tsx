@@ -10,6 +10,7 @@ import { EditorState, Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, EditorView } from "@tiptap/pm/view";
 import { StrictMode, useCallback, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { ReadOnlyTaskItemsFixture } from "./read-only-task-items";
 
 const ConsumerDecoration = Extension.create({
   name: "consumerDecoration",
@@ -292,11 +293,12 @@ function App() {
 }
 
 const rootElement = document.getElementById("root");
+const taskItemChecksMode = new URLSearchParams(window.location.search).get("taskItemChecks");
 
 if (rootElement) {
   createRoot(rootElement).render(
     <StrictMode>
-      <App />
+      {taskItemChecksMode ? <ReadOnlyTaskItemsFixture mode={taskItemChecksMode} /> : <App />}
     </StrictMode>,
   );
 } else {
