@@ -537,6 +537,11 @@
   display: flex;
 }
 
+.scribe-task-list > li > div {
+  flex: 1;
+  min-width: 0;
+}
+
 .scribe-task-list li p {
   margin: 0;
   margin-left: 0.5rem;
