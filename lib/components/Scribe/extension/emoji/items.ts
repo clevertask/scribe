@@ -1,6 +1,7 @@
 import type { EmojiItem } from "@tiptap/extension-emoji";
 
-const SUGGESTION_LIMIT = 5;
+const SUGGESTION_LIMIT = 17;
+const EMPTY_QUERY_LIMIT = 5;
 
 const getMatchRank = (item: EmojiItem, query: string) => {
   const names = [item.name, ...item.shortcodes].map((name) => name.toLowerCase());
@@ -31,7 +32,7 @@ const getMatchRank = (item: EmojiItem, query: string) => {
 
 export const getEmojiSuggestions = (emojis: readonly EmojiItem[], query: string): EmojiItem[] => {
   if (query.length === 0) {
-    return emojis.slice(0, SUGGESTION_LIMIT);
+    return emojis.slice(0, EMPTY_QUERY_LIMIT);
   }
 
   const normalizedQuery = query.toLowerCase();

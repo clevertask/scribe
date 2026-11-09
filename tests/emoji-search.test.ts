@@ -10,12 +10,22 @@ const emoji = (name: string, shortcodes: string[] = [name], tags: string[] = [])
 });
 
 describe("Emoji search", () => {
-  it("ranks an exact shortcode before the five-result cutoff", () => {
+  it("puts the exact shortcode first while exposing the other mag matches", () => {
     const results = getEmojiSuggestions(gitHubEmojis, "mag");
 
-    expect(results).toHaveLength(5);
+    expect(results).toHaveLength(16);
     expect(results[0]).toBe(gitHubEmojis.find(({ name }) => name === "mag"));
     expect(results[0].emoji).toBe("🔍");
+  });
+
+  it("limits a search to 17 results after ranking the complete set", () => {
+    const partialMatches = Array.from({ length: 25 }, (_, index) => emoji(`mag_${index}`));
+    const exactMatch = emoji("mag");
+    const results = getEmojiSuggestions([...partialMatches, exactMatch], "mag");
+
+    expect(results).toHaveLength(17);
+    expect(results[0]).toBe(exactMatch);
+    expect(results.slice(1)).toEqual(partialMatches.slice(0, 16));
   });
 
   it.each(["magnifying", "search", "sear"])("finds magnifying glasses with %s", (query) => {
@@ -49,6 +59,7 @@ describe("Emoji search", () => {
       "keyword_exact",
       "searching",
       "keyword_prefix",
+      "other_partial",
     ]);
   });
 
