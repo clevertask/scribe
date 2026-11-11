@@ -331,26 +331,25 @@ describe("Callout Markdown fallback", () => {
 
     expect(markdownCallout).not.toHaveAttribute("style");
     expect(markdownContainer.querySelector("p")).not.toHaveAttribute("style");
-    expect(markdownTable).toHaveStyle({ width: "180px" });
-    expect(markdownTable).not.toHaveStyle({ position: "fixed" });
-    expect(markdownColumn).toHaveStyle({ width: "180px" });
-    expect(markdownColumn).not.toHaveStyle({ background: "red" });
-    expect(markdownHeader).toHaveStyle({ textAlign: "center" });
-    expect(markdownHeader).not.toHaveStyle({ color: "red" });
-    expect(markdownCell).toHaveStyle({ width: "180px", textAlign: "center" });
-    expect(markdownCell).not.toHaveStyle({ color: "red" });
+    expect(markdownTable?.style.width).toBe("180px");
+    expect(markdownTable?.style.position).toBe("");
+    expect(markdownColumn?.style.width).toBe("180px");
+    expect(markdownColumn?.style.background).toBe("");
+    expect(markdownHeader?.style.textAlign).toBe("center");
+    expect(markdownHeader?.style.color).toBe("");
+    expect(markdownCell?.style.width).toBe("180px");
+    expect(markdownCell?.style.textAlign).toBe("center");
+    expect(markdownCell?.style.color).toBe("");
 
     const restoredContainer = document.createElement("div");
 
     restoredContainer.innerHTML = md2html(markdown);
 
-    expect(restoredContainer.querySelector("table")).toHaveStyle({ width: "180px" });
-    expect(restoredContainer.querySelector("col")).toHaveStyle({ width: "180px" });
-    expect(restoredContainer.querySelector("th")).toHaveStyle({ textAlign: "center" });
-    expect(restoredContainer.querySelector("td")).toHaveStyle({
-      width: "180px",
-      textAlign: "center",
-    });
+    expect(restoredContainer.querySelector("table")?.style.width).toBe("180px");
+    expect(restoredContainer.querySelector("col")?.style.width).toBe("180px");
+    expect(restoredContainer.querySelector("th")?.style.textAlign).toBe("center");
+    expect(restoredContainer.querySelector("td")?.style.width).toBe("180px");
+    expect(restoredContainer.querySelector("td")?.style.textAlign).toBe("center");
     expect(restoredContainer.innerHTML).not.toMatch(
       /position:\s*fixed|background:\s*red|color:\s*red/i,
     );
