@@ -458,3 +458,77 @@ for (const limitHeight of [true, false]) {
     expect((await tableGeometry(wrapper)).scrollLeft).toBeLessThan(rightmostScroll);
   });
 }
+
+for (const limitHeight of [true, false]) {
+  test(`${limitHeight ? "Capped" : "Uncapped"} sticky headers preserve native character, word and drag selection`, async ({
+    page,
+  }) => {
+    await page.goto(
+      `/?tableStickyHeaderFixture=true&narrowEditor=true${limitHeight ? "" : "&uncappedStickyHeader=true&nestedScroll=true"}`,
+    );
+    const wrapper = editorFor(page).locator(".tableWrapper").first();
+    const table = wrapper.locator("table");
+    await enableStickyHeader(page, table.locator("td").first());
+    await wrapper.evaluate((element, capped) => {
+      if (capped) element.scrollTop = 200;
+      else {
+        const pane = element.closest<HTMLElement>('[data-testid="nested-scroll-container"]')!;
+        pane.scrollTop +=
+          element.getBoundingClientRect().top - pane.getBoundingClientRect().top + 200;
+      }
+    }, limitHeight);
+    await expect
+      .poll(() =>
+        wrapper.evaluate((element, capped) => {
+          const scrollContainer = capped
+            ? element
+            : element.closest<HTMLElement>('[data-testid="nested-scroll-container"]')!;
+          return Math.abs(
+            element.querySelector("th")!.getBoundingClientRect().top -
+              scrollContainer.getBoundingClientRect().top,
+          );
+        }, limitHeight),
+      )
+      .toBeLessThanOrEqual(2);
+    const header = table.locator("th").first();
+    const points = await header.evaluate((element) => {
+      const text = element.querySelector("p")!.firstChild!;
+      const range = document.createRange();
+      range.setStart(text, 0);
+      range.setEnd(text, 1);
+      const character = range.getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return {
+        start: { x: character.left + 1, y: (character.top + character.bottom) / 2 },
+        end: { x: box.right - 12, y: box.bottom - 12 },
+      };
+    });
+    const selectedText = () => page.evaluate(() => window.getSelection()?.toString());
+    await page.mouse.click(points.end.x, points.end.y);
+    await expect
+      .poll(() =>
+        header.evaluate((element) => {
+          const selection = window.getSelection();
+          return {
+            inHeader: Boolean(selection?.focusNode && element.contains(selection.focusNode)),
+            offset: selection?.focusOffset,
+          };
+        }),
+      )
+      .toEqual({ inHeader: true, offset: "Sticky project".length });
+    await page.mouse.dblclick(points.start.x, points.start.y);
+    await expect.poll(selectedText).toBe("Sticky");
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.down("Shift");
+    await page.mouse.click(points.end.x, points.end.y);
+    await page.keyboard.up("Shift");
+    await expect.poll(selectedText).toBe("Sticky project");
+    await page.keyboard.press("ArrowRight");
+    await page.mouse.move(points.end.x, points.end.y);
+    await page.mouse.down();
+    await page.mouse.move(points.start.x, points.start.y, { steps: 10 });
+    await page.mouse.up();
+    await expect.poll(selectedText).toBe("Sticky project");
+    await expect(header).toHaveText("Sticky project");
+  });
+}

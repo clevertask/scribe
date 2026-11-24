@@ -149,11 +149,13 @@ function App() {
   const showTableStickyHeaderFixture = searchParams.get("tableStickyHeaderFixture") === "true";
   const testUncappedStickyHeader = searchParams.get("uncappedStickyHeader") === "true";
   const testEditableTransition = searchParams.get("editableTransition") === "true";
+  const readOnlyLink = searchParams.get("readOnlyLink") === "true";
   const testNarrowEditor = searchParams.get("narrowEditor") === "true";
   const testNestedScroll = searchParams.get("nestedScroll") === "true";
+  const testCrampedTable = searchParams.get("crampedTable") === "true";
   const testSlowLinkPreview = searchParams.get("slowLinkPreview") === "true";
   const testWindowScroll = searchParams.get("windowScroll") === "true";
-  const [editable, setEditable] = useState(!testEditableTransition);
+  const [editable, setEditable] = useState(!testEditableTransition && !readOnlyLink);
   const [extensionNames, setExtensionNames] = useState<string[]>([]);
   const [serializedHtml, setSerializedHtml] = useState("");
   const [reloadedTableHtml, setReloadedTableHtml] = useState<string>();
@@ -196,7 +198,12 @@ function App() {
           (showTableStickyHeaderFixture
             ? tableStickyHeaderFixture(!testUncappedStickyHeader)
             : showTableLayoutFixture
-              ? tableLayoutFixture
+              ? testCrampedTable
+                ? tableLayoutFixture.replace(
+                    "<table>",
+                    '<table data-table-max-height="220" data-table-limit-height="true" data-table-sticky-header-row="true">',
+                  )
+                : tableLayoutFixture
               : showConsumerDecoration
                 ? ""
                 : showExternalLinkPreviewListFixture
@@ -205,7 +212,9 @@ function App() {
                     ? calloutFixture
                     : showTableFixture
                       ? tableFixture
-                      : "<p>Package consumer content</p>")
+                      : readOnlyLink
+                        ? '<p><a href="https://initial.example/docs">Package consumer content</a></p>'
+                        : "<p>Package consumer content</p>")
         }
         editable={editable}
         {...(disableUndoRedo ? { enableUndoRedo: false } : {})}

@@ -489,3 +489,26 @@ test("Escape dismisses pending label and URL changes without changing the link",
   await expect(labelInput).toHaveValue(documentText);
   await expect(urlInput).toHaveValue(initialHref);
 });
+
+test("Read-only links navigate without opening an editor or changing content", async ({
+  context,
+  page,
+}) => {
+  await context.route(initialHref, (route) =>
+    route.fulfill({ contentType: "text/html", body: "<p>Linked page</p>" }),
+  );
+  await page.goto("/?readOnlyLink=true");
+  const editor = page.getByRole("textbox", { name: "Document content", exact: true });
+  const link = editor.getByRole("link", { name: documentText, exact: true });
+  await expect(editor).not.toBeEditable();
+  const documentBeforeClick = await editor.innerHTML();
+  const editorUrl = page.url();
+
+  const [linkedPage] = await Promise.all([page.waitForEvent("popup"), link.click()]);
+  await expect(linkedPage).toHaveURL(initialHref);
+  await expect(linkedPage.getByText("Linked page", { exact: true })).toBeVisible();
+  await expect(page).toHaveURL(editorUrl);
+  await expect(page.getByRole("dialog", { name: "Edit link", exact: true })).toHaveCount(0);
+  expect(await editor.innerHTML()).toBe(documentBeforeClick);
+  await linkedPage.close();
+});

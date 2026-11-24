@@ -341,3 +341,32 @@ for (const width of [320, 360]) {
     ).toBeLessThanOrEqual(2);
   });
 }
+
+test("A cramped capped table keeps native scrolling in its outer pane", async ({ page }) => {
+  await page.goto(
+    "/?tableLayoutFixture=true&narrowEditor=true&nestedScroll=true&crampedTable=true",
+  );
+  const wrapper = editorFor(page).locator(".tableWrapper").first();
+  const cell = wrapper.locator("td").first();
+  const pane = page.getByTestId("nested-scroll-container");
+  await expect(wrapper.locator("table")).toHaveAttribute("data-table-max-height", "220");
+  await expect(wrapper).toHaveAttribute("data-table-sticky-header-active", "true");
+  await cell.locator("p").click({ position: { x: 8, y: 10 } });
+  const caretIsVisible = () =>
+    pane.evaluate((element) => {
+      const caret = window.getSelection()!.getRangeAt(0).getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return caret.top >= box.top && caret.bottom <= box.bottom;
+    });
+  await expect.poll(caretIsVisible).toBe(true);
+  await pane.evaluate((element) => {
+    const selection = window.getSelection()!;
+    element.scrollTop +=
+      selection.getRangeAt(0).getBoundingClientRect().bottom -
+      element.getBoundingClientRect().top +
+      20;
+  });
+  await expect.poll(caretIsVisible).toBe(false);
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(caretIsVisible).toBe(true);
+});

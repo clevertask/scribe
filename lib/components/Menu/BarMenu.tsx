@@ -254,7 +254,10 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                             disabled={item.disabled || !editor.isEditable}
                             title={item.label}
                             onMouseDown={handleToolbarMouseDown}
-                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                            className={clsx(
+                              "scribe-toolbar-button",
+                              item.disabled && "scribe-toolbar-button--disabled",
+                            )}
                           >
                             <item.icon className="scribe-toolbar-icon" />
                           </IconButton>
@@ -297,7 +300,10 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                             disabled={item.disabled || !editor.isEditable}
                             title={item.label}
                             onMouseDown={handleToolbarMouseDown}
-                            className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                            className={clsx(
+                              "scribe-toolbar-button",
+                              item.disabled && "scribe-toolbar-button--disabled",
+                            )}
                           >
                             <item.icon className="scribe-toolbar-icon" />
                           </IconButton>
@@ -365,7 +371,10 @@ const BarMenu: FC<BarMenuProps> = ({ editor }) => {
                       title={item.label}
                       onMouseDown={handleToolbarMouseDown}
                       onClick={item.command}
-                      className={clsx(item.disabled && "scribe-toolbar-button--disabled")}
+                      className={clsx(
+                        "scribe-toolbar-button",
+                        item.disabled && "scribe-toolbar-button--disabled",
+                      )}
                     >
                       <item.icon className="scribe-toolbar-icon" />
                     </IconButton>

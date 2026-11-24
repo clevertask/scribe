@@ -125,14 +125,21 @@ export const scrollSelectionBelowStickyHeader = (view: EditorView) => {
   const height = headerHeight(wrapper);
   if (height <= 0 || viewport.bottom <= viewport.top) return false;
 
-  const clearance =
-    viewport.top + (capped ? 0 : hostOffset(wrapper)) + (firstRow.contains(cell) ? 0 : height) + 5;
   const caret = view.coordsAtPos($head.pos);
+  const contentTop =
+    viewport.top + (capped ? 0 : hostOffset(wrapper)) + (firstRow.contains(cell) ? 0 : height);
+  // A tall, wrapped header can leave less room than the usual scroll margins.
+  // Spend the remaining space on the caret before reserving any extra clearance.
+  const padding = Math.min(
+    5,
+    Math.max(0, (viewport.bottom - contentTop - (caret.bottom - caret.top)) / 2),
+  );
+  const clearance = contentTop + padding;
   let distance = 0;
   if (caret.top < clearance) {
     distance = caret.top - clearance;
-  } else if (caret.bottom > viewport.bottom - 5) {
-    distance = caret.bottom - viewport.bottom + 5;
+  } else if (caret.bottom > viewport.bottom - padding) {
+    distance = caret.bottom - viewport.bottom + padding;
   }
   if (distance) {
     if (ancestor) {
@@ -145,7 +152,7 @@ export const scrollSelectionBelowStickyHeader = (view: EditorView) => {
     syncHeaderPosition(wrapper);
   }
 
-  if (firstRow.contains(cell)) {
+  if (firstRow.contains(cell) || padding < 5) {
     // ProseMirror stops at position:sticky before reaching the horizontal wrapper.
     const box = wrapper.getBoundingClientRect();
     const scale = wrapper.offsetWidth > 0 ? box.width / wrapper.offsetWidth : 1;
@@ -159,8 +166,38 @@ export const scrollSelectionBelowStickyHeader = (view: EditorView) => {
     }
   }
 
-  // Keep native body-cell scrolling and any remaining outer-ancestor work.
-  return false;
+  // Native scrolling reserves another five pixels and can push the caret back
+  // behind a tall header. Only suppress it when outer scrolling is unnecessary.
+  if (padding >= 5) return false;
+  const visibleCaret = view.coordsAtPos($head.pos);
+  const ownerWindow = wrapper.ownerDocument.defaultView!;
+  const visualViewport = ownerWindow.visualViewport;
+  const windowLeft = visualViewport?.offsetLeft ?? 0;
+  const windowTop = visualViewport?.offsetTop ?? 0;
+  if (
+    visibleCaret.top < windowTop ||
+    visibleCaret.bottom > windowTop + (visualViewport?.height ?? ownerWindow.innerHeight) ||
+    visibleCaret.left < windowLeft ||
+    visibleCaret.right > windowLeft + (visualViewport?.width ?? ownerWindow.innerWidth)
+  )
+    return false;
+  const programmaticScrollOverflow = /^(auto|scroll|overlay|hidden)$/;
+  for (let outer = parentElement(wrapper); outer; outer = parentElement(outer)) {
+    const style = outer.ownerDocument.defaultView!.getComputedStyle(outer);
+    const box = outer.getBoundingClientRect();
+    const scaleY = outer.offsetHeight > 0 ? box.height / outer.offsetHeight : 1;
+    const scaleX = outer.offsetWidth > 0 ? box.width / outer.offsetWidth : 1;
+    const top = box.top + outer.clientTop * scaleY;
+    const left = box.left + outer.clientLeft * scaleX;
+    if (
+      (programmaticScrollOverflow.test(style.overflowY) &&
+        (visibleCaret.top < top || visibleCaret.bottom > top + outer.clientHeight * scaleY)) ||
+      (programmaticScrollOverflow.test(style.overflowX) &&
+        (visibleCaret.left < left || visibleCaret.right > left + outer.clientWidth * scaleX))
+    )
+      return false;
+  }
+  return true;
 };
 
 /** Move the original header cells; no extra editable DOM or document state. */
@@ -168,6 +205,64 @@ export const createStickyTableHeaderPlugin = () =>
   new Plugin({
     props: {
       handleScrollToSelection: scrollSelectionBelowStickyHeader,
+      handleDOMEvents: {
+        mousedown(view, event) {
+          if (
+            !view.editable ||
+            event.defaultPrevented ||
+            event.button !== 0 ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.altKey
+          )
+            return false;
+          const target = event.target as HTMLElement | null;
+          const header = target?.closest<HTMLTableCellElement>("th");
+          const wrapper = header?.closest<HTMLElement>(ACTIVE_TABLE_SELECTOR);
+          if (
+            !header ||
+            !wrapper ||
+            !headerCells(wrapper)?.[header.cellIndex]?.isSameNode(header)
+          ) {
+            return false;
+          }
+          const position = view.posAtCoords({ left: event.clientX, top: event.clientY });
+          if (!position || view.state.doc.resolve(position.pos).parent.inlineContent) return false;
+
+          const doc = header.ownerDocument;
+          let nativeNode: Node | null = null;
+          let nativeOffset = 0;
+          try {
+            const caret = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
+            if (caret) {
+              nativeNode = caret.offsetNode;
+              nativeOffset = caret.offset;
+            } else {
+              const range = doc.caretRangeFromPoint?.(event.clientX, event.clientY);
+              nativeNode = range?.startContainer ?? null;
+              nativeOffset = range?.startOffset ?? 0;
+            }
+          } catch {
+            return false;
+          }
+          if (!nativeNode || !header.contains(nativeNode)) return false;
+          const nativePosition = view.posAtDOM(nativeNode, nativeOffset);
+          const contentStart = view.posAtDOM(header, 0);
+          const contentEnd = view.posAtDOM(header, header.childNodes.length);
+          if (
+            nativePosition === position.pos ||
+            (position.pos > contentStart && position.pos < contentEnd)
+          )
+            return false;
+          // A sticky cell can put its blank space below the paragraph at the
+          // pointer. ProseMirror's block-boundary hit test then picks the next
+          // cell. Let native selection keep the clicked character and support
+          // text dragging, Shift-click and word selection in this narrow case.
+          // Returning true skips ProseMirror's handler, without cancelling the
+          // browser's default action or claiming resize gestures handled earlier.
+          return true;
+        },
+      },
     },
     view(view) {
       const ownerWindow = view.dom.ownerDocument.defaultView;

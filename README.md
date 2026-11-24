@@ -33,6 +33,7 @@ A versatile, block-based rich text editor for diverse applications, built with T
     - [html2md](#html2md)
     - [convertLegacyMathDelimiters](#convertlegacymathdelimiters)
   - [Roadmap](#roadmap)
+  - [Dependency maintenance](#dependency-maintenance)
   - [Release Process](#release-process)
   - [License](#license)
   - [Credits](#credits)
@@ -40,11 +41,14 @@ A versatile, block-based rich text editor for diverse applications, built with T
 ## Installation
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/pm@3.31.3
+npm install --save-exact @clevertask/scribe@0.1.38 @tiptap/pm@3.33.0
 ```
 
 Scribe shares this exact ProseMirror runtime with consumer extensions. Keeping one
 installed version prevents identity conflicts between built-in and custom plugins.
+
+These examples use the published `0.1.38` artifact. Unreleased source can use a newer
+Tiptap family; check the target package's registry peer requirements before upgrading.
 
 ## Headless schema
 
@@ -52,7 +56,7 @@ Use the schema subpath when a server or migration tool must parse Scribe content
 the React editor or Scribe's stylesheet:
 
 ```bash
-npm install --save-exact @clevertask/scribe @tiptap/core@3.31.3 @tiptap/html@3.31.3 @tiptap/pm@3.31.3
+npm install --save-exact @clevertask/scribe@0.1.38 @tiptap/core@3.33.0 @tiptap/html@3.33.0 @tiptap/pm@3.33.0
 ```
 
 ```ts
@@ -517,6 +521,24 @@ We're constantly working to improve @clevertask/scribe. Here are some features w
 - **E2E tests**: It will ensure this component's working as expected.
 
 We're excited about these upcoming features and welcome any feedback or contributions from the community. If you have any suggestions or would like to contribute to any of these features, please open an issue or submit a pull request on our GitHub repository.
+
+## Dependency maintenance
+
+Dependency updates are agent-led, reviewed pull requests. Use the Node LTS selected by
+`.nvmrc` and the exact pnpm version in `package.json`. Preserve the three-day release-age
+policy, allowed builds, security overrides, and the exact Tiptap family contract.
+
+Run `pnpm update --latest`, review upstream changes (including majors), then run
+`pnpm run dependency-update:post` and `pnpm install --no-frozen-lockfile` to synchronize
+Scribe's exact `@tiptap/pm` peer. Review `@types/node` separately against the selected
+Node major. Verify a frozen install, `pnpm run validate:deps`, and full and production
+audits; compare findings with the baseline rather than assuming the validation script
+audits dependencies. Review the packed consumer and current PR CI before merge.
+
+The scheduled pnpm PR generator is retired. GitHub Actions dependency updates, CI,
+contract checks, and the release/publish workflows remain separate. A source update
+must be released and published before consumers can adopt it; a manifest version alone
+does not establish which artifact is available in the registry.
 
 ## Release Process
 

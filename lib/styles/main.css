@@ -34,6 +34,13 @@
   padding: 10px 12px;
 }
 
+/* Keep selection updates from moving text between pointer down and click. */
+.scribe-toolbar-button {
+  box-sizing: border-box;
+  width: var(--base-button-height);
+  height: var(--base-button-height);
+  margin: 0;
+}
 .scribe-toolbar-button--disabled {
   cursor: not-allowed;
 }
