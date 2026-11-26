@@ -53,6 +53,14 @@ test("applying inline code preserves an existing link through undo and redo", as
 
   await editor.press("ControlOrMeta+Shift+z");
   await expectCombinedCodeLink(page);
+
+  await editor.press("ControlOrMeta+A");
+  await toolbar.getByRole("button", { name: "Inline code", exact: true }).click();
+  await expect(editor.locator("code")).toHaveCount(0);
+  await expect(editor.getByRole("link", { name: documentText, exact: true })).toHaveAttribute(
+    "href",
+    linkHref,
+  );
 });
 
 test("applying a link preserves existing inline code", async ({ page }) => {
@@ -65,9 +73,19 @@ test("applying a link preserves existing inline code", async ({ page }) => {
 });
 
 test("applying inline code preserves existing bold formatting", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
   const { editor, toolbar } = await getEditorAndToolbar(page);
-
-  await toolbar.getByRole("button", { name: "Bold", exact: true }).click();
+  const boldButton = toolbar.getByRole("button", { name: "Bold", exact: true });
+  const beforeButton = await boldButton.boundingBox();
+  const beforeToolbar = await toolbar.boundingBox();
+  await boldButton.click();
+  await expect
+    .poll(() => boldButton.boundingBox())
+    .toMatchObject({
+      width: beforeButton!.width,
+      height: beforeButton!.height,
+    });
+  await expect.poll(() => toolbar.boundingBox()).toMatchObject({ height: beforeToolbar!.height });
   await toolbar.getByRole("button", { name: "Inline code", exact: true }).click();
 
   await expect(editor.getByRole("strong")).toHaveText(documentText);

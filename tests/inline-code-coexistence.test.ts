@@ -60,7 +60,8 @@ describe("inline code mark coexistence", () => {
     expect(editor.commands.redo()).toBe(true);
     expect(editor.getJSON()).toEqual(withCode);
 
-    expect(editor.commands.toggleCode()).toBe(true);
+    // History restores a nearby cursor; explicitly select the text to remove its mark.
+    expect(editor.chain().setTextSelection({ from: 1, to: 11 }).toggleCode().run()).toBe(true);
     expect(markTypesFor(editor, "linkedCode")).toEqual(["bold", "link"]);
   });
 

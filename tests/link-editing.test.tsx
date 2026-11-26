@@ -178,13 +178,13 @@ const clickLink = (editor: Editor, link: HTMLAnchorElement, position: number) =>
     clientY: 8,
   });
 
-  fireEvent.click(link, {
+  const clickWasNotCancelled = fireEvent.click(link, {
     button: 0,
     clientX: 8,
     clientY: 8,
   });
 
-  return mouseUpWasNotCancelled;
+  return { mouseUpWasNotCancelled, clickWasNotCancelled };
 };
 
 describe("link editing", () => {
@@ -207,7 +207,7 @@ describe("link editing", () => {
     const range = findLinkRange(editor);
     const link = getRenderedLink(editor);
 
-    const mouseUpWasNotCancelled = clickLink(editor, link, range.from + 1);
+    const { mouseUpWasNotCancelled } = clickLink(editor, link, range.from + 1);
 
     expect(mouseUpWasNotCancelled).toBe(false);
     expect(openSpy).not.toHaveBeenCalled();
@@ -438,9 +438,13 @@ describe("link editing", () => {
     const range = findLinkRange(editor);
     const link = getRenderedLink(editor);
 
-    const mouseUpWasNotCancelled = clickLink(editor, link, range.from + 1);
+    const beforeClick = editor.getJSON();
+    const { clickWasNotCancelled } = clickLink(editor, link, range.from + 1);
 
-    expect(mouseUpWasNotCancelled).toBe(true);
+    // ProseMirror owns mouse-up selection; native navigation depends on click.
+    expect(clickWasNotCancelled).toBe(true);
+    expect(editor.isEditable).toBe(false);
+    expect(editor.getJSON()).toEqual(beforeClick);
     expect(screen.queryByRole("dialog", { name: "Edit link" })).not.toBeInTheDocument();
     expect(link).toHaveAttribute("href", "https://old.example/docs");
     expect(link).toHaveAttribute("target", "_blank");
