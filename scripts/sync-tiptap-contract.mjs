@@ -1,8 +1,8 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repositoryDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryDirectory = resolve(import.meta.dirname, "..");
 const packageManifestPath = resolve(repositoryDirectory, "package.json");
 const managedDependencyFields = ["dependencies", "devDependencies"];
 const tiptapPackagePrefix = "@tiptap/";

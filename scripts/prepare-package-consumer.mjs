@@ -1,10 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { access, readFile, realpath, rm, writeFile } from "node:fs/promises";
-import { dirname, relative, resolve, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { relative, resolve, sep } from "node:path";
 import { glob } from "glob";
 
-const repositoryDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repositoryDirectory = resolve(import.meta.dirname, "..");
 const consumerDirectory = resolve(repositoryDirectory, "e2e/consumer");
 const consumerManifestPath = resolve(consumerDirectory, "package.json");
 const consumerNodeModules = resolve(consumerDirectory, "node_modules");

@@ -33,7 +33,6 @@ A versatile, block-based rich text editor for diverse applications, built with T
     - [html2md](#html2md)
     - [convertLegacyMathDelimiters](#convertlegacymathdelimiters)
   - [Roadmap](#roadmap)
-  - [Dependency maintenance](#dependency-maintenance)
   - [Release Process](#release-process)
   - [License](#license)
   - [Credits](#credits)
@@ -521,24 +520,6 @@ We're constantly working to improve @clevertask/scribe. Here are some features w
 - **E2E tests**: It will ensure this component's working as expected.
 
 We're excited about these upcoming features and welcome any feedback or contributions from the community. If you have any suggestions or would like to contribute to any of these features, please open an issue or submit a pull request on our GitHub repository.
-
-## Dependency maintenance
-
-Dependency updates are agent-led, reviewed pull requests. Use the Node LTS selected by
-`.nvmrc` and the exact pnpm version in `package.json`. Preserve the three-day release-age
-policy, allowed builds, security overrides, and the exact Tiptap family contract.
-
-Run `pnpm update --latest`, review upstream changes (including majors), then run
-`pnpm run dependency-update:post` and `pnpm install --no-frozen-lockfile` to synchronize
-Scribe's exact `@tiptap/pm` peer. Review `@types/node` separately against the selected
-Node major. Verify a frozen install, `pnpm run validate:deps`, and full and production
-audits; compare findings with the baseline rather than assuming the validation script
-audits dependencies. Review the packed consumer and current PR CI before merge.
-
-The scheduled pnpm PR generator is retired. GitHub Actions dependency updates, CI,
-contract checks, and the release/publish workflows remain separate. A source update
-must be released and published before consumers can adopt it; a manifest version alone
-does not establish which artifact is available in the registry.
 
 ## Release Process
 
